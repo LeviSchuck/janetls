@@ -16,11 +16,7 @@ active support.
 
 > mbed TLS is supported by ARM with a young dynamic team which aims to keep
 > customers happy with its straightforward and easygoing philosophy.
-
-Further, in keeping your own project small, you can use only what you need and
-not bloat your project. For example: just SHA-256 hashing. The underlying TLS
-implementation is also quite modular.
-
+> 
 > mbed TLS offers an SSL library with an intuitive API and readable source code,
 > so you can actually understand what the code does.
 > Also the mbed TLS modules are as loosely coupled as possible and written in
