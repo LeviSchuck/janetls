@@ -45,7 +45,6 @@ typedef enum base64_variant
 
 Janet hex_string(const uint8_t * str, unsigned int length);
 Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant variant);
-void data_from_janet(Janet * argv, int slot,  const uint8_t ** data, int * length);
 
 void submod_md(JanetTable * env);
 void submod_util(JanetTable * env);

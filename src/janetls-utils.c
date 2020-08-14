@@ -45,18 +45,14 @@ Janet hex_encoder(int argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
 
-  const uint8_t * data = NULL;
-  int length = 0;
-  data_from_janet(argv, 0, &data, &length);
-  return hex_string(data, length);
+  JanetByteView data = janet_getbytes(argv, 0);
+  return hex_string(data.bytes, data.len);
 }
 
 Janet base64_encoder(int argc, Janet * argv)
 {
   janet_arity(argc, 1, 2);
-  const uint8_t * data = NULL;
-  int length = 0;
-  data_from_janet(argv, 0, &data, &length);
+  JanetByteView data = janet_getbytes(argv, 0);
   base64_variant variant = STANDARD;
 
   if (argc > 1)
@@ -80,7 +76,7 @@ Janet base64_encoder(int argc, Janet * argv)
     }
   }
 
-  return base64_encode(data, length, variant);
+  return base64_encode(data.bytes, data.len, variant);
 }
 
 static const JanetReg cfuns[] = 

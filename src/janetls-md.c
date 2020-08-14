@@ -63,19 +63,17 @@ static Janet md(int32_t argc, Janet *argv)
   janet_fixarity(argc, 2);
 
   const uint8_t * sym = janet_getkeyword(argv, 0);
-  const uint8_t * data = NULL;
-  int length = 0;
 
   mbedtls_md_type_t algorithm = symbol_to_alg(sym);
-  data_from_janet(argv, 1, &data, &length);
+  JanetByteView data = janet_getbytes(argv, 1);
 
   const mbedtls_md_info_t *md_info;
   md_info = mbedtls_md_info_from_type(algorithm);
   unsigned char digest[MBEDTLS_MD_MAX_SIZE];
 
-  if (mbedtls_md(md_info, data, length, digest)) 
+  if (mbedtls_md(md_info, data.bytes, data.len, digest)) 
   {
-    janet_panicf("Unable to execute message digest for algorithm %S on input %s", sym, data);
+    janet_panicf("Unable to execute message digest for algorithm %S on input %S", sym, data);
   }
 
   return hex_string(digest, mbedtls_md_get_size(md_info));
