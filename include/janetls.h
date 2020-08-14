@@ -23,7 +23,30 @@ SOFTWARE.
 #ifndef JANETLS_H
 #define JANETLS_H
 #include <janet.h>
-Janet hex_string(unsigned char * str, int length);
 
-void submod_md(JanetTable *env);
+typedef enum encoding
+{
+  RAW = 0,
+  HEX,
+  BASE_64,
+} encoding;
+
+typedef enum base64_variant
+{
+  PEM,
+  MIME,
+  IMAP,
+  STANDARD,
+  STANDARD_UNPADDED,
+  URL,
+  URL_UNPADDED,
+  PGP,
+} base64_variant;
+
+Janet hex_string(const uint8_t * str, unsigned int length);
+Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant variant);
+void data_from_janet(Janet * argv, int slot,  const uint8_t ** data, int * length);
+
+void submod_md(JanetTable * env);
+void submod_util(JanetTable * env);
 #endif

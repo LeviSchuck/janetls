@@ -52,6 +52,8 @@ mbedtls_md_type_t symbol_to_alg(JanetKeyword keyword) {
     }
   }
 
+  janet_panicf("Given algorithm %S is not expected, please review md/algorithms for supported values", keyword);
+  // unreachable
   return MBEDTLS_MD_NONE;
 }
 
@@ -62,35 +64,10 @@ static Janet md(int32_t argc, Janet *argv)
 
   const uint8_t * sym = janet_getkeyword(argv, 0);
   const uint8_t * data = NULL;
-  Janet data_value = argv[1];
   int length = 0;
-  JanetBuffer * buffer;
-  JanetType data_type = janet_type(data_value);
 
   mbedtls_md_type_t algorithm = symbol_to_alg(sym);
-  if (algorithm == MBEDTLS_MD_NONE)
-  {
-    janet_panicf("Given algorithm %S is not expected, please review md/algorithms for supported values", sym);
-  }
-
-  switch (data_type)
-  {
-    case JANET_STRING:
-    data = janet_unwrap_string(data_value);
-    length = janet_string_length(data);
-    break;
-
-    case JANET_BUFFER:
-    buffer = janet_unwrap_buffer(data_value);
-    data = buffer->data;
-    length = buffer->count;
-    break;
-
-    default:
-    janet_panicf("bad slot #%d, expected string or buffer, got %v", 1, data_value);
-    // unreachable, but for consistency.
-    break;
-  }
+  data_from_janet(argv, 1, &data, &length);
 
   const mbedtls_md_info_t *md_info;
   md_info = mbedtls_md_info_from_type(algorithm);
