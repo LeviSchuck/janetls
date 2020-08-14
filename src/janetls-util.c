@@ -180,29 +180,3 @@ Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant va
   // it will lead to a double free.
   return janet_wrap_string(janet_string(buffer->data, buffer->count));
 }
-
-void data_from_janet(Janet * argv, int slot,  const uint8_t ** data, int * length)
-{
-  Janet data_value = argv[slot];
-  JanetBuffer * buffer;
-  switch (janet_type(data_value))
-  {
-    case JANET_STRING:
-    printf("Got string\n");
-    *data = janet_unwrap_string(data_value);
-    *length = janet_string_length(*data);
-    break;
-
-    case JANET_BUFFER:
-    printf("Got buffer\n");
-    buffer = janet_unwrap_buffer(data_value);
-    *data = buffer->data;
-    *length = buffer->count;
-    break;
-
-    default:
-    janet_panicf("bad slot #%d, expected string or buffer, got %v", slot, data_value);
-    // unreachable, but for consistency.
-    break;
-  }
-}
