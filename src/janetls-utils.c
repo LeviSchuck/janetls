@@ -49,16 +49,14 @@ Janet hex_encoder(int argc, Janet * argv)
   return hex_string(data.bytes, data.len);
 }
 
-Janet base64_encoder(int argc, Janet * argv)
+base64_variant get_base64_variant(int argc, Janet * argv, int index)
 {
-  janet_arity(argc, 1, 2);
-  JanetByteView data = janet_getbytes(argv, 0);
   base64_variant variant = STANDARD;
 
-  if (argc > 1)
+  if (index < argc)
   {
     // Parse option
-    JanetKeyword keyword = janet_getkeyword(argv, 1);
+    JanetKeyword keyword = janet_getkeyword(argv, index);
     int32_t size = BASE64_VARIANT_COUNT;
     uint8_t found = 0;
     for (int i = 0; i < size; i++)
@@ -76,20 +74,58 @@ Janet base64_encoder(int argc, Janet * argv)
     }
   }
 
+  return variant;
+}
+
+static Janet base64_variants_set(int32_t argc, Janet *argv)
+{
+  janet_fixarity(argc, 0);
+  int32_t size = BASE64_VARIANT_COUNT;
+  // Construct result
+  Janet values[size];
+  for (int i = 0; i < size; i++)
+  {
+    values[i] = janet_ckeywordv(base64_variants[i].option);
+  }
+
+  return janet_wrap_tuple(janet_tuple_n(values, size));
+}
+
+Janet base64_encoder(int argc, Janet * argv)
+{
+  janet_arity(argc, 1, 2);
+  JanetByteView data = janet_getbytes(argv, 0);
+  base64_variant variant = get_base64_variant(argc, argv, 1);
   return base64_encode(data.bytes, data.len, variant);
 }
 
-static const JanetReg cfuns[] = 
+Janet base64_decoder(int argc, Janet * argv)
 {
-  {"encode/hex", hex_encoder,
+  janet_arity(argc, 1, 2);
+  JanetByteView data = janet_getbytes(argv, 0);
+  base64_variant variant = get_base64_variant(argc, argv, 1);
+  return base64_decode(data.bytes, data.len, variant);
+}
+
+static const JanetReg cfuns[] =
+{
+  {"hex/encode", hex_encoder,
     "(janetls/encode/hex str)\n\n"
     "Encodes an arbitrary string as hex."
     },
-  {"encode/base64", base64_encoder,
-    "(janetls/encode/base64 str optional-variant)\n\n"
-    "Permitted variants are: :pem, :mime, :imap, :standard, "
-    ":standard-unpadded, :url, :url-unpadded, :pgp."
+  {"base64/encode", base64_encoder,
+    "(janetls/base64/encode str optional-variant)\n\n"
+    "Permitted variants are described in (janetls/base64/variants). "
     "It will by by default :standard"
+    },
+  {"base64/decode", base64_decoder,
+    "(janetls/base64/decode str optional-variant)\n\n"
+    "Permitted variants are described in (janetls/base64/variants). "
+    "It will by by default :standard"
+    },
+  {"base64/variants", base64_variants_set,
+    "(janetls/base64/variants)\n\n"
+    "Enumerates acceptable variants for other base64 functions"
     },
   {NULL, NULL, NULL}
 };

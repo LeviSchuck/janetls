@@ -79,7 +79,7 @@ static Janet md(int32_t argc, Janet *argv)
   return hex_string(digest, mbedtls_md_get_size(md_info));
 }
 
-static Janet algorithms(int32_t argc, Janet *argv)
+static Janet md_algorithms_set(int32_t argc, Janet *argv)
 {
   janet_fixarity(argc, 0);
   int32_t size = SUPPORTED_ALG_COUNT;
@@ -100,7 +100,7 @@ static const JanetReg cfuns[] =
     " seen in md/algorithms."
     "The string may have any content as binary."
     },
-  {"md/algorithms", algorithms, "(janetls/md/algorithms)\n\n"
+  {"md/algorithms", md_algorithms_set, "(janetls/md/algorithms)\n\n"
     "Provides an array of keywords for available algorithms"},
   {NULL, NULL, NULL}
 };

@@ -30,7 +30,7 @@ Janet hex_string(const uint8_t * str, unsigned int length)
 
   memset(hexresult, 0, hex_length + 1);
 
-  for(offset = 0; offset < length; offset++) 
+  for(offset = 0; offset < length; offset++)
   {
     // sprintf doesn't like unsigned chars, but we are fully within the
     // signed and unsigned overlap.
@@ -56,39 +56,37 @@ static const unsigned char base64_imap_enc_map[64] =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,";
 
 // Usable for both normal, web, and imap
-// Though it may be best to not
-/*
+// Though it may be best to split this up
+
 static const unsigned char base64_dec_map[256] =
 {
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127,  62,  63,  62, 127,  63,  52,  53, // + , - / 0 1
-     54,  55,  56,  57,  58,  59,  60,  61, 127, 127, // 2 3 4 5 6 7 8 9
-    127,  64, 127, 127, 127,   0,   1,   2,   3,   4, // A B C D E
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255,  62,  63,  62, 255,  63,  52,  53, // + , - / 0 1
+     54,  55,  56,  57,  58,  59,  60,  61, 255, 255, // 2 3 4 5 6 7 8 9
+    255, 255, 255, 255, 255,   0,   1,   2,   3,   4, // A B C D E
       5,   6,   7,   8,   9,  10,  11,  12,  13,  14, // F G H I J K L M N O
      15,  16,  17,  18,  19,  20,  21,  22,  23,  24, // P Q R S T U V W X Y
-     25, 127, 127, 127, 127,  63, 127,  26,  27,  28, // Z _ a b c
+     25, 255, 255, 255, 255,  63, 255,  26,  27,  28, // Z _ a b c
      29,  30,  31,  32,  33,  34,  35,  36,  37,  38, // d e f g h i j k l m
      39,  40,  41,  42,  43,  44,  45,  46,  47,  48, // n o p q r s t u v w
-     49,  50,  51, 127, 127, 127, 127, 127, 127, 127, // x y z
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127, 127, 127, 127, 127, //
-    127, 127, 127, 127, 127, 127                      //
+     49,  50,  51, 255, 255, 255, 255, 255, 255, 255, // x y z
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255                      //
 };
-*/
-
 
 Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant variant)
 {
@@ -180,3 +178,103 @@ Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant va
   // it will lead to a double free.
   return janet_wrap_string(janet_string(buffer->data, buffer->count));
 }
+
+void panic_base64_slice(const uint8_t * data, unsigned int length, unsigned int index)
+{
+  // One of these is 64 or higher. Therefore, there is an invalid
+  // character present.
+  uint8_t chunk[5] = {0, 0, 0, 0, 0};
+  unsigned int position = (index / 4) * 4;
+  unsigned int count = length - position;
+  memcpy(chunk, data + position, (count > 4) ? 4 : count);
+
+  janet_panicf("base64 invalid character discovered within chunk "
+    "starting at position %d, within chunk: %s", index, chunk);
+}
+
+Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant variant)
+{
+  if (length == 0)
+  {
+    return janet_wrap_string(janet_cstring(""));
+  }
+  // A janet buffer is used because I find it unsafe to have
+  // variable sized stacks which rely on user input.
+  // Copying will also be necessary in order to create
+  // A Janet string anyway. Rather be safe than sorry.
+  // Allocating just a bit more in case.
+  unsigned int buffer_size = ((length + 4) / 4) * 3;
+  JanetBuffer * buffer = janet_buffer(buffer_size);
+
+  const unsigned char * map = base64_dec_map;
+  // TODO differentiate by variant
+
+  // Now all complete and partial chunks have been accounted for.
+  int index = 0;
+  int end = length;
+  uint32_t chunk = 0;
+  uint8_t revolver = 0;
+
+  while (index < end)
+  {
+    uint8_t ch = data[index];
+
+    switch (ch) {
+      case ' ':
+      case '\r':
+      case '\n':
+      case '\t':
+        // Whitespace is ignored.. in some variants.
+        // TODO.
+        break;
+      case '=':
+        end = index;
+        // This also breaks the switch.
+        // TODO ensure the remainder is padding and
+        // or whitespace (in applicable variants)
+        continue;
+    }
+
+    uint8_t c = map[ch];
+    if (c == 255)
+    {
+      panic_base64_slice(data, length, index);
+    }
+
+    chunk = chunk << 6 | c;
+    if (++revolver == 4)
+    {
+      // We've hit a full chunk.
+      janet_buffer_push_u8(buffer, (chunk >> 16) & 0xff);
+      janet_buffer_push_u8(buffer, (chunk >>  8) & 0xff);
+      janet_buffer_push_u8(buffer,  chunk        & 0xff);
+      // reset chunk
+      revolver = 0;
+      chunk = 0;
+    }
+    index++;
+  }
+
+  if (revolver == 3)
+  {
+    janet_buffer_push_u8(buffer, (chunk >> 10) & 0xff);
+    janet_buffer_push_u8(buffer, (chunk >>  2) & 0xff);
+  }
+  else if (revolver == 2)
+  {
+    janet_buffer_push_u8(buffer, (chunk >>  4) & 0xff);
+  }
+  else if (revolver == 1)
+  {
+    janet_panic("base64 decode failed, appears to be truncated by at least one "
+      "character.");
+  }
+  // Possible values at this point are 0, which means the last
+  // chunk was fully processed.
+
+  // from buffer, does a copy.
+  // Don't free the buffer / deinit the buffer
+  // it will lead to a double free.
+  return janet_wrap_string(janet_string(buffer->data, buffer->count));
+}
+
