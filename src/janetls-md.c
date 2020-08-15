@@ -1,24 +1,24 @@
 /*
-Copyright (c) 2020 Levi Schuck
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
+ * Copyright (c) 2020 Levi Schuck
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 
 #include "janetls.h"
 #include "janetls-md.h"
@@ -58,7 +58,7 @@ mbedtls_md_type_t symbol_to_alg(JanetKeyword keyword) {
 }
 
 // TODO add encoding parameter (hex, base64, binary)
-static Janet md(int32_t argc, Janet *argv) 
+static Janet md(int32_t argc, Janet *argv)
 {
   janet_fixarity(argc, 2);
 
@@ -71,7 +71,7 @@ static Janet md(int32_t argc, Janet *argv)
   md_info = mbedtls_md_info_from_type(algorithm);
   unsigned char digest[MBEDTLS_MD_MAX_SIZE];
 
-  if (mbedtls_md(md_info, data.bytes, data.len, digest)) 
+  if (mbedtls_md(md_info, data.bytes, data.len, digest))
   {
     janet_panicf("Unable to execute message digest for algorithm %S on input %S", sym, data);
   }
@@ -83,9 +83,9 @@ static Janet md_algorithms_set(int32_t argc, Janet *argv)
 {
   janet_fixarity(argc, 0);
   int32_t size = SUPPORTED_ALG_COUNT;
-  // Construct result 
+  // Construct result
   Janet values[size];
-  for (int i = 0; i < size; i++) 
+  for (int i = 0; i < size; i++)
   {
     values[i] = janet_ckeywordv(supported_algorithms[i].algorithm);
   }
@@ -93,7 +93,7 @@ static Janet md_algorithms_set(int32_t argc, Janet *argv)
   return janet_wrap_tuple(janet_tuple_n(values, size));
 }
 
-static const JanetReg cfuns[] = 
+static const JanetReg cfuns[] =
 {
   {"md/digest", md, "(janetls/md/digest alg str)\n\n"
     "Applies A message digest to the function, alg must be one of keywords "
@@ -105,7 +105,7 @@ static const JanetReg cfuns[] =
   {NULL, NULL, NULL}
 };
 
-void submod_md(JanetTable *env) 
+void submod_md(JanetTable *env)
 {
   janet_cfuns(env, "janetls", cfuns);
 }
