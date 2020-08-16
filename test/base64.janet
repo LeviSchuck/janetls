@@ -47,4 +47,10 @@
   (test "Encode and decode reflect for imap" (all identity (map
     |(= $0 (janetls/base64/decode (janetls/base64/encode $0 :imap) :imap))
     examples)))
+  (test "Decoding fails on invalid input, too short"
+    (string/has-prefix? "base64 decode failed" (catch (janetls/base64/decode "a"))))
+  (test "Decoding fails on invalid input, too short on second chunk"
+    (string/has-prefix? "base64 decode failed" (catch (janetls/base64/decode "aaaaa"))))
+  (test "Decoding fails on invalid input, illegal character"
+    (string/has-prefix? "base64 invalid character" (catch (janetls/base64/decode "a$oo"))))
 )
