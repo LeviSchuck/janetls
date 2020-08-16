@@ -25,19 +25,23 @@
 Janet hex_string(const uint8_t * str, unsigned int length)
 {
   unsigned int hex_length = length * 2;
-  char hexresult[hex_length + 1];
+  JanetBuffer * buffer = janet_buffer(hex_length);
   unsigned int offset;
-
-  memset(hexresult, 0, hex_length + 1);
 
   for(offset = 0; offset < length; offset++)
   {
     // sprintf doesn't like unsigned chars, but we are fully within the
     // signed and unsigned overlap.
-    sprintf(&hexresult[offset * 2], "%02x", str[offset] & 0xff);
+    char out[3];
+    sprintf(out, "%02x", str[offset] & 0xff);
+    janet_buffer_push_u8(buffer, out[0]);
+    janet_buffer_push_u8(buffer, out[1]);
   }
 
-  return janet_stringv((uint8_t *)hexresult, hex_length);
+  // from buffer, does a copy.
+  // Don't free the buffer / deinit the buffer
+  // it will lead to a double free.
+  return janet_wrap_string(janet_string(buffer->data, buffer->count));
 }
 
 // The mbed tls base64 implementation does not support the variants
