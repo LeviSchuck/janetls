@@ -22,7 +22,7 @@
 
 #include "janetls.h"
 
-Janet hex_string(const uint8_t * str, unsigned int length)
+Janet hex_encode(const uint8_t * str, unsigned int length)
 {
   unsigned int hex_length = length * 2;
   JanetBuffer * buffer = janet_buffer(hex_length);
@@ -36,6 +36,64 @@ Janet hex_string(const uint8_t * str, unsigned int length)
     sprintf(out, "%02x", str[offset] & 0xff);
     janet_buffer_push_u8(buffer, out[0]);
     janet_buffer_push_u8(buffer, out[1]);
+  }
+
+  // from buffer, does a copy.
+  // Don't free the buffer / deinit the buffer
+  // it will lead to a double free.
+  return janet_wrap_string(janet_string(buffer->data, buffer->count));
+}
+
+static const unsigned char hex_dec_map[128] =
+{
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255,   0,   1, // 0 1
+      2,   3,   4,   5,   6,   7,   8,   9, 255, 255, // 2 3 4 5 6 7 8 9
+    255, 255, 255, 255, 255,  10,  11,  12,  13,  14, // A B C D E
+     15, 255, 255, 255, 255, 255, 255, 255, 255, 255, // F
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255,  10,  11,  12, // a b c
+     13,  14,  15,  16, 255, 255, 255, 255, 255, 255, // d e f
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 255, 255, 255, 255, 255, 255,           //
+};
+
+Janet hex_decode(const uint8_t * str, unsigned int length)
+{
+  unsigned int hex_length = length / 2;
+  JanetBuffer * buffer = janet_buffer(hex_length);
+  unsigned int offset;
+
+  if (length & 1)
+  {
+    janet_panicf("Could not decode hex string, the input length should be a multiple of two, it is %d", length);
+  }
+
+  for(offset = 0; offset < length; offset+= 2)
+  {
+    uint8_t higher = str[offset];
+    uint8_t lower = str[offset + 1];
+    if (higher & 0x80)
+    {
+      janet_panicf("Could not decode hex string at position %d, character appears outside ascii range", offset);
+    }
+    if (lower & 0x80)
+    {
+      janet_panicf("Could not decode hex string at position %d, character appears outside ascii range", offset + 1);
+    }
+
+    uint8_t higher_map = hex_dec_map[higher];
+    uint8_t lower_map = hex_dec_map[lower];
+    if (higher_map == 255 || lower_map == 255)
+    {
+      char pair[3] = {higher, lower, 0};
+      janet_panicf("Could not decode hex string at position %d, characters must not be hex: %s", offset, pair);
+    }
+    uint8_t result = (higher_map << 4) | lower_map;
+    janet_buffer_push_u8(buffer, result);
   }
 
   // from buffer, does a copy.

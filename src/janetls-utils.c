@@ -46,7 +46,15 @@ Janet hex_encoder(int argc, Janet * argv)
   janet_fixarity(argc, 1);
 
   JanetByteView data = janet_getbytes(argv, 0);
-  return hex_string(data.bytes, data.len);
+  return hex_encode(data.bytes, data.len);
+}
+
+Janet hex_decoder(int argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+
+  JanetByteView data = janet_getbytes(argv, 0);
+  return hex_decode(data.bytes, data.len);
 }
 
 base64_variant get_base64_variant(int argc, Janet * argv, int index)
@@ -112,6 +120,10 @@ static const JanetReg cfuns[] =
   {"hex/encode", hex_encoder,
     "(janetls/encode/hex str)\n\n"
     "Encodes an arbitrary string as hex."
+    },
+  {"hex/decode", hex_decoder,
+    "(janetls/decode/hex str)\n\n"
+    "Decodes an a hex string into an arbitrary string."
     },
   {"base64/encode", base64_encoder,
     "(janetls/base64/encode str optional-variant)\n\n"

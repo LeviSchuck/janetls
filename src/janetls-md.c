@@ -76,7 +76,8 @@ static Janet md(int32_t argc, Janet *argv)
     janet_panicf("Unable to execute message digest for algorithm %S on input %S", sym, data);
   }
 
-  return hex_string(digest, mbedtls_md_get_size(md_info));
+  // TODO make encoding configurable
+  return hex_encode(digest, mbedtls_md_get_size(md_info));
 }
 
 static Janet md_algorithms_set(int32_t argc, Janet *argv)
