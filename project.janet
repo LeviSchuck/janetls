@@ -26,7 +26,7 @@
   :license "MIT"
   :url "https://github.com:LeviSchuck/janetls"
   :repo "git+https://github.com:LeviSchuck/janetls"
-  :dependencies ["https://github.com/joy-framework/tester"]
+  :dependencies ["https://github.com/pyrmont/testament"]
   )
 
 (def is-win (= :windows (os/which)))

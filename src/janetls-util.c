@@ -69,7 +69,8 @@ Janet hex_decode(const uint8_t * str, unsigned int length)
 
   if (length & 1)
   {
-    janet_panicf("Could not decode hex string, the input length should be a multiple of two, it is %d", length);
+    janet_panicf("Could not decode hex string, the input length should be a "
+      "multiple of two, it is %d", length);
   }
 
   for(offset = 0; offset < length; offset+= 2)
@@ -78,11 +79,13 @@ Janet hex_decode(const uint8_t * str, unsigned int length)
     uint8_t lower = str[offset + 1];
     if (higher & 0x80)
     {
-      janet_panicf("Could not decode hex string at position %d, character appears outside ascii range", offset);
+      janet_panicf("Could not decode hex string at position %d, character "
+        "appears outside ascii range", offset);
     }
     if (lower & 0x80)
     {
-      janet_panicf("Could not decode hex string at position %d, character appears outside ascii range", offset + 1);
+      janet_panicf("Could not decode hex string at position %d, character "
+        "appears outside ascii range", offset + 1);
     }
 
     uint8_t higher_map = hex_dec_map[higher];
@@ -90,7 +93,8 @@ Janet hex_decode(const uint8_t * str, unsigned int length)
     if (higher_map == 255 || lower_map == 255)
     {
       char pair[3] = {higher, lower, 0};
-      janet_panicf("Could not decode hex string at position %d, characters must not be hex: %s", offset, pair);
+      janet_panicf("Could not decode hex string at position %d, characters "
+        "must not be hex: %s", offset, pair);
     }
     uint8_t result = (higher_map << 4) | lower_map;
     janet_buffer_push_u8(buffer, result);
@@ -340,3 +344,30 @@ Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant va
   return janet_wrap_string(janet_string(buffer->data, buffer->count));
 }
 
+Janet content_to_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
+{
+  switch (encoding)
+  {
+    case RAW_BYTE: return janet_wrap_string(janet_string(str, length));
+    case HEX: return hex_encode(str, length);
+    case BASE_64: return base64_encode(str, length, (base64_variant) encoding_variant);
+  }
+  janet_panicf("Internal error: the content encoding provided could not be "
+    "used, it is %d", encoding);
+  // unreachable
+  return janet_wrap_nil();
+}
+
+Janet content_from_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
+{
+  switch (encoding)
+  {
+    case RAW_BYTE: return janet_wrap_string(janet_string(str, length));
+    case HEX: return hex_decode(str, length);
+    case BASE_64: return base64_decode(str, length, (base64_variant) encoding_variant);
+  }
+  janet_panicf("Internal error: the content encoding provided could not be "
+    "used, it is %d", encoding);
+  // unreachable
+  return janet_wrap_nil();
+}

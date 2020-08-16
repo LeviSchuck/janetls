@@ -24,20 +24,20 @@
 #define JANETLS_H
 #include <janet.h>
 
-typedef enum encoding
+typedef enum content_encoding
 {
-  RAW = 0,
+  RAW_BYTE = 0,
   HEX,
   BASE_64,
-} encoding;
+} content_encoding;
 
 typedef enum base64_variant
 {
+  STANDARD = 0,
+  STANDARD_UNPADDED,
   PEM,
   MIME,
   IMAP,
-  STANDARD,
-  STANDARD_UNPADDED,
   URL,
   URL_UNPADDED,
   PGP,
@@ -47,6 +47,11 @@ Janet hex_encode(const uint8_t * str, unsigned int length);
 Janet hex_decode(const uint8_t * str, unsigned int length);
 Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant variant);
 Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant variant);
+base64_variant get_base64_variant(int argc, Janet * argv, int index);
+content_encoding get_content_encoding(int argc, Janet * argv, int index);
+Janet content_to_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
+Janet content_from_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
+
 
 void submod_md(JanetTable * env);
 void submod_util(JanetTable * env);

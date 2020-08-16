@@ -1,4 +1,7 @@
-(import tester :prefix "" :exit true)
+(import testament :prefix "" :exit true)
+# Testament framework documentation
+# https://github.com/pyrmont/testament/blob/master/api.md
+
 (import ../build/janetls :exit true)
 
 (def examples
@@ -7,50 +10,50 @@
    "\xFF" "\xFF\xFE"  "\xFF\xFE\xFD"  "\xFF\xFE\xFD\xFC"
    ])
 
-(deftest
-  (test "Base64 test vector encodes as expected for standard"
-    (let [str "Hello world" expected-str "SGVsbG8gd29ybGQ="]
-      (= expected-str (janetls/base64/encode str :standard)
-    )))
-  (test "Base64 test vector with high byte encodes as expected for standard"
-    (let [str "Hello\xFFworld" expected-str "SGVsbG//d29ybGQ="]
-      (= expected-str (janetls/base64/encode str :standard)
-    )))
-  (test "Base64 test vector with high byte encodes as expected for standard unpadded"
-    (let [str "Hello\xFFworld" expected-str "SGVsbG//d29ybGQ"]
-      (= expected-str (janetls/base64/encode str :standard-unpadded)
-    )))
-  (test "Base64 test vector with high byte encodes as expected for url"
-    (let [str "Hello\xFFworld" expected-str "SGVsbG__d29ybGQ="]
-      (= expected-str (janetls/base64/encode str :url)
-    )))
-  (test "Base64 test vector with high byte encodes as expected for url unpadded"
-    (let [str "Hello\xFFworld" expected-str "SGVsbG__d29ybGQ"]
-      (= expected-str (janetls/base64/encode str :url-unpadded)
-    )))
-  (test "Base64 test vector with high byte encodes as expected for imap"
-    (let [str "Hello\xFFworld" expected-str "SGVsbG,,d29ybGQ"]
-      (= expected-str (janetls/base64/encode str :imap)
-    )))
-  (test "Encode and decode reflect for standard" (all identity (map
-    |(= $0 (janetls/base64/decode (janetls/base64/encode $0 :standard) :standard))
-    examples)))
-  (test "Encode and decode reflect for standard unpadded" (all identity (map
-    |(= $0 (janetls/base64/decode (janetls/base64/encode $0 :standard-unpadded) :standard-unpadded))
-    examples)))
-  (test "Encode and decode reflect for url" (all identity (map
-    |(= $0 (janetls/base64/decode (janetls/base64/encode $0 :url) :url))
-    examples)))
-  (test "Encode and decode reflect for url unpadded" (all identity (map
-    |(= $0 (janetls/base64/decode (janetls/base64/encode $0 :url-unpadded) :url-unpadded))
-    examples)))
-  (test "Encode and decode reflect for imap" (all identity (map
-    |(= $0 (janetls/base64/decode (janetls/base64/encode $0 :imap) :imap))
-    examples)))
-  (test "Decoding fails on invalid input, too short"
-    (string/has-prefix? "base64 decode failed" (catch (janetls/base64/decode "a"))))
-  (test "Decoding fails on invalid input, too short on second chunk"
-    (string/has-prefix? "base64 decode failed" (catch (janetls/base64/decode "aaaaa"))))
-  (test "Decoding fails on invalid input, illegal character"
-    (string/has-prefix? "base64 invalid character" (catch (janetls/base64/decode "a$oo"))))
-)
+(deftest "Base64 test vector encodes as expected for standard"
+  (let [str "Hello world" expected-str "SGVsbG8gd29ybGQ="]
+    (is (= expected-str (janetls/base64/encode str :standard))
+  )))
+(deftest "Base64 test vector with high byte encodes as expected for standard"
+  (let [str "Hello\xFFworld" expected-str "SGVsbG//d29ybGQ="]
+    (is (= expected-str (janetls/base64/encode str :standard))
+  )))
+(deftest "Base64 test vector with high byte encodes as expected for standard unpadded"
+  (let [str "Hello\xFFworld" expected-str "SGVsbG//d29ybGQ"]
+    (is (= expected-str (janetls/base64/encode str :standard-unpadded))
+  )))
+(deftest "Base64 test vector with high byte encodes as expected for url"
+  (let [str "Hello\xFFworld" expected-str "SGVsbG__d29ybGQ="]
+    (is (= expected-str (janetls/base64/encode str :url))
+  )))
+(deftest "Base64 test vector with high byte encodes as expected for url unpadded"
+  (let [str "Hello\xFFworld" expected-str "SGVsbG__d29ybGQ"]
+    (is (= expected-str (janetls/base64/encode str :url-unpadded))
+  )))
+(deftest "Base64 test vector with high byte encodes as expected for imap"
+  (let [str "Hello\xFFworld" expected-str "SGVsbG,,d29ybGQ"]
+    (is (= expected-str (janetls/base64/encode str :imap))
+  )))
+(deftest "Encode and decode reflect for standard" (all identity (map
+  |(is (= $0 (janetls/base64/decode (janetls/base64/encode $0 :standard) :standard)))
+  examples)))
+(deftest "Encode and decode reflect for standard unpadded" (all identity (map
+  |(is (= $0 (janetls/base64/decode (janetls/base64/encode $0 :standard-unpadded) :standard-unpadded)))
+  examples)))
+(deftest "Encode and decode reflect for url" (all identity (map
+  |(is (= $0 (janetls/base64/decode (janetls/base64/encode $0 :url) :url)))
+  examples)))
+(deftest "Encode and decode reflect for url unpadded" (all identity (map
+  |(is (= $0 (janetls/base64/decode (janetls/base64/encode $0 :url-unpadded) :url-unpadded)))
+  examples)))
+(deftest "Encode and decode reflect for imap" (all identity (map
+  |(is (= $0 (janetls/base64/decode (janetls/base64/encode $0 :imap) :imap)))
+  examples)))
+(deftest "Decoding fails on invalid input, too short"
+  (assert-thrown (janetls/base64/decode "a")))
+(deftest "Decoding fails on invalid input, too short on second chunk"
+  (assert-thrown (janetls/base64/decode "aaaaa")))
+(deftest "Decoding fails on invalid input, illegal character"
+  (assert-thrown (janetls/base64/decode "a$oo")))
+
+(run-tests!)

@@ -52,7 +52,8 @@ mbedtls_md_type_t symbol_to_alg(JanetKeyword keyword) {
     }
   }
 
-  janet_panicf("Given algorithm %S is not expected, please review md/algorithms for supported values", keyword);
+  janet_panicf("Given algorithm %S is not expected, please review "
+    "janetls/md/algorithms for supported values", keyword);
   // unreachable
   return MBEDTLS_MD_NONE;
 }
@@ -73,7 +74,8 @@ static Janet md(int32_t argc, Janet *argv)
 
   if (mbedtls_md(md_info, data.bytes, data.len, digest))
   {
-    janet_panicf("Unable to execute message digest for algorithm %S on input %S", sym, data);
+    janet_panicf("Unable to execute message digest for algorithm %p on "
+      "input %p", argv[0], argv[1]);
   }
 
   // TODO make encoding configurable
@@ -98,7 +100,7 @@ static const JanetReg cfuns[] =
 {
   {"md/digest", md, "(janetls/md/digest alg str)\n\n"
     "Applies A message digest to the function, alg must be one of keywords "
-    " seen in md/algorithms."
+    "seen in md/algorithms.\n"
     "The string may have any content as binary."
     },
   {"md/algorithms", md_algorithms_set, "(janetls/md/algorithms)\n\n"
