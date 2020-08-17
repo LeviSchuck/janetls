@@ -25,5 +25,5 @@
 #include <janet.h>
 #include "mbedtls/md.h"
 
-mbedtls_md_type_t symbol_to_alg(JanetKeyword keyword);
+mbedtls_md_type_t symbol_to_alg(Janet keyword);
 #endif

@@ -28,32 +28,37 @@ typedef struct janetls_digest_algorithms {
   char algorithm[20];
 } janetls_digest_algorithms;
 
-janetls_digest_algorithms supported_algorithms[] = {
-  {MBEDTLS_MD_MD5, "md5"},
-  {MBEDTLS_MD_SHA1, "sha1"},
-  {MBEDTLS_MD_SHA224, "sha224"},
-  {MBEDTLS_MD_SHA256, "sha256"},
-  {MBEDTLS_MD_SHA384, "sha384"},
-  {MBEDTLS_MD_SHA512, "sha512"},
+option_list_entry supported_algorithms[] = {
+  {MBEDTLS_MD_MD5, "md5", 0},
+  {MBEDTLS_MD_SHA1, "sha1", 0},
+  {MBEDTLS_MD_SHA1, "sha-1", OPTION_LIST_HIDDEN},
+  {MBEDTLS_MD_SHA224, "sha224", 0},
+  {MBEDTLS_MD_SHA256, "sha256", 0},
+  {MBEDTLS_MD_SHA384, "sha384", 0},
+  {MBEDTLS_MD_SHA512, "sha512", 0},
+  {MBEDTLS_MD_SHA224, "sha-224", OPTION_LIST_HIDDEN},
+  {MBEDTLS_MD_SHA256, "sha-256", OPTION_LIST_HIDDEN},
+  {MBEDTLS_MD_SHA384, "sha-384", OPTION_LIST_HIDDEN},
+  {MBEDTLS_MD_SHA512, "sha-512", OPTION_LIST_HIDDEN},
 };
 
 // If you use fixed sizes for things like strings
 // Then you can determine the size this way
 // Rather than looping over it until you find null.
-#define SUPPORTED_ALG_COUNT (sizeof(supported_algorithms) / sizeof(janetls_digest_algorithms))
+#define SUPPORTED_ALG_COUNT (sizeof(supported_algorithms) / sizeof(option_list_entry))
 
-mbedtls_md_type_t symbol_to_alg(JanetKeyword keyword) {
-  int32_t size = SUPPORTED_ALG_COUNT;
-  for (int i = 0; i < size; i++)
+mbedtls_md_type_t symbol_to_alg(Janet value) {
+  if (janet_is_byte_typed(value))
   {
-    if (!janet_cstrcmp(keyword, supported_algorithms[i].algorithm))
+    int type = MBEDTLS_MD_NONE;
+    if (search_option_list(supported_algorithms, SUPPORTED_ALG_COUNT, janet_to_bytes(value), &type))
     {
-      return supported_algorithms[i].type;
+      return (mbedtls_md_type_t) type;
     }
   }
 
-  janet_panicf("Given algorithm %S is not expected, please review "
-    "janetls/md/algorithms for supported values", keyword);
+  janet_panicf("Given algorithm %p is not expected, please review "
+    "janetls/md/algorithms for supported values", value);
   // unreachable
   return MBEDTLS_MD_NONE;
 }
@@ -63,9 +68,7 @@ static Janet md(int32_t argc, Janet *argv)
 {
   janet_fixarity(argc, 2);
 
-  const uint8_t * sym = janet_getkeyword(argv, 0);
-
-  mbedtls_md_type_t algorithm = symbol_to_alg(sym);
+  mbedtls_md_type_t algorithm = symbol_to_alg(argv[0]);
   JanetByteView data = janet_getbytes(argv, 1);
 
   const mbedtls_md_info_t *md_info;
@@ -85,20 +88,12 @@ static Janet md(int32_t argc, Janet *argv)
 static Janet md_algorithms_set(int32_t argc, Janet *argv)
 {
   janet_fixarity(argc, 0);
-  int32_t size = SUPPORTED_ALG_COUNT;
-  // Construct result
-  Janet values[size];
-  for (int i = 0; i < size; i++)
-  {
-    values[i] = janet_ckeywordv(supported_algorithms[i].algorithm);
-  }
-
-  return janet_wrap_tuple(janet_tuple_n(values, size));
+  return enumerate_option_list(supported_algorithms, SUPPORTED_ALG_COUNT);
 }
 
 static const JanetReg cfuns[] =
 {
-  {"md/digest", md, "(janetls/md/digest alg str)\n\n"
+  {"md/digest", md, "(janetls/md/digest alg str &opt encodng-type)\n\n"
     "Applies A message digest to the function, alg must be one of keywords "
     "seen in md/algorithms.\n"
     "The string may have any content as binary."

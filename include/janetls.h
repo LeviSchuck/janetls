@@ -43,14 +43,28 @@ typedef enum base64_variant
   PGP,
 } base64_variant;
 
+typedef struct option_list_entry {
+  int value;
+  char option[32];
+  uint8_t flags;
+} option_list_entry;
+
+#define OPTION_LIST_HIDDEN 1
+#define OPTION_LIST_CASE_SENSITIVE 2
+
 Janet hex_encode(const uint8_t * str, unsigned int length);
 Janet hex_decode(const uint8_t * str, unsigned int length);
 Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant variant);
 Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant variant);
-base64_variant get_base64_variant(int argc, Janet * argv, int index);
-content_encoding get_content_encoding(int argc, Janet * argv, int index);
+int get_base64_variant(int argc, Janet * argv, int index, uint8_t panic, base64_variant * variant);
+int get_content_encoding(int argc, Janet * argv, int index, uint8_t panic, content_encoding * encoding);
 Janet content_to_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
 Janet content_from_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
+int extract_encoding(int argc, Janet * argv, int offset, content_encoding * encoding, int * variant);
+int search_option_list(option_list_entry * list, int list_size, JanetByteView str, int * destination);
+Janet enumerate_option_list(option_list_entry * list, int size);
+JanetByteView janet_to_bytes(Janet x);
+int janet_is_byte_typed(Janet x);
 
 
 void submod_md(JanetTable * env);

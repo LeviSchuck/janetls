@@ -46,7 +46,8 @@
     "src/janetls.c"
     "src/janetls-md.c"
     "src/janetls-util.c"
-    "src/janetls-utils.c"
+    "src/janetls-encode.c"
+    "src/janetls-encoding.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
