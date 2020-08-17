@@ -63,13 +63,33 @@ mbedtls_md_type_t symbol_to_alg(Janet value) {
   return MBEDTLS_MD_NONE;
 }
 
-// TODO add encoding parameter (hex, base64, binary)
 static Janet md(int32_t argc, Janet *argv)
 {
-  janet_fixarity(argc, 2);
+  janet_arity(argc, 2, 4);
 
   mbedtls_md_type_t algorithm = symbol_to_alg(argv[0]);
   JanetByteView data = janet_getbytes(argv, 1);
+  content_encoding encoding = HEX;
+  int variant = 0;
+  int consumed = extract_encoding(argc, argv, 2, &encoding, &variant);
+
+  // Two parameters are required, hence the hard coded 2.
+  // Namely: the algorithm and data
+  if (2 + consumed < argc)
+  {
+    // Some arguments were not able to be used, yet were provided.
+    if (argc == 3)
+    {
+      janet_panicf("Some encoding parameters could not be used, please review "
+        "janetls/encoding/types. %p was provided.", argv[2]);
+    }
+    else if (argc == 4)
+    {
+      janet_panicf("Some encoding parameters could not be used, please review "
+        "janetls/encoding/types and relevant variants. %p %p was provided.",
+        argv[2], argv[3]);
+    }
+  }
 
   const mbedtls_md_info_t *md_info;
   md_info = mbedtls_md_info_from_type(algorithm);
@@ -81,8 +101,7 @@ static Janet md(int32_t argc, Janet *argv)
       "input %p", argv[0], argv[1]);
   }
 
-  // TODO make encoding configurable
-  return hex_encode(digest, mbedtls_md_get_size(md_info));
+  return content_to_encoding(digest, mbedtls_md_get_size(md_info), encoding, variant);
 }
 
 static Janet md_algorithms_set(int32_t argc, Janet *argv)
@@ -93,10 +112,12 @@ static Janet md_algorithms_set(int32_t argc, Janet *argv)
 
 static const JanetReg cfuns[] =
 {
-  {"md/digest", md, "(janetls/md/digest alg str &opt encodng-type)\n\n"
+  {"md/digest", md, "(janetls/md/digest alg str &opt encoding-type encoding-variant)\n\n"
     "Applies A message digest to the function, alg must be one of keywords "
     "seen in md/algorithms.\n"
-    "The string may have any content as binary."
+    "The string may have any content as binary.\n"
+    "Encoding types can be seen in janetls/encoding/types, variants are "
+    "specific to types."
     },
   {"md/algorithms", md_algorithms_set, "(janetls/md/algorithms)\n\n"
     "Provides an array of keywords for available algorithms"},

@@ -101,7 +101,6 @@ int get_content_encoding(int argc, Janet * argv, int index, uint8_t panic, conte
       if (search_option_list(content_encodings, CONTENT_ENCODING_COUNT, janet_to_bytes(argv[index]), &found_encoding))
       {
         *encoding = (content_encoding) found_encoding;
-        printf("Found content encoding\n");
         return 0;
       }
       if (panic)

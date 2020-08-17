@@ -37,4 +37,18 @@
 (deftest "SHA-512 \"abcdefghijklmnopqrstuvwxyz\" meets expectations"
   (is (= "4dbff86cc2ca1bae1e16468a05cb9881c97f1753bce3619034898faa1aabe429955a1bf8ec483d7421fe3c1646613a59ed5441fb0f321389f77f48a879c7b1f1" (janetls/md/digest :sha512 "abcdefghijklmnopqrstuvwxyz"))))
 
+(deftest "MD accepts encoding parameters, base64"
+  (is (= "MFx/zmg+wpG0mDLN4fkflA==" (janetls/md/digest :md5 "Hello Freeman" :base64))))
+(deftest "MD accepts encoding parameters, base64 url"
+  (is (= "MFx_zmg-wpG0mDLN4fkflA==" (janetls/md/digest :md5 "Hello Freeman" :base64 :url))))
+(deftest "MD accepts encoding parameters, hex"
+  (is (= "305c7fce683ec291b49832cde1f91f94" (janetls/md/digest :md5 "Hello Freeman" :hex))))
+(deftest "MD accepts encoding parameters, raw"
+  (is (= "\x30\x5c\x7f\xce\x68\x3e\xc2\x91\xb4\x98\x32\xcd\xe1\xf9\x1f\x94" (janetls/md/digest :md5 "Hello Freeman" :raw))))
+(deftest "MD rejects unexpected parameters"
+  (assert-thrown (janetls/md/digest :md5 "Hello Freeman" :chicken)))
+(deftest "MD rejects unexpected parameters"
+  (assert-thrown (janetls/md/digest :md5 "Hello Freeman" :raw :chicken)))
+(deftest "MD rejects unexpected parameters"
+  (assert-thrown (janetls/md/digest :md5 "Hello Freeman" :base64 :chicken)))
 (run-tests!)
