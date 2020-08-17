@@ -51,4 +51,13 @@
   (assert-thrown (janetls/md/digest :md5 "Hello Freeman" :raw :chicken)))
 (deftest "MD rejects unexpected parameters"
   (assert-thrown (janetls/md/digest :md5 "Hello Freeman" :base64 :chicken)))
+
+(deftest "HMAC MD5 is the same as the example"
+  (is (= "80070713463e7749b90c2dc24911e275" (janetls/md/hmac :md5 "key" "The quick brown fox jumps over the lazy dog"))))
+(deftest "HMAC SHA1 is the same as the example"
+  (is (= "de7c9b85b8b78aa6bc8a7a36f70a90701c9db4d9" (janetls/md/hmac :sha1 "key" "The quick brown fox jumps over the lazy dog"))))
+(deftest "HMAC SHA256 is the same as the example"
+  (is (= "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8" (janetls/md/hmac :sha256 "key" "The quick brown fox jumps over the lazy dog"))))
+(deftest "HMAC SHA256 works with encoding url "
+  (is (= "97yD9DBThCSxMpjmqm-xQ-9NWaFJRhdZl0edvC0aPNg" (janetls/md/hmac :sha256 "key" "The quick brown fox jumps over the lazy dog" :base64 :url-unpadded))))
 (run-tests!)

@@ -63,6 +63,27 @@ mbedtls_md_type_t symbol_to_alg(Janet value) {
   return MBEDTLS_MD_NONE;
 }
 
+void assert_commands_consumed(int32_t argc, Janet *argv, int required, int optional)
+{
+  // Two parameters are required, hence the hard coded 2.
+  // Namely: the algorithm and data
+  if (required + optional < argc)
+  {
+    // Some arguments were not able to be used, yet were provided.
+    if (required + 1 == 3)
+    {
+      janet_panicf("Some encoding parameters could not be used, please review "
+        "janetls/encoding/types. %p was provided.", argv[required]);
+    }
+    else if (required + 2 == 4)
+    {
+      janet_panicf("Some encoding parameters could not be used, please review "
+        "janetls/encoding/types and relevant variants. %p %p was provided.",
+        argv[required], argv[required + 1]);
+    }
+  }
+}
+
 static Janet md(int32_t argc, Janet *argv)
 {
   janet_arity(argc, 2, 4);
@@ -73,23 +94,7 @@ static Janet md(int32_t argc, Janet *argv)
   int variant = 0;
   int consumed = extract_encoding(argc, argv, 2, &encoding, &variant);
 
-  // Two parameters are required, hence the hard coded 2.
-  // Namely: the algorithm and data
-  if (2 + consumed < argc)
-  {
-    // Some arguments were not able to be used, yet were provided.
-    if (argc == 3)
-    {
-      janet_panicf("Some encoding parameters could not be used, please review "
-        "janetls/encoding/types. %p was provided.", argv[2]);
-    }
-    else if (argc == 4)
-    {
-      janet_panicf("Some encoding parameters could not be used, please review "
-        "janetls/encoding/types and relevant variants. %p %p was provided.",
-        argv[2], argv[3]);
-    }
-  }
+  assert_commands_consumed(argc, argv, 2, consumed);
 
   const mbedtls_md_info_t *md_info;
   md_info = mbedtls_md_info_from_type(algorithm);
@@ -104,6 +109,33 @@ static Janet md(int32_t argc, Janet *argv)
   return content_to_encoding(digest, mbedtls_md_get_size(md_info), encoding, variant);
 }
 
+static Janet hmac(int32_t argc, Janet *argv)
+{
+  janet_arity(argc, 3, 5);
+
+  mbedtls_md_type_t algorithm = symbol_to_alg(argv[0]);
+  JanetByteView key = janet_getbytes(argv, 1);
+  JanetByteView data = janet_getbytes(argv, 2);
+  content_encoding encoding = HEX;
+  int variant = 0;
+  int consumed = extract_encoding(argc, argv, 3, &encoding, &variant);
+
+  assert_commands_consumed(argc, argv, 3, consumed);
+
+  const mbedtls_md_info_t *md_info;
+  md_info = mbedtls_md_info_from_type(algorithm);
+  unsigned char digest[MBEDTLS_MD_MAX_SIZE];
+
+  if (mbedtls_md_hmac(md_info, key.bytes, key.len, data.bytes, data.len, digest))
+  {
+    janet_panicf("Unable to execute hmac for algorithm %p on "
+      "input %p", argv[0], argv[1]);
+  }
+
+  return content_to_encoding(digest, mbedtls_md_get_size(md_info), encoding, variant);
+}
+
+
 static Janet md_algorithms_set(int32_t argc, Janet *argv)
 {
   janet_fixarity(argc, 0);
@@ -115,6 +147,19 @@ static const JanetReg cfuns[] =
   {"md/digest", md, "(janetls/md/digest alg str &opt encoding-type encoding-variant)\n\n"
     "Applies A message digest to the function, alg must be one of keywords "
     "seen in md/algorithms.\n"
+    "The string may have any content as binary.\n"
+    "Encoding types can be seen in janetls/encoding/types, variants are "
+    "specific to types."
+    },
+  {"md/hmac", hmac, "(janetls/md/hmac alg key str &opt encoding-type encoding-variant)\n\n"
+    "Applies A message hmac to the function, alg must be one of keywords "
+    "seen in md/algorithms.\n"
+    "The key should be arbitrary data with the same byte count as the "
+    "algorithm block size. For example, SHA-256 has a block size of 64 bytes. "
+    "The key therefore should be 64 bytes in size.  If it is too long, it will "
+    "be hashed automatically to become the hmac key."
+    "If it is too short, the remainder of the key will be 0-padded, though "
+    "this is not recommended.\n"
     "The string may have any content as binary.\n"
     "Encoding types can be seen in janetls/encoding/types, variants are "
     "specific to types."
