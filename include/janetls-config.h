@@ -34,6 +34,11 @@
 //#define MBEDTLS_FS_IO
 // Essentially required for error building.
 #define MBEDTLS_ERROR_C
+
+// Sets up mbedtls_{calloc|free|sprintf|etc.}
+// This is required on platforms like windows
+#define MBEDTLS_PLATFORM_C
+
 // Core message digest interface
 #define MBEDTLS_MD_C
 // Message digest algorithms
