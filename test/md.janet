@@ -60,4 +60,24 @@
   (is (= "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8" (janetls/md/hmac :sha256 "key" "The quick brown fox jumps over the lazy dog"))))
 (deftest "HMAC SHA256 works with encoding url unpadded"
   (is (= "97yD9DBThCSxMpjmqm-xQ-9NWaFJRhdZl0edvC0aPNg" (janetls/md/hmac :sha256 "key" "The quick brown fox jumps over the lazy dog" :base64 :url-unpadded))))
+
+(deftest "Digest start/update/finish algorithm works as expected"
+  (let [digest (janetls/md/digest/start :md5)] (do
+    (is (= :md5 (:algorithm digest)))
+    (is (= :md5 (janetls/md/digest/algorithm digest)))
+    (is (= 16 (:size digest)))
+    (is (= 16 (janetls/md/digest/size digest)))
+    (is (= digest (janetls/md/digest/update digest "Hello ")))
+    (let [cloned (:clone digest)] (do
+      (is (= cloned (:update cloned "digital world")))
+      (is (= (janetls/md/digest :md5 "Hello digital world") (:finish cloned)))
+    ))
+    (let [cloned (janetls/md/digest/clone digest)] (do
+      (is (= cloned (janetls/md/digest/update cloned "digital world")))
+      (is (= (janetls/md/digest :md5 "Hello digital world") (janetls/md/digest/finish cloned)))
+    ))
+    (is (= digest (:update digest "world")))
+    (is (= (janetls/md/digest :md5 "Hello world") (:finish digest)))
+    (is (= (janetls/md/digest :md5 "Hello world") (janetls/md/digest/finish digest)))
+    )))
 (run-tests!)

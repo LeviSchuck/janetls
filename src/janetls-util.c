@@ -109,3 +109,16 @@ Janet enumerate_option_list(option_list_entry * list, int size)
   janet_sfree(values);
   return tuple;
 }
+
+Janet value_to_option(option_list_entry * list, int size, int value)
+{
+  for (int i = 0; i < size; i++)
+  {
+    option_list_entry * entry = list + i;
+    if (value == entry->value)
+    {
+      return janet_ckeywordv(entry->option);
+    }
+  }
+  return janet_wrap_nil();
+}

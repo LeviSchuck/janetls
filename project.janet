@@ -24,7 +24,7 @@
   :description "Secure primitives for Janet"
   :author "Levi Schuck"
   :license "MIT"
-  :url "https://github.com:LeviSchuck/janetls"
+  :url "https://github.com/LeviSchuck/janetls"
   :repo "git+https://github.com:LeviSchuck/janetls"
   :dependencies ["https://github.com/pyrmont/testament"]
   )
@@ -37,7 +37,12 @@
     ;default-cflags
     "-Imbedtls/include/"
     "-Iinclude/"
+    # "-g"
     ;(if is-win [] ["-Wno-unused-parameter"])
+    ]
+  :lflags [
+    ;default-lflags
+    # "-g"
     ]
   :defines {
     "MBEDTLS_CONFIG_FILE" "\"janetls-config.h\""

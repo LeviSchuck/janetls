@@ -60,9 +60,13 @@ int get_base64_variant(int argc, Janet * argv, int index, uint8_t panic, base64_
 int get_content_encoding(int argc, Janet * argv, int index, uint8_t panic, content_encoding * encoding);
 Janet content_to_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
 Janet content_from_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
+// Tries to consume arguments pertaining to encoding
 int extract_encoding(int argc, Janet * argv, int offset, content_encoding * encoding, int * variant);
+// Option list helpers
 int search_option_list(option_list_entry * list, int list_size, JanetByteView str, int * destination);
 Janet enumerate_option_list(option_list_entry * list, int size);
+Janet value_to_option(option_list_entry * list, int size, int value);
+// Byte view helpers
 JanetByteView janet_to_bytes(Janet x);
 int janet_is_byte_typed(Janet x);
 
