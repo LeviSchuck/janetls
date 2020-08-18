@@ -35,4 +35,11 @@
 (deftest "Hello decoded from base64 url"
   (is (= "Hello\xF1Carl" (janetls/encoding/decode "SGVsbG_xQ2FybA" :base64 :url-unpadded))))
 
+(defn contains? [x s] (not (empty? (filter |(= x $0) s))))
+
+(deftest "Types contains hex" (is (contains? :hex (janetls/encoding/types))))
+(deftest "Types contains base64" (is (contains? :base64 (janetls/encoding/types))))
+(deftest "Types contains raw" (is (contains? :raw (janetls/encoding/types))))
+(deftest "Types does not contain bacon" (is (not (contains? :bacon (janetls/encoding/types)))))
+
 (run-tests!)

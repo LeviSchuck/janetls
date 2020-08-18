@@ -94,7 +94,7 @@ Janet enumerate_option_list(option_list_entry * list, int size)
 {
   // We will make space on the stack for all of them
   // Though we may not populate all of them.
-  Janet values[size];
+  Janet * values = janet_smalloc(sizeof(Janet) * size);
   int offset = 0;
   for (int i = 0; i < size; i++)
   {
@@ -105,5 +105,7 @@ Janet enumerate_option_list(option_list_entry * list, int size)
     values[offset++] = janet_ckeywordv(list[i].option);
   }
 
-  return janet_wrap_tuple(janet_tuple_n(values, offset));
+  Janet tuple = janet_wrap_tuple(janet_tuple_n(values, offset));
+  janet_sfree(values);
+  return tuple;
 }
