@@ -119,10 +119,12 @@ typedef struct digest_object {
 
 #define DIGEST_POISONED 1
 #define DIGEST_FINISHED 2
+#define DIGEST_HMAC     4
 
 static int md_gc_fn(void *data, size_t len);
 static int md_get_fn(void *data, Janet key, Janet * out);
 static Janet md_clone(int32_t argc, Janet *argv);
+static Janet md_reset(int32_t argc, Janet *argv);
 static Janet md_update(int32_t argc, Janet *argv);
 static Janet md_finish(int32_t argc, Janet *argv);
 static Janet md_size(int32_t argc, Janet *argv);
@@ -142,6 +144,7 @@ static JanetMethod md_methods[] = {
   {"finish", md_finish},
   {"size", md_size},
   {"algorithm", md_algorithm},
+  {"reset", md_reset},
   {NULL, NULL}
 };
 
@@ -153,48 +156,104 @@ static int md_gc_fn(void * data, size_t len)
   return 0;
 }
 
-static int md_get_fn(void *data, Janet key, Janet * out)
+static int md_get_fn(void * data, Janet key, Janet * out)
 {
-  (void) data;
+  digest_object * digest = (digest_object *)data;
 
   if (!janet_checktype(key, JANET_KEYWORD))
   {
     janet_panicf("expected keyword, got %p", key);
   }
 
-  return janet_getmethod(janet_unwrap_keyword(key), md_methods, out);
+  JanetKeyword method = janet_unwrap_keyword(key);
+
+  if (digest->flags & DIGEST_HMAC && !janet_cstrcmp(method, "clone"))
+  {
+    // override.. clone doesn't work for HMACs.
+    return 0;
+  }
+
+  return janet_getmethod(method, md_methods, out);
 }
 
-static Janet md_start(int32_t argc, Janet * argv)
+Janet md_hmac_start(Janet alg, Janet key, int hmac)
 {
-  janet_fixarity(argc, 1);
-  mbedtls_md_type_t algorithm = symbol_to_alg(argv[0]);
+  mbedtls_md_type_t algorithm = symbol_to_alg(alg);
+  JanetByteView key_bytes;
+  if (hmac)
+  {
+    if (!janet_is_byte_typed(key))
+    {
+      janet_panicf("Expected a string or buffer for a key while preparing the "
+      "HMAC, but got %p", key);
+    }
+    else
+    {
+      key_bytes = janet_to_bytes(key);
+    }
+  }
+  else
+  {
+    // There is no key, Neo.
+    key_bytes.bytes = 0;
+    key_bytes.len = 0;
+  }
+
   digest_object * digest = janet_abstract(&digest_object_type, sizeof(digest_object));
   mbedtls_md_init(&digest->context);
   digest->algorithm = algorithm;
   digest->info = mbedtls_md_info_from_type(algorithm);
   digest->flags = 0;
 
+  if (hmac)
+  {
+    digest->flags |= DIGEST_HMAC;
+  }
+
   if (digest->info == NULL)
   {
     digest->flags |= DIGEST_POISONED;
-    janet_panicf("An internal error occurred, unable to get the algorithm %p", argv[0]);
+    janet_panicf("An internal error occurred, unable to get the algorithm %p", alg);
   }
 
   // Note that 0 here is a boolean on whether it is hmac
-  if (mbedtls_md_setup(&digest->context, digest->info, 0))
+  if (mbedtls_md_setup(&digest->context, digest->info, hmac))
   {
     digest->flags |= DIGEST_POISONED;
-    janet_panicf("An internal error occurred, unable to get the algorithm %p", argv[0]);
+    janet_panicf("An internal error occurred, unable to get the algorithm %p", alg);
   }
 
-  if (mbedtls_md_starts(&digest->context))
+  if (hmac)
   {
-    digest->flags |= DIGEST_POISONED;
-    janet_panicf("An internal error occurred, unable to prepare the algorithm %p", argv[0]);
+    if (mbedtls_md_hmac_starts(&digest->context, key_bytes.bytes, key_bytes.len))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error occurred, unable to prepare the algorithm %p", alg);
+    }
+  }
+  else
+  {
+    if (mbedtls_md_starts(&digest->context))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error occurred, unable to prepare the algorithm %p", alg);
+    }
   }
 
   return janet_wrap_abstract(digest);
+}
+
+static Janet md_start(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return md_hmac_start(argv[0], janet_wrap_nil(), 0);
+}
+
+static Janet hmac_start(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 2);
+
+  return md_hmac_start(argv[0], argv[1], 1);
 }
 
 static Janet md_clone(int32_t argc, Janet *argv)
@@ -209,10 +268,10 @@ static Janet md_clone(int32_t argc, Janet *argv)
       "message digestion, the message digest is poisoned.");
   }
 
-  if (digest->flags & DIGEST_FINISHED)
+  if (digest->flags & DIGEST_HMAC)
   {
-    // Once finished, the digest becomes immutable.
-    return janet_wrap_abstract(digest);
+    janet_panic("HMACs cannot be cloned, if you plan to reuse an HMAC, "
+      "please look at using janetls/md/reset.");
   }
 
   clone = janet_abstract(&digest_object_type, sizeof(digest_object));
@@ -249,9 +308,18 @@ static Janet md_update(int32_t argc, Janet *argv)
 
   if (digest->flags & DIGEST_FINISHED)
   {
-    janet_panic("This digest has already finished, therefore it cannot be "
-      "updated with any further content. You may want to clone the digest "
-      "before finishing it, so that more content can be digested.");
+    if (digest->flags & DIGEST_HMAC)
+    {
+      janet_panic("This HMAC has already finished, therefore it cannot be "
+        "updated with any further content. You may want to reset the HMAC "
+        "so that more content can be HMACed.");
+    }
+    else
+    {
+      janet_panic("This digest has already finished, therefore it cannot be "
+        "updated with any further content. You may want to clone the digest "
+        "before finishing it, so that more content can be digested.");
+    }
   }
 
   if (!janet_is_byte_typed(argv[1]))
@@ -298,15 +366,62 @@ static Janet md_finish(int32_t argc, Janet *argv)
     return content_to_encoding(digest->output, mbedtls_md_get_size(digest->info), encoding, variant);
   }
 
-  if (mbedtls_md_finish(&digest->context, digest->output))
+  if (digest->flags & DIGEST_HMAC)
   {
-    digest->flags |= DIGEST_POISONED;
-    janet_panicf("An internal error has occurred, Was unable to finish "
-      "message digestion");
+    if (mbedtls_md_hmac_finish(&digest->context, digest->output))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error has occurred, Was unable to finish "
+        "message digestion");
+    }
   }
+  else
+  {
+    if (mbedtls_md_finish(&digest->context, digest->output))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error has occurred, Was unable to finish "
+        "message digestion");
+    }
+  }
+
   digest->flags |= DIGEST_FINISHED;
 
   return content_to_encoding(digest->output, mbedtls_md_get_size(digest->info), encoding, variant);
+}
+
+static Janet md_reset(int32_t argc, Janet *argv)
+{
+  janet_fixarity(argc, 1);
+
+  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
+
+  if (digest->flags & DIGEST_HMAC)
+  {
+    // This re-initializes the digest with the existing algorithm and
+    // then re-applies the inner padding to the digest engine.
+    if (mbedtls_md_hmac_reset(&digest->context))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error occurred, unable to reset the HMAC");
+    }
+  }
+  else
+  {
+    // Re-initializes the digest with the existing algorithm.
+    // This is what's done in mbedtls_md_hmac_reset before
+    // applying the inner padding.
+    if (mbedtls_md_starts(&digest->context))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error occurred, unable to reset the digest");
+    }
+  }
+
+  // clear the finished flag
+  digest->flags &= ~(DIGEST_FINISHED);
+
+  return janet_wrap_abstract(digest);
 }
 
 static Janet md_size(int32_t argc, Janet *argv)
@@ -357,7 +472,7 @@ static Janet hmac(int32_t argc, Janet * argv)
 
   if (mbedtls_md_hmac(md_info, key.bytes, key.len, data.bytes, data.len, digest))
   {
-    janet_panicf("Unable to execute hmac for algorithm %p on "
+    janet_panicf("Unable to execute HMAC for algorithm %p on "
       "input %p", argv[0], argv[1]);
   }
 
@@ -374,44 +489,51 @@ static Janet md_algorithms_set(int32_t argc, Janet *argv)
 static const JanetReg cfuns[] =
 {
   {"md/digest", md, "(janetls/md/digest alg str &opt encoding-type encoding-variant)\n\n"
-    "Applies A message digest to the function, alg must be one of keywords "
-    "seen in md/algorithms.\n"
+    "Applies A message digest to the provided string, alg must be one of the "
+    "keywords found in md/algorithms.\n"
     "The string may have any content as binary.\n"
     "Encoding types can be seen in janetls/encoding/types, variants are "
     "specific to types."
     },
   {"md/digest/start", md_start, "(janetls/md/digest/start alg)\n\n"
     "Applies A message digest to all update calls.\n"
-    "The string may have any content as binary.\n"
     "To get the result, finish must be called, it may be called with optional "
     "encoding settings, much like janetls/md/digest. The finish call does not "
     "accept any digestable input."
     },
-  {"md/digest/update", md_update, "(janetls/md/digest/update digest str)\n\n"
+  {"md/update", md_update, "(janetls/md/update digest-or-hmac str)\n\n"
     "The string may have any content as binary.\n"
     "The digest object is returned for ease of use when folding over data."
     },
-  {"md/digest/clone", md_clone, "(janetls/md/digest/update digest)\n\n"
+  {"md/clone", md_clone, "(janetls/md/update digest-or-hmac)\n\n"
     "Clone the digest in case you plan to gather intermediary results.\n"
     "A new digest object is returned, unless the input digest is finished."
     },
-  {"md/digest/finish", md_finish, "(janetls/md/digest/finish digest &opt encoding-type encoding-variant)\n\n"
+  {"md/reset", md_reset, "(janetls/md/update digest)\n\n"
+    "Resets the digest in case you plan to gather intermediary results.\n"
+    "A new digest object is returned, unless the input digest is finished.\n"
+    "Unfortunately, HMACs cannot be cloned, an error will be thrown when "
+    "this is attempted."
+    },
+  {"md/finish", md_finish, "(janetls/md/finish digest-or-hmac &opt encoding-type encoding-variant)\n\n"
     "Finish a message digest, this will produce a hash value encoded as requested.\n"
     "Once finished, a message digest cannot be updated or cloned.\n"
     "Finishing can be called multiple times with different encoding parameters.\n"
     "Encoding types can be seen in janetls/encoding/types, variants are "
-    "specific to types."
+    "specific to types.\n"
+    "If you wish to reuse this object without allocating any new memory, "
+    "janetls/md/reset can be called."
     },
-  {"md/digest/algorithm", md_algorithm, "(janetls/md/digest/algorithm digest-or-alg)\n\n"
-    "Inspect what algorithm is in use on an existing digest, or an algorithm "
-    "as listed in janetls/md/algorithms"
+  {"md/algorithm", md_algorithm, "(janetls/md/algorithm digest-or-hmac-or-alg)\n\n"
+    "Inspect what algorithm is in use on an existing digest or hmac, or an "
+    "algorithm as listed in janetls/md/algorithms"
     },
-  {"md/digest/size", md_size, "(janetls/md/digest/size digest)\n\n"
+  {"md/size", md_size, "(janetls/md/size digest-or-hmac-or-alg)\n\n"
     "Inspect how many raw bytes an algorithm will produce upon finishing"
     },
   {"md/hmac", hmac, "(janetls/md/hmac alg key str &opt encoding-type encoding-variant)\n\n"
-    "Applies A message hmac to the function, alg must be one of keywords "
-    "seen in md/algorithms.\n"
+    "Applies HMAC to the the provided string, alg must be one of the keywords "
+    "found in md/algorithms.\n"
     "The key should be arbitrary data with the same byte count as the "
     "algorithm block size. For example, SHA-256 has a block size of 64 bytes. "
     "The key therefore should be 64 bytes in size.  If it is too long, it will "
@@ -421,6 +543,23 @@ static const JanetReg cfuns[] =
     "The string may have any content as binary.\n"
     "Encoding types can be seen in janetls/encoding/types, variants are "
     "specific to types."
+    },
+  {"md/hmac/start", hmac_start, "(janetls/md/digest/start alg key)\n\n"
+    "Applies An HMAC to all update calls.\n"
+    "The key should be arbitrary data with the same byte count as the "
+    "algorithm block size. For example, SHA-256 has a block size of 64 bytes. "
+    "The key therefore should be 64 bytes in size.  If it is too long, it will "
+    "be hashed automatically to become the HMAC key."
+    "If it is too short, the remainder of the key will be 0-padded, though "
+    "this is not recommended.\n"
+    "The string may have any content as binary.\n"
+    "To get the result, finish must be called, it may be called with optional "
+    "encoding settings, much like janetls/md/digest. The finish call does not "
+    "accept any digestable input.\n"
+    "Should you wish to not keep the key around in janet memory, you can "
+    "keep the HMAC object in memory but reset the HMAC as needed with "
+    "janetls/md/reset. This will allow multiple update and finish calls on "
+    "the same object."
     },
   {"md/algorithms", md_algorithms_set, "(janetls/md/algorithms)\n\n"
     "Provides an array of keywords for available algorithms"},
