@@ -56,6 +56,7 @@ int valid_digits(const uint8_t * bytes, int32_t size);
 void check_result(int mbedtls_result);
 
 Janet unknown_to_bignum(Janet value);
+Janet unknown_to_bignum_opt(Janet value, int panic);
 
 JanetAbstractType bignum_object_type = {
   "janetls/bignum",
@@ -372,8 +373,14 @@ static Janet bignum_to_string(int32_t argc, Janet * argv)
 
 static Janet bignum_compare_janet(int32_t argc, Janet * argv)
 {
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  Janet first = unknown_to_bignum_opt(argv[0], 0);
+  Janet second = unknown_to_bignum_opt(argv[1], 0);
+  bignum_object * x = janet_checktype(first, JANET_NIL)
+    ? NULL
+    : janet_unwrap_abstract(first);
+  bignum_object * y = janet_checktype(second, JANET_NIL)
+    ? NULL
+    : janet_unwrap_abstract(second);
   return janet_wrap_integer(bignum_compare(x, y));
 }
 
@@ -384,6 +391,18 @@ static int bignum_compare_untyped(void * x, void * y)
 
 int bignum_compare(bignum_object * x, bignum_object * y)
 {
+  if (x == NULL && y == NULL)
+  {
+    return 0;
+  }
+  else if (x == NULL)
+  {
+    return 1;
+  }
+  else if (y == NULL)
+  {
+    return -1;
+  }
   return mbedtls_mpi_cmp_mpi(&x->mpi, &y->mpi);
 }
 
@@ -626,6 +645,11 @@ static void * bignum_unmarshal(JanetMarshalContext * ctx)
 
 Janet unknown_to_bignum(Janet value)
 {
+  return unknown_to_bignum_opt(value, 1);
+}
+
+Janet unknown_to_bignum_opt(Janet value, int panic)
+{
   if (janet_checktype(value, JANET_NUMBER))
   {
     double number = janet_unwrap_number(value);
@@ -638,13 +662,24 @@ Janet unknown_to_bignum(Janet value)
       int ret = mbedtls_mpi_lset(&converted->mpi, integer);
       if (ret != 0)
       {
-        janet_panicf("Could not create a bignum from a number %x", ret);
+        if (panic)
+        {
+          janet_panicf("Could not create a bignum from a number %x", ret);
+        }
+        else
+        {
+          return janet_wrap_nil();
+        }
       }
       return janet_wrap_abstract(converted);
     }
-    else
+    else if (panic)
     {
       janet_panicf("Could not convert %p into a bignum, it appears to have a fraction", value);
+    }
+    else
+    {
+      return janet_wrap_nil();
     }
   }
   else if (janet_is_byte_typed(value))
@@ -658,7 +693,14 @@ Janet unknown_to_bignum(Janet value)
       mbedtls_mpi_init(&converted->mpi);
       int ret = mbedtls_mpi_read_string(&converted->mpi, 10, (const char *)bytes.bytes);
       if (ret != 0) {
-        janet_panicf("Could not create a bignum from string or buffer %p", value);
+        if (panic)
+        {
+          janet_panicf("Could not create a bignum from string or buffer %p", value);
+        }
+        else
+        {
+          return janet_wrap_nil();
+        }
       }
       return janet_wrap_abstract(converted);
     }
@@ -683,7 +725,14 @@ Janet unknown_to_bignum(Janet value)
       int ret = mbedtls_mpi_lset(&converted->mpi, *typed_value);
       if (ret != 0)
       {
-        janet_panicf("Could not create a bignum from a s64 %x", ret);
+        if (panic)
+        {
+          janet_panicf("Could not create a bignum from a s64 %x", ret);
+        }
+        else
+        {
+          return janet_wrap_nil();
+        }
       }
       return janet_wrap_abstract(converted);
     }
@@ -702,7 +751,14 @@ Janet unknown_to_bignum(Janet value)
         int ret = mbedtls_mpi_lset(&converted->mpi, downcasted_value);
         if (ret != 0)
         {
-          janet_panicf("Could not create a bignum from a s64 %x", ret);
+          if (panic)
+          {
+            janet_panicf("Could not create a bignum from a u64 %x", ret);
+          }
+          else
+          {
+            return janet_wrap_nil();
+          }
         }
         return janet_wrap_abstract(converted);
       }
@@ -720,13 +776,23 @@ Janet unknown_to_bignum(Janet value)
         mbedtls_mpi_init(&converted->mpi);
         int ret = mbedtls_mpi_read_string(&converted->mpi, 10, (const char *)buffer->data);
         if (ret != 0) {
-          janet_panicf("Could not create a bignum from a interpreted string %p", value);
+          if (panic)
+          {
+            janet_panicf("Could not create a bignum from a interpreted string %p", value);
+          }
+          else
+          {
+            return janet_wrap_nil();
+          }
         }
         return janet_wrap_abstract(converted);
       }
     }
   }
-  janet_panicf("Could not convert %p to a bignum", value);
+  if (panic)
+  {
+    janet_panicf("Could not convert %p to a bignum", value);
+  }
   // unreachable
   return janet_wrap_nil();
 }
