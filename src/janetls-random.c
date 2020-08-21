@@ -29,7 +29,7 @@ static Janet random_start(int32_t argc, Janet * argv);
 static Janet random_get_bytes(int32_t argc, Janet * argv);
 
 JanetAbstractType random_object_type = {
-  "random",
+  "janetls/random",
   random_gc_fn,
   NULL,
   random_get_fn,
@@ -79,11 +79,13 @@ static const JanetReg cfuns[] =
 void submod_random(JanetTable *env)
 {
   janet_cfuns(env, "janetls", cfuns);
+  janet_register_abstract_type(&random_object_type);
 }
 
 random_object * gen_random()
 {
   random_object * random = janet_abstract(&random_object_type, sizeof(random_object));
+  random->flags = 0;
   mbedtls_entropy_init(&random->entropy);
   mbedtls_ctr_drbg_init(&random->drbg);
   int ret = mbedtls_ctr_drbg_seed(&random->drbg, mbedtls_entropy_func, &random->entropy, NULL, 0);

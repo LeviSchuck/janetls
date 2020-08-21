@@ -136,7 +136,7 @@ static Janet hmac(int32_t argc, Janet * argv);
 static Janet hmac_start(int32_t argc, Janet * argv);
 
 JanetAbstractType digest_object_type = {
-  "digest",
+  "janetls/digest",
   md_gc_fn,
   NULL,
   md_get_fn,
@@ -265,6 +265,7 @@ static const JanetReg cfuns[] =
 void submod_md(JanetTable *env)
 {
   janet_cfuns(env, "janetls", cfuns);
+  janet_register_abstract_type(&digest_object_type);
 }
 
 Janet md_hmac_start(Janet alg, Janet key, int hmac)
