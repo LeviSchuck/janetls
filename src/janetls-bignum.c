@@ -46,6 +46,7 @@ static Janet bignum_inverse_modulo(int32_t argc, Janet * argv);
 static Janet bignum_exponent(int32_t argc, Janet * argv);
 static Janet bignum_greatest_common_denominator(int32_t argc, Janet * argv);
 static Janet bignum_is_prime(int32_t argc, Janet * argv);
+static Janet bignum_compare_janet(int32_t argc, Janet * argv);
 static int bignum_compare_untyped(void * x, void * y);
 int bignum_compare(bignum_object * x, bignum_object * y);
 static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer);
@@ -86,6 +87,7 @@ static JanetMethod bignum_methods[] = {
   {"exponent", bignum_exponent},
   {"greatest-common-denominator", bignum_greatest_common_denominator},
   {"prime?", bignum_is_prime},
+  {"compare", bignum_compare_janet},
   {NULL, NULL}
 };
 
@@ -152,6 +154,8 @@ static const JanetReg cfuns[] =
   {"bignum/greatest-common-denominator", bignum_greatest_common_denominator, "(janetls/bignum/greatest-common-denominator)\n\n"
     },
   {"bignum/prime?", bignum_is_prime, "(janetls/bignum/prime?)\n\n"
+    },
+  {"bignum/compare", bignum_compare_janet, "(janetls/bignum/compare)\n\n"
     },
   {NULL, NULL, NULL}
 };
@@ -364,6 +368,13 @@ static Janet bignum_to_string(int32_t argc, Janet * argv)
   janet_sfree(value);
 
   return return_value;
+}
+
+static Janet bignum_compare_janet(int32_t argc, Janet * argv)
+{
+  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  return janet_wrap_integer(bignum_compare(x, y));
 }
 
 static int bignum_compare_untyped(void * x, void * y)
