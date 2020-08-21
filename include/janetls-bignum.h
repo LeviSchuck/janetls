@@ -20,12 +20,13 @@
  * SOFTWARE.
  */
 
-#include "janetls.h"
+#ifndef JANETLS_BIGNUM_H
+#define JANETLS_BIGNUM_H
+#include "mbedtls/bignum.h"
 
-JANET_MODULE_ENTRY(JanetTable *env)
-{
-  submod_md(env);
-  submod_util(env);
-  submod_bignum(env);
-  submod_random(env);
-}
+typedef struct bignum_object {
+  // Hint: MPI: Multi-Precision-Integer
+  mbedtls_mpi mpi;
+  uint8_t flags;
+} bignum_object;
+#endif

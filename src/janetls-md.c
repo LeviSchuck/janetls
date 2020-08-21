@@ -63,7 +63,7 @@ mbedtls_md_type_t symbol_to_alg(Janet value) {
   return MBEDTLS_MD_NONE;
 }
 
-void assert_commands_consumed(int32_t argc, Janet *argv, int required, int optional)
+void assert_commands_consumed(int32_t argc, Janet * argv, int required, int optional)
 {
   // Two parameters are required, hence the hard coded 2.
   // Namely: the algorithm and data
@@ -123,12 +123,17 @@ typedef struct digest_object {
 
 static int md_gc_fn(void *data, size_t len);
 static int md_get_fn(void *data, Janet key, Janet * out);
-static Janet md_clone(int32_t argc, Janet *argv);
-static Janet md_reset(int32_t argc, Janet *argv);
-static Janet md_update(int32_t argc, Janet *argv);
-static Janet md_finish(int32_t argc, Janet *argv);
-static Janet md_size(int32_t argc, Janet *argv);
-static Janet md_algorithm(int32_t argc, Janet *argv);
+static Janet md_start(int32_t argc, Janet * argv);
+static Janet md_clone(int32_t argc, Janet * argv);
+static Janet md_reset(int32_t argc, Janet * argv);
+static Janet md_update(int32_t argc, Janet * argv);
+static Janet md_finish(int32_t argc, Janet * argv);
+static Janet md_size(int32_t argc, Janet * argv);
+static Janet md_algorithm(int32_t argc, Janet * argv);
+static Janet md_algorithms_set(int32_t argc, Janet * argv);
+static Janet md(int32_t argc, Janet * argv);
+static Janet hmac(int32_t argc, Janet * argv);
+static Janet hmac_start(int32_t argc, Janet * argv);
 
 JanetAbstractType digest_object_type = {
   "digest",
@@ -176,315 +181,6 @@ static int md_get_fn(void * data, Janet key, Janet * out)
   return janet_getmethod(method, md_methods, out);
 }
 
-Janet md_hmac_start(Janet alg, Janet key, int hmac)
-{
-  mbedtls_md_type_t algorithm = symbol_to_alg(alg);
-  JanetByteView key_bytes;
-  if (hmac)
-  {
-    if (!janet_is_byte_typed(key))
-    {
-      janet_panicf("Expected a string or buffer for a key while preparing the "
-      "HMAC, but got %p", key);
-    }
-    else
-    {
-      key_bytes = janet_to_bytes(key);
-    }
-  }
-  else
-  {
-    // There is no key, Neo.
-    key_bytes.bytes = 0;
-    key_bytes.len = 0;
-  }
-
-  digest_object * digest = janet_abstract(&digest_object_type, sizeof(digest_object));
-  mbedtls_md_init(&digest->context);
-  digest->algorithm = algorithm;
-  digest->info = mbedtls_md_info_from_type(algorithm);
-  digest->flags = 0;
-
-  if (hmac)
-  {
-    digest->flags |= DIGEST_HMAC;
-  }
-
-  if (digest->info == NULL)
-  {
-    digest->flags |= DIGEST_POISONED;
-    janet_panicf("An internal error occurred, unable to get the algorithm %p", alg);
-  }
-
-  // Note that 0 here is a boolean on whether it is hmac
-  if (mbedtls_md_setup(&digest->context, digest->info, hmac))
-  {
-    digest->flags |= DIGEST_POISONED;
-    janet_panicf("An internal error occurred, unable to get the algorithm %p", alg);
-  }
-
-  if (hmac)
-  {
-    if (mbedtls_md_hmac_starts(&digest->context, key_bytes.bytes, key_bytes.len))
-    {
-      digest->flags |= DIGEST_POISONED;
-      janet_panicf("An internal error occurred, unable to prepare the algorithm %p", alg);
-    }
-  }
-  else
-  {
-    if (mbedtls_md_starts(&digest->context))
-    {
-      digest->flags |= DIGEST_POISONED;
-      janet_panicf("An internal error occurred, unable to prepare the algorithm %p", alg);
-    }
-  }
-
-  return janet_wrap_abstract(digest);
-}
-
-static Janet md_start(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 1);
-  return md_hmac_start(argv[0], janet_wrap_nil(), 0);
-}
-
-static Janet hmac_start(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 2);
-
-  return md_hmac_start(argv[0], argv[1], 1);
-}
-
-static Janet md_clone(int32_t argc, Janet *argv)
-{
-  janet_fixarity(argc, 1);
-  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
-  digest_object * clone;
-
-  if (digest->flags & DIGEST_POISONED)
-  {
-    janet_panic("An internal error has occurred, Was unable to clone "
-      "message digestion, the message digest is poisoned.");
-  }
-
-  if (digest->flags & DIGEST_HMAC)
-  {
-    janet_panic("HMACs cannot be cloned, if you plan to reuse an HMAC, "
-      "please look at using janetls/md/reset.");
-  }
-
-  clone = janet_abstract(&digest_object_type, sizeof(digest_object));
-
-  memcpy(clone, digest, sizeof(digest_object));
-  mbedtls_md_init(&clone->context);
-
-  if (mbedtls_md_setup(&clone->context, clone->info, 0))
-  {
-    clone->flags |= DIGEST_POISONED;
-    janet_panicf("An internal error occurred, unable clone the digest object");
-  }
-
-  if (mbedtls_md_clone(&clone->context, &digest->context))
-  {
-    clone->flags |= DIGEST_POISONED;
-    janet_panicf("An internal error occurred, unable to clone the digest object");
-  }
-
-  return janet_wrap_abstract(clone);
-}
-
-static Janet md_update(int32_t argc, Janet *argv)
-{
-  janet_fixarity(argc, 2);
-
-  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
-
-  if (digest->flags & DIGEST_POISONED)
-  {
-    janet_panic("An internal error has occurred, Was unable to update "
-      "message digestion, the message digest is poisoned.");
-  }
-
-  if (digest->flags & DIGEST_FINISHED)
-  {
-    if (digest->flags & DIGEST_HMAC)
-    {
-      janet_panic("This HMAC has already finished, therefore it cannot be "
-        "updated with any further content. You may want to reset the HMAC "
-        "so that more content can be HMACed.");
-    }
-    else
-    {
-      janet_panic("This digest has already finished, therefore it cannot be "
-        "updated with any further content. You may want to clone the digest "
-        "before finishing it, so that more content can be digested.");
-    }
-  }
-
-  if (!janet_is_byte_typed(argv[1]))
-  {
-    janet_panicf("Expected a string or buffer while updating the message "
-      "digest, but got %p", argv[1]);
-  }
-
-  JanetByteView bytes = janet_to_bytes(argv[1]);
-
-  if (bytes.len > 0)
-  {
-    if (mbedtls_md_update(&digest->context, bytes.bytes, bytes.len))
-    {
-      digest->flags |= DIGEST_POISONED;
-      janet_panicf("An internal error has occurred, Was unable to digest %p", argv[1]);
-    }
-  }
-
-  return janet_wrap_abstract(digest);
-}
-
-static Janet md_finish(int32_t argc, Janet *argv)
-{
-  janet_arity(argc, 1, 3);
-  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
-  content_encoding encoding = HEX;
-  int variant = 0;
-  int consumed = extract_encoding(argc, argv, 1, &encoding, &variant);
-
-  // Check that all arguments have been consumed.
-  assert_commands_consumed(argc, argv, 1, consumed);
-
-  if (digest->flags & DIGEST_POISONED)
-  {
-    janet_panicf("An internal error has occurred, Was unable to finish "
-      "message digestion, the message digest is poisoned.");
-  }
-
-  if (digest->flags & DIGEST_FINISHED)
-  {
-    // Don't bother finishing it twice, this will actually mutate the
-    // digest further into something unrecognizable.
-    return content_to_encoding(digest->output, mbedtls_md_get_size(digest->info), encoding, variant);
-  }
-
-  if (digest->flags & DIGEST_HMAC)
-  {
-    if (mbedtls_md_hmac_finish(&digest->context, digest->output))
-    {
-      digest->flags |= DIGEST_POISONED;
-      janet_panicf("An internal error has occurred, Was unable to finish "
-        "message digestion");
-    }
-  }
-  else
-  {
-    if (mbedtls_md_finish(&digest->context, digest->output))
-    {
-      digest->flags |= DIGEST_POISONED;
-      janet_panicf("An internal error has occurred, Was unable to finish "
-        "message digestion");
-    }
-  }
-
-  digest->flags |= DIGEST_FINISHED;
-
-  return content_to_encoding(digest->output, mbedtls_md_get_size(digest->info), encoding, variant);
-}
-
-static Janet md_reset(int32_t argc, Janet *argv)
-{
-  janet_fixarity(argc, 1);
-
-  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
-
-  if (digest->flags & DIGEST_HMAC)
-  {
-    // This re-initializes the digest with the existing algorithm and
-    // then re-applies the inner padding to the digest engine.
-    if (mbedtls_md_hmac_reset(&digest->context))
-    {
-      digest->flags |= DIGEST_POISONED;
-      janet_panicf("An internal error occurred, unable to reset the HMAC");
-    }
-  }
-  else
-  {
-    // Re-initializes the digest with the existing algorithm.
-    // This is what's done in mbedtls_md_hmac_reset before
-    // applying the inner padding.
-    if (mbedtls_md_starts(&digest->context))
-    {
-      digest->flags |= DIGEST_POISONED;
-      janet_panicf("An internal error occurred, unable to reset the digest");
-    }
-  }
-
-  // clear the finished flag
-  digest->flags &= ~(DIGEST_FINISHED);
-
-  return janet_wrap_abstract(digest);
-}
-
-static Janet md_size(int32_t argc, Janet *argv)
-{
-  janet_fixarity(argc, 1);
-  int size = 0;
-  if (janet_type(argv[0]) == JANET_ABSTRACT)
-  {
-    digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
-    size = mbedtls_md_get_size(digest->info);
-  }
-  else if (janet_is_byte_typed(argv[0]))
-  {
-    size = mbedtls_md_get_size(mbedtls_md_info_from_type(symbol_to_alg(argv[0])));
-  }
-  else
-  {
-    janet_panicf("Expected a message digest or a keyword identifying the "
-      "algorithm to get a size from. But got %p", argv[0]);
-  }
-
-  return janet_wrap_integer(size);
-}
-
-static Janet md_algorithm(int32_t argc, Janet *argv)
-{
-  janet_fixarity(argc, 1);
-  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
-  return value_to_option(supported_algorithms, SUPPORTED_ALG_COUNT, digest->algorithm);
-}
-
-static Janet hmac(int32_t argc, Janet * argv)
-{
-  janet_arity(argc, 3, 5);
-
-  mbedtls_md_type_t algorithm = symbol_to_alg(argv[0]);
-  JanetByteView key = janet_getbytes(argv, 1);
-  JanetByteView data = janet_getbytes(argv, 2);
-  content_encoding encoding = HEX;
-  int variant = 0;
-  int consumed = extract_encoding(argc, argv, 3, &encoding, &variant);
-
-  assert_commands_consumed(argc, argv, 3, consumed);
-
-  const mbedtls_md_info_t *md_info;
-  md_info = mbedtls_md_info_from_type(algorithm);
-  unsigned char digest[MBEDTLS_MD_MAX_SIZE];
-
-  if (mbedtls_md_hmac(md_info, key.bytes, key.len, data.bytes, data.len, digest))
-  {
-    janet_panicf("Unable to execute HMAC for algorithm %p on "
-      "input %p", argv[0], argv[1]);
-  }
-
-  return content_to_encoding(digest, mbedtls_md_get_size(md_info), encoding, variant);
-}
-
-
-static Janet md_algorithms_set(int32_t argc, Janet *argv)
-{
-  janet_fixarity(argc, 0);
-  return enumerate_option_list(supported_algorithms, SUPPORTED_ALG_COUNT);
-}
 
 static const JanetReg cfuns[] =
 {
@@ -569,4 +265,314 @@ static const JanetReg cfuns[] =
 void submod_md(JanetTable *env)
 {
   janet_cfuns(env, "janetls", cfuns);
+}
+
+Janet md_hmac_start(Janet alg, Janet key, int hmac)
+{
+  mbedtls_md_type_t algorithm = symbol_to_alg(alg);
+  JanetByteView key_bytes;
+  if (hmac)
+  {
+    if (!janet_is_byte_typed(key))
+    {
+      janet_panicf("Expected a string or buffer for a key while preparing the "
+      "HMAC, but got %p", key);
+    }
+    else
+    {
+      key_bytes = janet_to_bytes(key);
+    }
+  }
+  else
+  {
+    // There is no key, Neo.
+    key_bytes.bytes = 0;
+    key_bytes.len = 0;
+  }
+
+  digest_object * digest = janet_abstract(&digest_object_type, sizeof(digest_object));
+  mbedtls_md_init(&digest->context);
+  digest->algorithm = algorithm;
+  digest->info = mbedtls_md_info_from_type(algorithm);
+  digest->flags = 0;
+
+  if (hmac)
+  {
+    digest->flags |= DIGEST_HMAC;
+  }
+
+  if (digest->info == NULL)
+  {
+    digest->flags |= DIGEST_POISONED;
+    janet_panicf("An internal error occurred, unable to get the algorithm %p", alg);
+  }
+
+  // Note that 0 here is a boolean on whether it is hmac
+  if (mbedtls_md_setup(&digest->context, digest->info, hmac))
+  {
+    digest->flags |= DIGEST_POISONED;
+    janet_panicf("An internal error occurred, unable to get the algorithm %p", alg);
+  }
+
+  if (hmac)
+  {
+    if (mbedtls_md_hmac_starts(&digest->context, key_bytes.bytes, key_bytes.len))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error occurred, unable to prepare the algorithm %p", alg);
+    }
+  }
+  else
+  {
+    if (mbedtls_md_starts(&digest->context))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error occurred, unable to prepare the algorithm %p", alg);
+    }
+  }
+
+  return janet_wrap_abstract(digest);
+}
+
+static Janet md_start(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return md_hmac_start(argv[0], janet_wrap_nil(), 0);
+}
+
+static Janet hmac_start(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 2);
+
+  return md_hmac_start(argv[0], argv[1], 1);
+}
+
+static Janet md_clone(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
+  digest_object * clone;
+
+  if (digest->flags & DIGEST_POISONED)
+  {
+    janet_panic("An internal error has occurred, Was unable to clone "
+      "message digestion, the message digest is poisoned.");
+  }
+
+  if (digest->flags & DIGEST_HMAC)
+  {
+    janet_panic("HMACs cannot be cloned, if you plan to reuse an HMAC, "
+      "please look at using janetls/md/reset.");
+  }
+
+  clone = janet_abstract(&digest_object_type, sizeof(digest_object));
+
+  memcpy(clone, digest, sizeof(digest_object));
+  mbedtls_md_init(&clone->context);
+
+  if (mbedtls_md_setup(&clone->context, clone->info, 0))
+  {
+    clone->flags |= DIGEST_POISONED;
+    janet_panicf("An internal error occurred, unable clone the digest object");
+  }
+
+  if (mbedtls_md_clone(&clone->context, &digest->context))
+  {
+    clone->flags |= DIGEST_POISONED;
+    janet_panicf("An internal error occurred, unable to clone the digest object");
+  }
+
+  return janet_wrap_abstract(clone);
+}
+
+static Janet md_update(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 2);
+
+  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
+
+  if (digest->flags & DIGEST_POISONED)
+  {
+    janet_panic("An internal error has occurred, Was unable to update "
+      "message digestion, the message digest is poisoned.");
+  }
+
+  if (digest->flags & DIGEST_FINISHED)
+  {
+    if (digest->flags & DIGEST_HMAC)
+    {
+      janet_panic("This HMAC has already finished, therefore it cannot be "
+        "updated with any further content. You may want to reset the HMAC "
+        "so that more content can be HMACed.");
+    }
+    else
+    {
+      janet_panic("This digest has already finished, therefore it cannot be "
+        "updated with any further content. You may want to clone the digest "
+        "before finishing it, so that more content can be digested.");
+    }
+  }
+
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected a string or buffer while updating the message "
+      "digest, but got %p", argv[1]);
+  }
+
+  JanetByteView bytes = janet_to_bytes(argv[1]);
+
+  if (bytes.len > 0)
+  {
+    if (mbedtls_md_update(&digest->context, bytes.bytes, bytes.len))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error has occurred, Was unable to digest %p", argv[1]);
+    }
+  }
+
+  return janet_wrap_abstract(digest);
+}
+
+static Janet md_finish(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 1, 3);
+  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
+  content_encoding encoding = HEX;
+  int variant = 0;
+  int consumed = extract_encoding(argc, argv, 1, &encoding, &variant);
+
+  // Check that all arguments have been consumed.
+  assert_commands_consumed(argc, argv, 1, consumed);
+
+  if (digest->flags & DIGEST_POISONED)
+  {
+    janet_panicf("An internal error has occurred, Was unable to finish "
+      "message digestion, the message digest is poisoned.");
+  }
+
+  if (digest->flags & DIGEST_FINISHED)
+  {
+    // Don't bother finishing it twice, this will actually mutate the
+    // digest further into something unrecognizable.
+    return content_to_encoding(digest->output, mbedtls_md_get_size(digest->info), encoding, variant);
+  }
+
+  if (digest->flags & DIGEST_HMAC)
+  {
+    if (mbedtls_md_hmac_finish(&digest->context, digest->output))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error has occurred, Was unable to finish "
+        "message digestion");
+    }
+  }
+  else
+  {
+    if (mbedtls_md_finish(&digest->context, digest->output))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error has occurred, Was unable to finish "
+        "message digestion");
+    }
+  }
+
+  digest->flags |= DIGEST_FINISHED;
+
+  return content_to_encoding(digest->output, mbedtls_md_get_size(digest->info), encoding, variant);
+}
+
+static Janet md_reset(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+
+  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
+
+  if (digest->flags & DIGEST_HMAC)
+  {
+    // This re-initializes the digest with the existing algorithm and
+    // then re-applies the inner padding to the digest engine.
+    if (mbedtls_md_hmac_reset(&digest->context))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error occurred, unable to reset the HMAC");
+    }
+  }
+  else
+  {
+    // Re-initializes the digest with the existing algorithm.
+    // This is what's done in mbedtls_md_hmac_reset before
+    // applying the inner padding.
+    if (mbedtls_md_starts(&digest->context))
+    {
+      digest->flags |= DIGEST_POISONED;
+      janet_panicf("An internal error occurred, unable to reset the digest");
+    }
+  }
+
+  // clear the finished flag
+  digest->flags &= ~(DIGEST_FINISHED);
+
+  return janet_wrap_abstract(digest);
+}
+
+static Janet md_size(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  int size = 0;
+  if (janet_type(argv[0]) == JANET_ABSTRACT)
+  {
+    digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
+    size = mbedtls_md_get_size(digest->info);
+  }
+  else if (janet_is_byte_typed(argv[0]))
+  {
+    size = mbedtls_md_get_size(mbedtls_md_info_from_type(symbol_to_alg(argv[0])));
+  }
+  else
+  {
+    janet_panicf("Expected a message digest or a keyword identifying the "
+      "algorithm to get a size from. But got %p", argv[0]);
+  }
+
+  return janet_wrap_integer(size);
+}
+
+static Janet md_algorithm(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
+  return value_to_option(supported_algorithms, SUPPORTED_ALG_COUNT, digest->algorithm);
+}
+
+static Janet hmac(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 3, 5);
+
+  mbedtls_md_type_t algorithm = symbol_to_alg(argv[0]);
+  JanetByteView key = janet_getbytes(argv, 1);
+  JanetByteView data = janet_getbytes(argv, 2);
+  content_encoding encoding = HEX;
+  int variant = 0;
+  int consumed = extract_encoding(argc, argv, 3, &encoding, &variant);
+
+  assert_commands_consumed(argc, argv, 3, consumed);
+
+  const mbedtls_md_info_t *md_info;
+  md_info = mbedtls_md_info_from_type(algorithm);
+  unsigned char digest[MBEDTLS_MD_MAX_SIZE];
+
+  if (mbedtls_md_hmac(md_info, key.bytes, key.len, data.bytes, data.len, digest))
+  {
+    janet_panicf("Unable to execute HMAC for algorithm %p on "
+      "input %p", argv[0], argv[1]);
+  }
+
+  return content_to_encoding(digest, mbedtls_md_get_size(md_info), encoding, variant);
+}
+
+
+static Janet md_algorithms_set(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 0);
+  return enumerate_option_list(supported_algorithms, SUPPORTED_ALG_COUNT);
 }

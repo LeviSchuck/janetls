@@ -37,12 +37,12 @@
     ;default-cflags
     "-Imbedtls/include/"
     "-Iinclude/"
-    # "-g"
+    "-g"
     ;(if is-win [] ["-Wno-unused-parameter"])
     ]
   :lflags [
     ;default-lflags
-    # "-g"
+    "-g"
     ]
   :defines {
     "MBEDTLS_CONFIG_FILE" "\"janetls-config.h\""
@@ -53,12 +53,21 @@
     "src/janetls-util.c"
     "src/janetls-encode.c"
     "src/janetls-encoding.c"
+    "src/janetls-bignum.c"
+    "src/janetls-random.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
     "mbedtls/library/sha1.c"
     "mbedtls/library/sha256.c"
     "mbedtls/library/sha512.c"
+    # For randomness, AES is used. It'll be in its own section later.
+    "mbedtls/library/aes.c"
+    "mbedtls/library/ctr_drbg.c"
+    "mbedtls/library/entropy.c"
+    "mbedtls/library/entropy_poll.c"
+    # mbed tls big numbers
+    "mbedtls/library/bignum.c"
     # Everything in mbed tls requires error, platform, platform_util
     "mbedtls/library/error.c"
     "mbedtls/library/platform.c"

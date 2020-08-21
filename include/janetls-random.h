@@ -20,12 +20,22 @@
  * SOFTWARE.
  */
 
-#include "janetls.h"
+#ifndef JANETLS_RANDOM_H
+#define JANETLS_RANDOM_H
+#include <janet.h>
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+extern JanetAbstractType random_object_type;
+typedef struct random_object {
+  // Access to the outside world, like /dev/random or via syscall
+  mbedtls_entropy_context entropy;
+  // Hint: DRBG: Deterministic Random Bit Generator
+  mbedtls_ctr_drbg_context drbg;
+  uint8_t flags;
+} random_object;
 
-JANET_MODULE_ENTRY(JanetTable *env)
-{
-  submod_md(env);
-  submod_util(env);
-  submod_bignum(env);
-  submod_random(env);
-}
+// This will wrap around random_object for use elsewhere
+int janetls_random_rng(void *, unsigned char *, size_t);
+random_object * get_or_gen_random_object(int argc, Janet * argv, int offset);
+
+#endif

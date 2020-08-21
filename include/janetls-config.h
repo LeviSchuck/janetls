@@ -52,6 +52,24 @@
 // SHA512 and SHA384
 #define MBEDTLS_SHA512_C
 
+// For randomness, entropy gives access to using a random syscall
+// However in testing, it was not sufficient for generating 4096 bit primes
+// So other Deterministic Random Bit Generators (DRBGs) will be used
+// In this case, the AES CTR DRBG will be used for efficiency.
+// The HMAC DRBG is capable of generating primes but is not sufficient.
+#define MBEDTLS_ENTROPY_C
+#define MBEDTLS_CTR_DRBG_C
+#define MBEDTLS_AES_C
+// #define MBEDTLS_HMAC_DRBG_C
+
+// To enable big-number stuff, required for RSA and ECC
+// ASM is required for fast operations on big numbers
+// Practically every arch is supported by mbedtls.
+// Bignumber genprime also needs randomness.
+#define MBEDTLS_BIGNUM_C
+#define MBEDTLS_HAVE_ASM
+#define MBEDTLS_GENPRIME
+
 #include "mbedtls/check_config.h"
 
 #endif
