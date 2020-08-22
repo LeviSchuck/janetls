@@ -143,39 +143,117 @@ static int32_t bignum_hash(void *data, size_t len)
 
 static const JanetReg cfuns[] =
 {
-  {"bignum/parse", bignum_parse, "(janetls/bignum/parse)\n\n"
+  {"bignum/parse", bignum_parse, "(janetls/bignum/parse value & opt radix)\n\n"
+    "value should be a string, but it will accept anything that turns into a "
+    "string of digits. For example, it'll accept native whole-numbers, "
+    "buffers, and even abstract objects who's tostring results in a sequence "
+    "of digits.\n"
+    "radix is by default 10, valid values are 3 to 16. This unfortunately "
+    "means binary strings are not accepted as of this version.\n"
+    "As a note, all functions below which expect a bignum object will attempt "
+    "to use this parsing behavior on all applicable parameters. So bit-length "
+    "can be used on a native number, it will internally convert to a bignum "
+    "and then run the operation."
     },
-  {"bignum/parse-bytes", bignum_parse_bytes, "(janetls/bignum/parse-bytes)\n\n"
+  {"bignum/parse-bytes", bignum_parse_bytes, "(janetls/bignum/parse-bytes value &opt variant)\n\n"
+    "value should be a string or buffer. All bytes will be read according to "
+    "the variant to construct a big number.\n"
+    "By default, variant is :big-endian, as most standards expect this "
+    "format. Valid options are (for big endian): :big-endian or :big or :be, "
+    "(for little endian): :little-endian or :little or :le."
     },
-  {"bignum/generate-prime", bignum_generate_prime, "(janetls/bignum/generate-prime)\n\n"
+  {"bignum/generate-prime", bignum_generate_prime, "(janetls/bignum/generate-prime bits &opt random quality)\n\n"
+    "Generates a bignumber, which is prime, which has a bit-length of the "
+    "input: bits. Note that the bit count should be between 3 and 4096. It may "
+    "be more on 64 bit platforms, but the higher the bit count, the longer it "
+    "takes to generate a prime number.\n"
+    "The optional random value is to re-use a random source generator. This "
+    "can be obtained from janetls/random/start. If not provided, it will poll "
+    "for entropy from the system and allocate a new one. Ideally, reuse one if "
+    "you call this function repeatedly.\n"
+    "The optional quality value may apply more conditions to the prime. "
+    "Valid values are :low-err (lower error probability) or "
+    ":dh ((X-1)/2 is prime too), or :low-err-dh (for both)."
+    "For Diffie-Hellman key exchange, use :dh.\n"
+    "You may want to consult https://www.keylength.com/en/3/\n"
+    "This library's documentation should not "
+    "in isolation be used to determine the cryptographic strength for your "
+    "application! In fact, if you've never used these before, look for a "
+    "library that makes these decisions for you."
     },
-  {"bignum/bit-length", bignum_bit_length, "(janetls/bignum/bit-length)\n\n"
+  {"bignum/bit-length", bignum_bit_length, "(janetls/bignum/bit-length bignum)\n\n"
+    "Returns the count of bits required to express this bignumber. When prime "
+    "this may be used as a measure of cryptographic strength for that "
+    "component. This entirely depends on the algorithm! RSA 3072 is "
+    "comparable to a 256 bit elliptic curve, according to "
+    "https://www.keylength.com/en/3/\n"
+    "This library's documentation should not "
+    "in isolation be used to determine the cryptographic strength for your "
+    "application! In fact, if you've never used these before, look for a "
+    "library that makes these decisions for you."
     },
-  {"bignum/size", bignum_size, "(janetls/bignum/size)\n\n"
+  {"bignum/size", bignum_size, "(janetls/bignum/size bignum)\n\n"
+    "Returns the count of bytes one should expect from calling to-bytes. This "
+    "does not allocate a buffer."
     },
-  {"bignum/to-string", bignum_to_string, "(janetls/bignum/to-string)\n\n"
+  {"bignum/to-string", bignum_to_string, "(janetls/bignum/to-string bignum &opt radix)\n\n"
+    "Returns a string of digits for this bignum.\n"
+    "radix is by default 10, valid values are 3-16, so bit strings are not "
+    "available in this version. You may want to use janetls/bignum/to-bytes "
+    "and encode the bytes as a bit-string if you want radix 2."
     },
-  {"bignum/to-bytes", bignum_to_bytes, "(janetls/bignum/to-bytes)\n\n"
+  {"bignum/to-bytes", bignum_to_bytes, "(janetls/bignum/to-bytes bignum &opt variant)\n\n"
+    "Returns bytes as a string encoded in big or little endian.\n"
+    "By default, variant is :big-endian, as most standards expect this "
+    "format. Valid options are (for big endian): :big-endian or :big or :be, "
+    "(for little endian): :little-endian or :little or :le."
     },
-  {"bignum/add", bignum_add, "(janetls/bignum/add)\n\n"
+  {"bignum/add", bignum_add, "(janetls/bignum/add bignum-x bignum-y)\n\n"
+    "Adds x and y together, returns a bignum."
     },
-  {"bignum/subtract", bignum_subtract, "(janetls/bignum/subtract)\n\n"
+  {"bignum/subtract", bignum_subtract, "(janetls/bignum/subtract bignum-x bignum-y)\n\n"
+    "Subtracts y from x, returns a bignum."
     },
-  {"bignum/multiply", bignum_multiply, "(janetls/bignum/multiply)\n\n"
+  {"bignum/multiply", bignum_multiply, "(janetls/bignum/multiply bignum-x bignum-y)\n\n"
+    "Multiplies x by y, returns a bignum."
     },
-  {"bignum/divide", bignum_divide, "(janetls/bignum/divide)\n\n"
+  {"bignum/divide", bignum_divide, "(janetls/bignum/divide bignum-x bignum-y)\n\n"
+    "Divides x over y, returns a bignum, the remainder is lost."
     },
-  {"bignum/modulo", bignum_modulo, "(janetls/bignum/modulo)\n\n"
+  {"bignum/divide-with-remainder", bignum_divide, "(janetls/bignum/divide-with-remainder bignum-x bignum-y)\n\n"
+    "Divides x over y, returns a tuple of (quotient remainder)"
     },
-  {"bignum/inverse-modulo", bignum_inverse_modulo, "(janetls/bignum/inverse-modulo)\n\n"
+  {"bignum/modulo", bignum_modulo, "(janetls/bignum/modulo bignum-x bignum-y)\n\n"
+    "Returns the result of x modulo y as a bignum"
     },
-  {"bignum/exponent-modulo", bignum_exponent_modulo, "(janetls/bignum/exponent)\n\n"
+  {"bignum/inverse-modulo", bignum_inverse_modulo, "(janetls/bignum/inverse-modulo bignum-x bignum-y)\n\n"
+    "Returns the result of X ^ -1 mod Y, or will return nil if there is no "
+    "modular inverse with respect to Y."
     },
-  {"bignum/greatest-common-denominator", bignum_greatest_common_denominator, "(janetls/bignum/greatest-common-denominator)\n\n"
+  {"bignum/exponent-modulo", bignum_exponent_modulo, "(janetls/bignum/exponent bignum-x bignum-y bignum-z)\n\n"
+    "Runs modular exponentiation on the inputs X ^ Y MOD Z. When successful "
+    "returns a bignum\n"
+    "Note that the modulo Z must be an odd number."
     },
-  {"bignum/prime?", bignum_is_prime, "(janetls/bignum/prime?)\n\n"
+  {"bignum/greatest-common-denominator", bignum_greatest_common_denominator, "(janetls/bignum/greatest-common-denominator bignum-x bignum-y)\n\n"
+    "Returns the greatest common denominator of X and Y, that is: the largest "
+    "integer that divides for both X and Y. The result will be 1 (as a bignum) "
+    "when there is no other candidate."
     },
-  {"bignum/compare", bignum_compare_janet, "(janetls/bignum/compare)\n\n"
+  {"bignum/prime?", bignum_is_prime, "(janetls/bignum/prime? bignum &opt random)\n\n"
+    "Returns a boolean on if this bignum is a prime with a low probability, "
+    "sufficient for key generation.\n"
+    "The optional random value is to re-use a random source generator. This "
+    "can be obtained from janetls/random/start. If not provided, it will poll "
+    "for entropy from the system and allocate a new one. Ideally, reuse one if "
+    "you call this function repeatedly.\n"
+    },
+  {"bignum/compare", bignum_compare_janet, "(janetls/bignum/compare x y)\n\n"
+    "Returns the standard comparison (-1, 0, 1) between bignums and other "
+    "values. If it can be converted to a bignum for proper comparison, it will "
+    "sort accordingly. If X is not a convertable to bignum, then X will be "
+    "greater than Y. Similarly, if Y is not a convertable to bignum, then Y "
+    "will be greater."
     },
   {NULL, NULL, NULL}
 };
@@ -361,11 +439,7 @@ static int bignum_compare_untyped(void * x, void * y)
 
 int bignum_compare(bignum_object * x, bignum_object * y)
 {
-  if (x == NULL && y == NULL)
-  {
-    return 0;
-  }
-  else if (x == NULL)
+  if (x == NULL)
   {
     return 1;
   }

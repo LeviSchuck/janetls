@@ -69,8 +69,15 @@ static int random_gc_fn(void * data, size_t len)
 static const JanetReg cfuns[] =
 {
   {"random/start", random_start, "(janetls/random/start)\n\n"
+    "Returns a new random number generator, pre-seeded with entropy from "
+    "the system. It can be reused in other cryptography applications safely."
     },
-  {"random/get", random_get_bytes, "(janetls/random/get)\n\n"
+  {"random/get", random_get_bytes, "(janetls/random/get random bytes)\n\n"
+    "Returns a string of length bytes using the random number generator."
+    "The internal mechanism uses a deterministic random bit generator, "
+    "which means that additional entropy from the system is not used. "
+    "However for infrequent cases outside of the janetls library, "
+    "os/cryptorand may suit your needs better."
     },
 
   {NULL, NULL, NULL}
