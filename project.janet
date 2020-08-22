@@ -42,6 +42,7 @@
     ]
   :lflags [
     ;default-lflags
+    # Advapi32 provides windows security primitives, available since server 2003
     ;(if is-win [] ["Advapi32.lib"])
     # "-g"
     ]
