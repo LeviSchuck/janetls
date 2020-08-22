@@ -28,5 +28,6 @@ typedef struct bignum_object {
   // Hint: MPI: Multi-Precision-Integer
   mbedtls_mpi mpi;
   uint8_t flags;
+  int hash;
 } bignum_object;
 #endif

@@ -85,7 +85,7 @@ void submod_random(JanetTable *env)
 random_object * gen_random()
 {
   random_object * random = janet_abstract(&random_object_type, sizeof(random_object));
-  random->flags = 0;
+  memset(random, 0, sizeof(random_object));
   mbedtls_entropy_init(&random->entropy);
   mbedtls_ctr_drbg_init(&random->drbg);
   int ret = mbedtls_ctr_drbg_seed(&random->drbg, mbedtls_entropy_func, &random->entropy, NULL, 0);
