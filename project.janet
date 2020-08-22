@@ -37,12 +37,13 @@
     ;default-cflags
     "-Imbedtls/include/"
     "-Iinclude/"
-    "-g"
+    # "-g"
     ;(if is-win [] ["-Wno-unused-parameter"])
     ]
   :lflags [
     ;default-lflags
-    "-g"
+    ;(if is-win [] ["Advapi32.lib"])
+    # "-g"
     ]
   :defines {
     "MBEDTLS_CONFIG_FILE" "\"janetls-config.h\""
