@@ -57,6 +57,7 @@
     "src/janetls-encoding.c"
     "src/janetls-bignum.c"
     "src/janetls-random.c"
+    "src/janetls-byteslice.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"

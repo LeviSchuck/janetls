@@ -75,6 +75,7 @@ void submod_md(JanetTable * env);
 void submod_util(JanetTable * env);
 void submod_bignum(JanetTable * env);
 void submod_random(JanetTable * env);
+void submod_byteslice(JanetTable * env);
 
 #ifndef NULL
 #define NULL 0
