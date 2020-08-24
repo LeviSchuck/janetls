@@ -30,4 +30,7 @@ typedef struct bignum_object {
   uint8_t flags;
   int hash;
 } bignum_object;
+
+int decode_base127(const uint8_t * buffer, int buffer_length, bignum_object * destination, int * position);
+int encode_base127(bignum_object * source, JanetBuffer * buffer);
 #endif
