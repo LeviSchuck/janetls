@@ -20,13 +20,15 @@
  * SOFTWARE.
  */
 
-#include "janetls.h"
-
-JANET_MODULE_ENTRY(JanetTable *env)
-{
-  submod_md(env);
-  submod_util(env);
-  submod_bignum(env);
-  submod_random(env);
-  submod_byteslice(env);
-}
+#ifndef JANETLS_BYTESLICE_H
+#define JANETLS_BYTESLICE_H
+#include <janet.h>
+typedef struct byteslice_object {
+  Janet reference;
+  Janet cached;
+  int32_t position;
+  int32_t length;
+} byteslice_object;
+byteslice_object * gen_byteslice(Janet value, int position, int length);
+extern JanetAbstractType byteslice_object_type;
+#endif
