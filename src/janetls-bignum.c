@@ -46,6 +46,8 @@ static Janet bignum_exponent_modulo(int32_t argc, Janet * argv);
 static Janet bignum_greatest_common_denominator(int32_t argc, Janet * argv);
 static Janet bignum_is_prime(int32_t argc, Janet * argv);
 static Janet bignum_compare_janet(int32_t argc, Janet * argv);
+static Janet bignum_shift_left(int32_t argc, Janet * argv);
+static Janet bignum_shift_right(int32_t argc, Janet * argv);
 static int bignum_compare_untyped(void * x, void * y);
 int bignum_compare(bignum_object * x, bignum_object * y);
 static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer);
@@ -86,6 +88,8 @@ static JanetMethod bignum_methods[] = {
   {"%", bignum_modulo},
   {"-%", bignum_inverse_modulo},
   {"^%", bignum_exponent_modulo},
+  {"<<", bignum_shift_left},
+  {">>", bignum_shift_right},
   {"greatest-common-denominator", bignum_greatest_common_denominator},
   {"gcd", bignum_greatest_common_denominator},
   {"prime?", bignum_is_prime},
@@ -254,6 +258,12 @@ static const JanetReg cfuns[] =
     "sort accordingly. If X is not a convertable to bignum, then X will be "
     "greater than Y. Similarly, if Y is not a convertable to bignum, then Y "
     "will be greater."
+    },
+  {"bignum/shift-left", bignum_shift_left, "(janetls/bignum/shift-left bignum bits)\n\n"
+    "Shifts the bignumber to the left in binary by the given amount of bits."
+    },
+  {"bignum/shift-right", bignum_shift_right, "(janetls/bignum/shift-right bignum bits)\n\n"
+    "Shifts the bignumber to the right in binary by the given amount of bits."
     },
   {NULL, NULL, NULL}
 };
@@ -681,6 +691,30 @@ static Janet bignum_to_bytes(int32_t argc, Janet * argv)
   return janet_wrap_string(janet_string(bytes, size));
 }
 
+static Janet bignum_shift_left(int32_t argc, Janet * argv)
+{
+  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  int bits = janet_getinteger(argv, 1);
+  bignum_object * result = new_bignum();
+  // This is a mutating operation.
+  // So we copy it before applying the operation.
+  check_result(mbedtls_mpi_copy(&result->mpi, &bignum->mpi));
+  check_result(mbedtls_mpi_shift_l(&result->mpi, bits));
+  return janet_wrap_abstract(result);
+}
+
+static Janet bignum_shift_right(int32_t argc, Janet * argv)
+{
+  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  int bits = janet_getinteger(argv, 1);
+  bignum_object * result = new_bignum();
+  // This is a mutating operation.
+  // So we copy it before applying the operation.
+  check_result(mbedtls_mpi_copy(&result->mpi, &bignum->mpi));
+  check_result(mbedtls_mpi_shift_r(&result->mpi, bits));
+  return janet_wrap_abstract(result);
+}
+
 static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer)
 {
   Janet argv[1] = {janet_wrap_abstract(bignum)};
@@ -946,3 +980,4 @@ bignum_object * new_bignum()
   mbedtls_mpi_init(&result->mpi);
   return result;
 }
+
