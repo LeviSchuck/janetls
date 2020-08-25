@@ -21,6 +21,9 @@
  */
 
 #include "janetls.h"
+#include "mbedtls/bignum.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/md.h"
 
 JANET_MODULE_ENTRY(JanetTable *env)
 {
@@ -29,4 +32,35 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_bignum(env);
   submod_random(env);
   submod_byteslice(env);
+  submod_asn1(env);
+}
+
+void check_result(int mbedtls_result)
+{
+  if (mbedtls_result == 0)
+  {
+    return;
+  }
+  switch (mbedtls_result)
+  {
+    case MBEDTLS_ERR_MPI_NOT_ACCEPTABLE:
+      janet_panic("The input value was not acceptable");
+    case MBEDTLS_ERR_MPI_NEGATIVE_VALUE: janet_panic("An input value was negative when it cannot be");
+    case MBEDTLS_ERR_MPI_INVALID_CHARACTER: janet_panic("Cannot parse, an invalid character was found");
+    case MBEDTLS_ERR_MPI_DIVISION_BY_ZERO: janet_panic("Division by zero");
+    case MBEDTLS_ERR_MD_ALLOC_FAILED:
+    case MBEDTLS_ERR_MPI_ALLOC_FAILED:
+      janet_panic("Ran out of memory");
+    case MBEDTLS_ERR_MD_BAD_INPUT_DATA:
+    case MBEDTLS_ERR_MPI_BAD_INPUT_DATA: janet_panic("One of the inputs is bad");
+    case MBEDTLS_ERR_MPI_FILE_IO_ERROR: janet_panic("File IO error with bignum");
+    case MBEDTLS_ERR_MD_HW_ACCEL_FAILED: janet_panic("Unable to use hardware acceleration");
+    case MBEDTLS_ERR_CTR_DRBG_FILE_IO_ERROR:
+    case MBEDTLS_ERR_MD_FILE_IO_ERROR: janet_panic("IO Error with file system");
+    case MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE: janet_panic("Message Digest feature unavailable");
+    case MBEDTLS_ERR_CTR_DRBG_ENTROPY_SOURCE_FAILED: janet_panic("Unable to gather entropy for random number generation");
+    case MBEDTLS_ERR_CTR_DRBG_INPUT_TOO_BIG: janet_panic("The input was too big");
+    case MBEDTLS_ERR_CTR_DRBG_REQUEST_TOO_BIG: janet_panic("Too many bytes were requested at once");
+  }
+  janet_panicf("An internal error occurred: %x", mbedtls_result);
 }

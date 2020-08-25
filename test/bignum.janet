@@ -22,6 +22,7 @@
 (def three (bignum/parse 3))
 (def five (bignum/parse 5))
 (def ten (bignum/parse 10))
+(def hundred (bignum/parse 100))
 (def million (bignum/parse 1000001))
 (def neg-one (bignum/parse -1))
 (def neg-ten (bignum/parse -10))
@@ -100,5 +101,8 @@
 # 65537 is a common exponent in RSA
 (deftest "From Bytes works" (is (= "65537" (string (bignum/parse-bytes "\x01\x00\x01")))))
 (deftest "To Bytes works" (is (= "\x01\x00\x01" (:to-bytes (bignum/parse 65537)))))
+
+(deftest "Shift Left 2" (is (= (bignum/parse 400) (:<< hundred 2))))
+(deftest "Shift Right 2" (is (= (bignum/parse 25) (:>> hundred 2))))
 
 (run-tests!)

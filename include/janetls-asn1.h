@@ -20,18 +20,14 @@
  * SOFTWARE.
  */
 
-#ifndef JANETLS_BIGNUM_H
-#define JANETLS_BIGNUM_H
-#include "mbedtls/bignum.h"
-
-typedef struct bignum_object {
-  // Hint: MPI: Multi-Precision-Integer
-  mbedtls_mpi mpi;
-  uint8_t flags;
-  int hash;
-} bignum_object;
-extern JanetAbstractType bignum_object_type;
-bignum_object * new_bignum();
-Janet unknown_to_bignum(Janet value);
-Janet unknown_to_bignum_opt(Janet value, int panic, int radix);
+#ifndef JANETLS_ASN1_H
+#define JANETLS_ASN1_H
+#include <janet.h>
+typedef enum number_type {
+  BIGNUM = 0,
+  NUMBER,
+  U64
+} number_type;
+int decode_base127(JanetByteView bytes, Janet * destination, int * position, number_type bignum);
+int encode_base127(Janet source, JanetBuffer * buffer);
 #endif

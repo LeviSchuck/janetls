@@ -46,13 +46,15 @@ static Janet bignum_exponent_modulo(int32_t argc, Janet * argv);
 static Janet bignum_greatest_common_denominator(int32_t argc, Janet * argv);
 static Janet bignum_is_prime(int32_t argc, Janet * argv);
 static Janet bignum_compare_janet(int32_t argc, Janet * argv);
+static Janet bignum_shift_left(int32_t argc, Janet * argv);
+static Janet bignum_shift_right(int32_t argc, Janet * argv);
 static int bignum_compare_untyped(void * x, void * y);
 int bignum_compare(bignum_object * x, bignum_object * y);
 static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer);
 static void bignum_marshal(void * bignum, JanetMarshalContext * ctx);
 static void *bignum_unmarshal(JanetMarshalContext * ctx);
 int valid_digits(const uint8_t * bytes, int32_t size, int radix);
-void check_result(int mbedtls_result);
+
 static int32_t bignum_hash(void *p, size_t len);
 bignum_object * new_bignum();
 
@@ -86,6 +88,8 @@ static JanetMethod bignum_methods[] = {
   {"%", bignum_modulo},
   {"-%", bignum_inverse_modulo},
   {"^%", bignum_exponent_modulo},
+  {"<<", bignum_shift_left},
+  {">>", bignum_shift_right},
   {"greatest-common-denominator", bignum_greatest_common_denominator},
   {"gcd", bignum_greatest_common_denominator},
   {"prime?", bignum_is_prime},
@@ -254,6 +258,12 @@ static const JanetReg cfuns[] =
     "sort accordingly. If X is not a convertable to bignum, then X will be "
     "greater than Y. Similarly, if Y is not a convertable to bignum, then Y "
     "will be greater."
+    },
+  {"bignum/shift-left", bignum_shift_left, "(janetls/bignum/shift-left bignum bits)\n\n"
+    "Shifts the bignumber to the left in binary by the given amount of bits."
+    },
+  {"bignum/shift-right", bignum_shift_right, "(janetls/bignum/shift-right bignum bits)\n\n"
+    "Shifts the bignumber to the right in binary by the given amount of bits."
     },
   {NULL, NULL, NULL}
 };
@@ -681,6 +691,32 @@ static Janet bignum_to_bytes(int32_t argc, Janet * argv)
   return janet_wrap_string(janet_string(bytes, size));
 }
 
+static Janet bignum_shift_left(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 2);
+  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  int bits = janet_getinteger(argv, 1);
+  bignum_object * result = new_bignum();
+  // This is a mutating operation.
+  // So we copy it before applying the operation.
+  check_result(mbedtls_mpi_copy(&result->mpi, &bignum->mpi));
+  check_result(mbedtls_mpi_shift_l(&result->mpi, bits));
+  return janet_wrap_abstract(result);
+}
+
+static Janet bignum_shift_right(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 2);
+  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  int bits = janet_getinteger(argv, 1);
+  bignum_object * result = new_bignum();
+  // This is a mutating operation.
+  // So we copy it before applying the operation.
+  check_result(mbedtls_mpi_copy(&result->mpi, &bignum->mpi));
+  check_result(mbedtls_mpi_shift_r(&result->mpi, bits));
+  return janet_wrap_abstract(result);
+}
+
 static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer)
 {
   Janet argv[1] = {janet_wrap_abstract(bignum)};
@@ -917,25 +953,6 @@ int valid_digits(const uint8_t * data, int32_t size, int radix)
     return 0;
   }
   return 1;
-}
-
-void check_result(int mbedtls_result)
-{
-  if (mbedtls_result == 0)
-  {
-    return;
-  }
-  switch (mbedtls_result)
-  {
-    case MBEDTLS_ERR_MPI_NOT_ACCEPTABLE: janet_panic("The input value was not acceptable");
-    case MBEDTLS_ERR_MPI_NEGATIVE_VALUE: janet_panic("An input value was negative when it cannot be");
-    case MBEDTLS_ERR_MPI_INVALID_CHARACTER: janet_panic("Cannot parse, an invalid character was found");
-    case MBEDTLS_ERR_MPI_DIVISION_BY_ZERO: janet_panic("Division by zero");
-    case MBEDTLS_ERR_MPI_ALLOC_FAILED: janet_panic("Ran out of memory");
-    case MBEDTLS_ERR_MPI_BAD_INPUT_DATA: janet_panic("One of the inputs is bad");
-    case MBEDTLS_ERR_MPI_FILE_IO_ERROR: janet_panic("File IO error with bignum");
-  }
-  janet_panicf("An internal error occurred: %x");
 }
 
 bignum_object * new_bignum()
