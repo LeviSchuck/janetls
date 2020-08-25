@@ -69,6 +69,7 @@ Janet value_to_option(option_list_entry * list, int size, int value);
 // Byte view helpers
 JanetByteView janet_to_bytes(Janet x);
 int janet_is_byte_typed(Janet x);
+void check_result(int mbedtls_result);
 
 
 void submod_md(JanetTable * env);
@@ -76,6 +77,7 @@ void submod_util(JanetTable * env);
 void submod_bignum(JanetTable * env);
 void submod_random(JanetTable * env);
 void submod_byteslice(JanetTable * env);
+void submod_asn1(JanetTable * env);
 
 #ifndef NULL
 #define NULL 0

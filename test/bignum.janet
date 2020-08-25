@@ -105,12 +105,4 @@
 (deftest "Shift Left 2" (is (= (bignum/parse 400) (:<< hundred 2))))
 (deftest "Shift Right 2" (is (= (bignum/parse 25) (:>> hundred 2))))
 
-(def silly-large-number (bignum/parse "10000000000000000000000000000055"))
-(deftest "Decode Encode 127" (is (= silly-large-number (bignum/decode-127 (bignum/encode-127 silly-large-number)))))
-(deftest "Encode 127 small is small" (is (= "\x05" (bignum/encode-127 5))))
-(deftest "Decode 127 small is small" (is (= five (bignum/decode-127 "\x05"))))
-
-(deftest "Encode 127 medium is medium" (is (= "\x81\x01" (bignum/encode-127 129))))
-(deftest "Decode 127 medium is medium" (is (= (bignum/parse 129) (bignum/decode-127 "\x81\x01"))))
-
 (run-tests!)

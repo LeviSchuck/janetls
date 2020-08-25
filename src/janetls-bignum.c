@@ -48,15 +48,13 @@ static Janet bignum_is_prime(int32_t argc, Janet * argv);
 static Janet bignum_compare_janet(int32_t argc, Janet * argv);
 static Janet bignum_shift_left(int32_t argc, Janet * argv);
 static Janet bignum_shift_right(int32_t argc, Janet * argv);
-static Janet bignum_encode_127(int32_t argc, Janet * argv);
-static Janet bignum_decode_127(int32_t argc, Janet * argv);
 static int bignum_compare_untyped(void * x, void * y);
 int bignum_compare(bignum_object * x, bignum_object * y);
 static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer);
 static void bignum_marshal(void * bignum, JanetMarshalContext * ctx);
 static void *bignum_unmarshal(JanetMarshalContext * ctx);
 int valid_digits(const uint8_t * bytes, int32_t size, int radix);
-void check_result(int mbedtls_result);
+
 static int32_t bignum_hash(void *p, size_t len);
 bignum_object * new_bignum();
 
@@ -266,14 +264,6 @@ static const JanetReg cfuns[] =
     },
   {"bignum/shift-right", bignum_shift_right, "(janetls/bignum/shift-right bignum bits)\n\n"
     "Shifts the bignumber to the right in binary by the given amount of bits."
-    },
-  {"bignum/encode-127", bignum_encode_127, "(janetls/bignum/encode-128 bignum)\n\n"
-    "Encodes a bignumber in binary big endian with bits that flag for continuing the number, used in ASN.1 DER.\n"
-    "It is highly unlikely that you will have use for this function."
-    },
-  {"bignum/decode-127", bignum_decode_127, "(janetls/bignum/decode-128 string)\n\n"
-    "Decodes an arbitrary length byte sequence in base 127, used in ASN.1 DER\n"
-    "It is highly unlikely that you will have use for this function."
     },
   {NULL, NULL, NULL}
 };
@@ -727,35 +717,6 @@ static Janet bignum_shift_right(int32_t argc, Janet * argv)
   return janet_wrap_abstract(result);
 }
 
-static Janet bignum_encode_127(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 1);
-  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  // 16 is arbitrarily chosen.
-  JanetBuffer * buffer = janet_buffer(16);
-  check_result(encode_base127(bignum, buffer));
-  return janet_wrap_string(janet_string(buffer->data, buffer->count));
-}
-
-static Janet bignum_decode_127(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 1);
-  if (!janet_is_byte_typed(argv[0]))
-  {
-    janet_panicf("Expected string or buffer to decode from, but got %p", argv[0]);
-  }
-  JanetByteView bytes = janet_to_bytes(argv[0]);
-  int position = 0;
-  bignum_object * bignum = new_bignum();
-
-  check_result(decode_base127(bytes.bytes, bytes.len, bignum, &position));
-  if (position < bytes.len)
-  {
-    janet_panicf("Expected to parse the entire string or buffer as a bignum, but %d bytes remain", (long)(bytes.len - position));
-  }
-  return janet_wrap_abstract(bignum);
-}
-
 static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer)
 {
   Janet argv[1] = {janet_wrap_abstract(bignum)};
@@ -994,25 +955,6 @@ int valid_digits(const uint8_t * data, int32_t size, int radix)
   return 1;
 }
 
-void check_result(int mbedtls_result)
-{
-  if (mbedtls_result == 0)
-  {
-    return;
-  }
-  switch (mbedtls_result)
-  {
-    case MBEDTLS_ERR_MPI_NOT_ACCEPTABLE: janet_panic("The input value was not acceptable");
-    case MBEDTLS_ERR_MPI_NEGATIVE_VALUE: janet_panic("An input value was negative when it cannot be");
-    case MBEDTLS_ERR_MPI_INVALID_CHARACTER: janet_panic("Cannot parse, an invalid character was found");
-    case MBEDTLS_ERR_MPI_DIVISION_BY_ZERO: janet_panic("Division by zero");
-    case MBEDTLS_ERR_MPI_ALLOC_FAILED: janet_panic("Ran out of memory");
-    case MBEDTLS_ERR_MPI_BAD_INPUT_DATA: janet_panic("One of the inputs is bad");
-    case MBEDTLS_ERR_MPI_FILE_IO_ERROR: janet_panic("File IO error with bignum");
-  }
-  janet_panicf("An internal error occurred: %x", mbedtls_result);
-}
-
 bignum_object * new_bignum()
 {
   bignum_object * result = janet_abstract(&bignum_object_type, sizeof(bignum_object));
@@ -1020,116 +962,4 @@ bignum_object * new_bignum()
   result->hash = 0;
   mbedtls_mpi_init(&result->mpi);
   return result;
-}
-
-int decode_base127(const uint8_t * buffer, int buffer_length, bignum_object * destination, int * position)
-{
-  int ret = 0;
-  mbedtls_mpi * num = &destination->mpi;
-  mbedtls_mpi copy;
-  mbedtls_mpi_init(&copy);
-  ret = mbedtls_mpi_lset(num, 0);
-
-  if (ret != 0)
-  {
-    return ret;
-  }
-
-  while(1)
-  {
-    int pos = *position;
-    if (pos >= buffer_length)
-    {
-      // we've hit the end of the buffer
-      break;
-    }
-    uint8_t byte = buffer[pos];
-    (*position)++;
-    ret = mbedtls_mpi_shift_l(num, 7);
-    if (ret != 0)
-    {
-      break;
-    }
-    ret = mbedtls_mpi_copy(&copy, num);
-    if (ret != 0)
-    {
-      break;
-    }
-    ret = mbedtls_mpi_add_int(num, &copy, byte & 0x7f);
-    if (ret != 0)
-    {
-      break;
-    }
-    if ((byte & 0x80) == 0)
-    {
-      // We've hit the end!
-      ret = 0;
-      break;
-    }
-  }
-
-  mbedtls_mpi_free(&copy);
-
-  return ret;
-}
-
-int encode_base127(bignum_object * source, JanetBuffer * buffer)
-{
-  int ret = 0;
-  if (mbedtls_mpi_cmp_int(&source->mpi, 0) == 0)
-  {
-    // Trivial case.
-    janet_buffer_ensure(buffer, 1, 1);
-    janet_buffer_push_u8(buffer, 0);
-    return 0;
-  }
-  // chosen 16 bytes arbitrarily..
-  JanetBuffer * intermediate = janet_buffer(16);
-  int size = 0;
-  mbedtls_mpi acc;
-  mbedtls_mpi_init(&acc);
-  ret = mbedtls_mpi_copy(&acc, &source->mpi);
-  if (ret != 0)
-  {
-    goto cleanup;
-  }
-
-  while (mbedtls_mpi_cmp_int(&acc, 0) == 1)
-  {
-    mbedtls_mpi_uint digit = 0;
-    ret = mbedtls_mpi_mod_int(&digit, &acc, 128);
-    if (ret != 0)
-    {
-      goto cleanup;
-    }
-    janet_buffer_ensure(intermediate, size, 4);
-    if (size == 0)
-    {
-      janet_buffer_push_u8(intermediate, digit & 0xff);
-    }
-    else
-    {
-      janet_buffer_push_u8(intermediate, (digit | 0x80) & 0xff);
-    }
-    ret = mbedtls_mpi_shift_r(&acc, 7);
-    if (ret != 0)
-    {
-      goto cleanup;
-    }
-    size++;
-  }
-
-  JanetByteView bytes = janet_to_bytes(janet_wrap_buffer(intermediate));
-  janet_buffer_ensure(buffer, bytes.len, 4);
-  for (int i = (bytes.len - 1); i >= 0; i--)
-  {
-    // Add the intermediate buffer in reverse to the output buffer, since
-    // we worked on least significant 128 bit chunks at a time
-    janet_buffer_push_u8(buffer, bytes.bytes[i]);
-  }
-
-cleanup:
-  mbedtls_mpi_free(&acc);
-
-  return ret;
 }
