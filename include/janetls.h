@@ -23,6 +23,7 @@
 #ifndef JANETLS_H
 #define JANETLS_H
 #include <janet.h>
+#include "janetls-errors.h"
 
 typedef enum content_encoding
 {
@@ -70,6 +71,7 @@ Janet value_to_option(option_list_entry * list, int size, int value);
 JanetByteView janet_to_bytes(Janet x);
 int janet_is_byte_typed(Janet x);
 void check_result(int mbedtls_result);
+const char * result_error_message(int result, uint8_t * unhandled);
 
 
 void submod_md(JanetTable * env);
