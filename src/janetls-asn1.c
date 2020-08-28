@@ -24,6 +24,7 @@
 #include "janetls-asn1.h"
 #include "janetls-bignum.h"
 #include "janetls-byteslice.h"
+#include <ctype.h>
 
 int parse_length(asn1_parser * parser, uint64_t * length);
 int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed);
@@ -82,23 +83,37 @@ JANET_THREAD_LOCAL size_t thread_position = 0;
 static Janet asn1_decode(int32_t argc, Janet * argv)
 {
   thread_position = 0;
-  janet_arity(argc, 1, 3);
+  janet_arity(argc, 1, 5);
   if (!janet_is_byte_typed(argv[0]))
   {
     janet_panicf("Expected string or buffer, but got %p", argv[0]);
   }
   uint64_t flags = 0;
+  base64_variant base64_variant = STANDARD;
 
   for (int i = 1; i < argc; i++)
   {
     JanetKeyword keyword = janet_getkeyword(argv, i);
-    if (janet_cstrcmp(keyword, "eager-parse"))
+    if (janet_cstrcmp(keyword, "eager-parse") == 0)
     {
       flags |= ASN1_FLAG_EAGER_PARSE;
     }
-    else if (janet_cstrcmp(keyword, "bignum-as-string"))
+    else if (janet_cstrcmp(keyword, "bignum-as-string") == 0)
     {
       flags |= ASN1_FLAG_BIGNUM_AS_STRING;
+    }
+    else if (janet_cstrcmp(keyword, "base64-non-ascii") == 0)
+    {
+      flags |= ASN1_BASE64_NON_ASCII;
+    }
+    else if (janet_cstrcmp(keyword, "base64-url") == 0)
+    {
+      base64_variant = URL;
+    }
+    else if (janet_cstrcmp(keyword, "json") == 0)
+    {
+      flags |= ASN1_BASE64_NON_ASCII | ASN1_FLAG_BIGNUM_AS_STRING;
+      base64_variant = URL;
     }
     else
     {
@@ -113,6 +128,7 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
   parser.position = 0;
   parser.source = argv[0];
   parser.flags = flags;
+  parser.base64_variant = base64_variant;
 
   JanetTuple result;
   check_result(decode_asn1_construction(&parser, &result));
@@ -229,8 +245,11 @@ int decode_base127(JanetByteView bytes, Janet * wrapped_destination, int * posit
     parser.length = bytes.len;
     parser.position = 0;
     parser.source = janet_wrap_nil();
+    parser.base64_variant = STANDARD;
+    parser.flags = 0;
     uint64_t result;
     ret = decode_base127_as_u64(&parser, &result);
+    *position = parser.position;
     if (ret == 0)
     {
       if (type == NUMBER)
@@ -877,6 +896,39 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
   {
     janet_table_put(result, janet_ckeywordv("type"), janet_cstringv(class_keyword));
   }
+
+  if (janet_checktype(value, JANET_STRING) && (parser->flags & ASN1_BASE64_NON_ASCII))
+  {
+    JanetStringHead * head = janet_string_head(janet_unwrap_string(value));
+    int is_ascii = 1;
+    for (int32_t i = 0; i < head->length; i++)
+    {
+      if (!isprint(head->data[i]))
+      {
+        is_ascii = 0;
+        break;
+      }
+    }
+    if (!is_ascii)
+    {
+      value = base64_encode(head->data, head->length, parser->base64_variant);
+      Janet encoding = janet_wrap_nil();
+      switch (parser->base64_variant)
+      {
+        case STANDARD:
+          encoding = janet_cstringv("base64");
+          break;
+        case URL:
+          encoding = janet_cstringv("base64url");
+          break;
+        default:
+          encoding = janet_cstringv("unspecified base64");
+          break;
+      }
+      janet_table_put(result, janet_ckeywordv("encoding"), encoding);
+    }
+  }
+
   janet_table_put(result, janet_ckeywordv("value"), value);
   // janet_table_put(result, janet_ckeywordv("position"), janet_wrap_number(tag.tag_position));
   // janet_table_put(result, janet_cstringv("raw-tag"), janet_wrap_number(tag.tag));

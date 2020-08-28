@@ -25,25 +25,6 @@
 #include <janet.h>
 #include "janetls-errors.h"
 
-typedef enum content_encoding
-{
-  RAW_BYTE = 0,
-  HEX,
-  BASE_64,
-} content_encoding;
-
-typedef enum base64_variant
-{
-  STANDARD = 0,
-  STANDARD_UNPADDED,
-  PEM,
-  MIME,
-  IMAP,
-  URL,
-  URL_UNPADDED,
-  PGP,
-} base64_variant;
-
 typedef struct option_list_entry {
   int value;
   char option[32];
@@ -53,16 +34,6 @@ typedef struct option_list_entry {
 #define OPTION_LIST_HIDDEN 1
 #define OPTION_LIST_CASE_SENSITIVE 2
 
-Janet hex_encode(const uint8_t * str, unsigned int length);
-Janet hex_decode(const uint8_t * str, unsigned int length);
-Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant variant);
-Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant variant);
-int get_base64_variant(int argc, Janet * argv, int index, uint8_t panic, base64_variant * variant);
-int get_content_encoding(int argc, Janet * argv, int index, uint8_t panic, content_encoding * encoding);
-Janet content_to_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
-Janet content_from_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
-// Tries to consume arguments pertaining to encoding
-int extract_encoding(int argc, Janet * argv, int offset, content_encoding * encoding, int * variant);
 // Option list helpers
 int search_option_list(option_list_entry * list, int list_size, JanetByteView str, int * destination);
 Janet enumerate_option_list(option_list_entry * list, int size);
@@ -72,7 +43,6 @@ JanetByteView janet_to_bytes(Janet x);
 int janet_is_byte_typed(Janet x);
 void check_result(int mbedtls_result);
 const char * result_error_message(int result, uint8_t * unhandled);
-
 
 void submod_md(JanetTable * env);
 void submod_util(JanetTable * env);

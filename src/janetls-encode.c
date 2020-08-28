@@ -21,6 +21,7 @@
  */
 
 #include "janetls.h"
+#include "janetls-encoding.h"
 
 Janet hex_encode(const uint8_t * str, unsigned int length)
 {

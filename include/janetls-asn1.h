@@ -23,6 +23,8 @@
 #ifndef JANETLS_ASN1_H
 #define JANETLS_ASN1_H
 #include <janet.h>
+#include "janetls-encoding.h"
+
 
 typedef enum number_type {
   BIGNUM = 0,
@@ -63,6 +65,7 @@ typedef struct asn1_parser {
   size_t position;
   size_t length;
   uint64_t flags;
+  base64_variant base64_variant;
 } asn1_parser;
 
 typedef struct asn1_parsed_tag {
@@ -83,9 +86,13 @@ typedef struct asn1_parsed_tag {
 typedef enum asn1_flags {
   ASN1_BIGNUM_AS_STRING = 0,
   ASN1_EAGER_PARSE,
+  ASN1_BASE64_NON_ASCII,
+  ASN1_BASE64_USE_URL,
 } asn1_flags;
 
 #define ASN1_FLAG_BIGNUM_AS_STRING (1 << ASN1_BIGNUM_AS_STRING)
 #define ASN1_FLAG_EAGER_PARSE (1 << ASN1_EAGER_PARSE)
+#define ASN1_FLAG_BASE64_NON_ASCII (1 << ASN1_BASE64_NON_ASCII)
+#define ASN1_FLAG_BASE64_USE_URL (1 << ASN1_BASE64_USE_URL)
 
 #endif
