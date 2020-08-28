@@ -41,7 +41,7 @@ BEx5UsGrslr6Xdw7XTuYM5Ep0uRBh8vjWZGADgfYGoSGrPY91urDC548Rsw3MbbU
 3qKa3KXaKtNxurS/fwQkCQHeoIAy2aRltkFsaOfeghvX4kTQFAh7uLm+JV4xGrUU
 sjtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ="))
 
-(def rsa-key-json '({
+(def rsa-key-json '{
   :value (
     {:value "0" :type "integer"}
     {:value "160130065517131389311344861145589848370959233533492526527506806257632158161956866978965544486311181725659944465317576320271788371253085185156632919863850842571131863281257875796540238614704909618203514071942012433027603660426789715885659507750104298441589289165587947230177847758528357237225001175279364804761" :type "integer"}
@@ -52,22 +52,24 @@ sjtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ="))
     {:value "10947860634332082191294711521221546001958160819527113539184812438075461547603904969003011630796525655154732582077398226999666154537319369930990533484692297" :type "integer"}
     {:value "1401231045962674716292330515508780946720542762577378938170703110401088485398064898993680983162840333063932798069115771522205599073816021643391649328382217" :type "integer"}
     {:value "6266931931866644824710628140478842048413702666464486531757332339811743806283458293992494572738709008699929512988707435077157636665116508077025012168160740" :type "integer"}
-    )
+  )
   :type "sequence"
-  }))
+})
 
-(def ec-key-json '({
+(def ec-key-json '{
   :value (
     {:value "1" :type "integer"}
     {:value "fh63vjtts6_54tY1JbTW2v3O5hJgZKMFPpPg1Ok1Mtg=" :encoding "base64url" :type "octet-string"}
     {:tag 0 :value (
-      {:value (1 2 840 10045 3 1 7) :type "object-identifier"}
-      {:tag 1 :value (
-        {:value "BJcvxDPpROfdO8wTcGMtkEOlFSkAtMBGBf6cTbZKDDuAswvl7WVoUVTLILXz2joHAm-RGpg12FevCLrPb-1WfY0A" :type "bit-string" :bits 520 :encoding "base64url"})
-      :type "context-specific"
+      {:value "1.2.840.10045.3.1.7" :type "object-identifier"}
+      {:tag 1 :value
+        {:value "BJcvxDPpROfdO8wTcGMtkEOlFSkAtMBGBf6cTbZKDDuAswvl7WVoUVTLILXz2joHAm-RGpg12FevCLrPb-1WfY0A" :type "bit-string" :bits 520 :encoding "base64url"}
+        :type "context-specific"
       })
-    :type "context-specific"})
-  :type "sequence"}))
+    :type "context-specific"
+  })
+  :type "sequence"
+})
 
 # Test ASN1 Decode
 (deftest "RSA key decode meets expectations" (is (= rsa-key-json (asn1/decode rsa-key :json))))

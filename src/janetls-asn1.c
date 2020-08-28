@@ -33,7 +33,7 @@ int decode_base127_as_u64(asn1_parser * parser, uint64_t * external_result);
 int encode_base127(Janet source, JanetBuffer * buffer);
 int decode_class(uint8_t byte_tag, asn1_class * result);
 int decode_asn1(asn1_parser * parser, JanetStruct * output);
-int decode_asn1_construction(asn1_parser * parser, JanetTuple * output);
+int decode_asn1_construction(asn1_parser * parser, Janet * output);
 
 static Janet asn1_encode_127(int32_t argc, Janet * argv);
 static Janet asn1_decode_127(int32_t argc, Janet * argv);
@@ -83,7 +83,7 @@ JANET_THREAD_LOCAL size_t thread_position = 0;
 static Janet asn1_decode(int32_t argc, Janet * argv)
 {
   thread_position = 0;
-  janet_arity(argc, 1, 5);
+  janet_arity(argc, 1, 10);
   if (!janet_is_byte_typed(argv[0]))
   {
     janet_panicf("Expected string or buffer, but got %p", argv[0]);
@@ -110,9 +110,20 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
     {
       base64_variant = URL;
     }
+    else if (janet_cstrcmp(keyword, "string-oid") == 0)
+    {
+      flags |= ASN1_FLAG_STRING_OID;
+    }
+    else if (janet_cstrcmp(keyword, "collapse-single-constructions") == 0)
+    {
+      flags |= ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS;
+    }
     else if (janet_cstrcmp(keyword, "json") == 0)
     {
-      flags |= ASN1_BASE64_NON_ASCII | ASN1_FLAG_BIGNUM_AS_STRING;
+      flags |= ASN1_BASE64_NON_ASCII
+        | ASN1_FLAG_BIGNUM_AS_STRING
+        | ASN1_FLAG_STRING_OID
+        | ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS;
       base64_variant = URL;
     }
     else
@@ -130,9 +141,9 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
   parser.flags = flags;
   parser.base64_variant = base64_variant;
 
-  JanetTuple result;
+  Janet result;
   check_result(decode_asn1_construction(&parser, &result));
-  return janet_wrap_tuple(result);
+  return result;
 }
 
 static Janet asn1_encode_127(int32_t argc, Janet * argv)
@@ -554,7 +565,7 @@ int parse_length(asn1_parser * parser, uint64_t * length)
 }
 
 
-int decode_asn1_construction(asn1_parser * parser, JanetTuple * output)
+int decode_asn1_construction(asn1_parser * parser, Janet * output)
 {
   JanetArray * array = janet_array(10);
   int ret = 0;
@@ -574,7 +585,14 @@ int decode_asn1_construction(asn1_parser * parser, JanetTuple * output)
     goto end;
   }
 
-  *output = janet_tuple_n(array->data, array->count);
+  if ((parser->flags & ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS) && count == 1)
+  {
+    *output = array->data[0];
+  }
+  else
+  {
+    *output = janet_wrap_tuple(janet_tuple_n(array->data, array->count));
+  }
 
 end:
   return ret;
@@ -740,21 +758,65 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
           value2 = value2 - 80;
         }
       }
-      // Add these to the result
-      janet_array_push(array, janet_wrap_number(value1));
-      janet_array_push(array, janet_wrap_number(value2));
-      // All further numbers are base127 encoded
-      // They could technically be bignums, but there's no reasonable
-      // use case out there for them to be large.
-      while (parser->position < end_position)
+
+      if (parser->flags & ASN1_FLAG_STRING_OID)
       {
-        uint64_t oid_part;
-        ret = decode_base127_as_u64(parser, &oid_part);
-        if (ret != 0)
+        // 32 is 1.5x what I see normally for OIDs, so we shouldn't have
+        // any reallocation.
+        JanetBuffer * buffer = janet_buffer(32);
+        int s_ret = 0;
+        // 32 is beyond the size of a single unsigned 64 bit number in base 10
+        // can be which is 18446744073709551615 (20 digits)
+        char digit_buffer[32];
+        s_ret = sprintf(digit_buffer, "%u.%u", value1, value2);
+        if (s_ret < 0)
         {
+          ret = JANETLS_ERR_ASN1_OTHER;
           goto end;
         }
-        janet_array_push(array, janet_wrap_number(oid_part));
+        // sprintf adds \0 to the end of the digit_buffer
+        // making it a valid c string for use here.
+        janet_buffer_push_cstring(buffer, digit_buffer);
+        // Begin the rest of them.
+        // We're guaranteed to have a prefix of numbers, so every following one
+        // will have a '.' delimeter before appending to our output buffer.
+        while (parser->position < end_position)
+        {
+          uint64_t oid_part;
+          ret = decode_base127_as_u64(parser, &oid_part);
+          if (ret != 0)
+          {
+            goto end;
+          }
+          s_ret = sprintf(digit_buffer, ".%lu", oid_part);
+          if (s_ret < 0)
+          {
+            ret = JANETLS_ERR_ASN1_OTHER;
+            goto end;
+          }
+          janet_buffer_push_cstring(buffer, digit_buffer);
+        }
+        value = janet_wrap_string(janet_string(buffer->data, buffer->count));
+      }
+      else
+      {
+        // Add these to the result
+        janet_array_push(array, janet_wrap_number(value1));
+        janet_array_push(array, janet_wrap_number(value2));
+        // All further numbers are base127 encoded
+        // They could technically be bignums, but there's no reasonable
+        // use case out there for them to be large.
+        while (parser->position < end_position)
+        {
+          uint64_t oid_part;
+          ret = decode_base127_as_u64(parser, &oid_part);
+          if (ret != 0)
+          {
+            goto end;
+          }
+          janet_array_push(array, janet_wrap_number(oid_part));
+        }
+        value = janet_wrap_tuple(janet_tuple_n(array->data, array->count));
       }
       if (parser->position > end_position)
       {
@@ -762,7 +824,6 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
         ret = JANETLS_ERR_ASN1_OBJECT_IDENTIFIER_INVALID_LENGTH;
         goto end;
       }
-      value = janet_wrap_tuple(janet_tuple_n(array->data, array->count));
       type_keyword = "object-identifier";
       break;
     }
@@ -849,10 +910,10 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
 
   if (tag.constructed)
   {
-    JanetTuple sub_value;
+    Janet sub_value;
     ret = decode_asn1_construction(parser, &sub_value);
     if (ret != 0) goto end;
-    value = janet_wrap_tuple(sub_value);
+    value = sub_value;
   }
 
   if (sub_value)
@@ -868,13 +929,13 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
     parser->length = tag.value_position + tag.value_length;
 
 
-    JanetTuple sub_value;
+    Janet sub_value;
     int sub_ret = decode_asn1_construction(parser, &sub_value);
 
     if (sub_ret == 0)
     {
       // Decoding succeded!
-      value = janet_wrap_tuple(sub_value);
+      value = sub_value;
     }
 
     // Restore position data
