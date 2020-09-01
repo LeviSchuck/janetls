@@ -1344,15 +1344,41 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
 push_bignum:
       // Get how many bytes it will take to write this in big endian
       size = (int32_t)mbedtls_mpi_size(&bignum->mpi);
-      buffer = janet_buffer(size);
-      // Write out the integer
-      retcheck(mbedtls_mpi_write_binary(&bignum->mpi, buffer->data, size));
-      buffer->count += size;
+      if (size <= 0)
+      {
+        uint8_t zero = 0;
+        // Zero needs at least one byte.
+        retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_INTEGER));
+        retcheck(push_asn1_length(array, 1));
+        janet_array_push(array, janet_wrap_string(janet_string(&zero, 1)));
+      }
+      else
+      {
+        buffer = janet_buffer(size);
+        // Write out the integer
+        retcheck(mbedtls_mpi_write_binary(&bignum->mpi, buffer->data, size));
+        buffer->count += size;
 
-      // Now that the value is intact, prepare the other details
-      retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_INTEGER));
-      retcheck(push_asn1_length(array, size));
-      janet_array_push(array, janet_wrap_buffer(buffer));
+        // Now that the value is intact, prepare the other details
+        retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_INTEGER));
+
+        uint8_t first_byte = buffer->data[0];
+        int prepend_byte = 0;
+        if (first_byte & 0x80)
+        {
+          // ASN.1 expects two's compliment, so we prepend an extra empty byte.
+          size++;
+          prepend_byte = 1;
+        }
+
+        retcheck(push_asn1_length(array, size));
+        if (prepend_byte)
+        {
+          uint8_t zero = 0;
+          janet_array_push(array, janet_wrap_string(janet_string(&zero, 1)));
+        }
+        janet_array_push(array, janet_wrap_buffer(buffer));
+      }
     }
     else
     {
@@ -1917,6 +1943,34 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
       // Good news is existing conversions exist!
       Janet bignum_value = janet_wrap_nil();
       retcheck(janetls_bignum_to_bytes(&bignum_value, value));
+      #ifdef PRINT_TRACE_EVERYTHING
+      janet_eprintf("Bignum value written as %p\n", bignum_value);
+      #endif
+      JanetByteView bignum_bytes = janet_to_bytes(bignum_value);
+      uint8_t zero = 0;
+      if (bignum_bytes.len == 0)
+      {
+        #ifdef PRINT_TRACE_EVERYTHING
+        janet_eprintf("Integer appears to be zero, adding zero byte\n", value);
+        #endif
+        // ASN.1 needs at least one byte for integers.
+        janet_array_push(array, janet_wrap_string(janet_string(&zero, 1)));
+        break;
+      }
+
+      if (bignum_bytes.bytes[0] & 0x80)
+      {
+        // ASN.1 expects two's compliment, so we prepend an extra empty byte
+        // when the high order bit is 1
+        #ifdef PRINT_TRACE_EVERYTHING
+        janet_eprintf("Integer high bit is set, adding zero byte\n", value);
+        #endif
+        janet_array_push(array, janet_wrap_string(janet_string(&zero, 1)));
+      }
+
+      #ifdef PRINT_TRACE_EVERYTHING
+      janet_eprintf("Integer is ready to push with a size of %d\n", bignum_bytes.len);
+      #endif
       janet_array_push(array, bignum_value);
       break;
     }

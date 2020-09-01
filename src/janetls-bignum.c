@@ -1023,6 +1023,12 @@ int janetls_bignum_to_bytes(Janet * destination, Janet value)
 
   bignum_object * bignum = janet_unwrap_abstract(bignum_value);
   size_t bytes = mbedtls_mpi_size(&bignum->mpi);
+  if (bytes == 0)
+  {
+    *destination = janet_cstringv("");
+    goto end;
+  }
+
   string_value = janet_smalloc(bytes);
   if (string_value == NULL)
   {
@@ -1031,7 +1037,7 @@ int janetls_bignum_to_bytes(Janet * destination, Janet value)
   }
 
   retcheck(mbedtls_mpi_write_binary(&bignum->mpi, string_value, bytes));
-  *destination = janet_cstringv((const char *)string_value);
+  *destination = janet_wrap_string(janet_string(string_value, bytes));
 
 end:
   if (string_value != NULL)
