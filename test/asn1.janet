@@ -61,8 +61,7 @@ sjtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ="))
     {:value "1" :type :integer}
     {:value "fh63vjtts6_54tY1JbTW2v3O5hJgZKMFPpPg1Ok1Mtg=" :encoding :base64-url :type :octet-string}
     {:tag 0
-    :value (
-      {:value "1.2.840.10045.3.1.7" :type :object-identifier})
+    :value {:value "1.2.840.10045.3.1.7" :type :object-identifier}
     :type :context-specific
     }
     {:tag 1
@@ -74,10 +73,11 @@ sjtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ="))
 })
 
 # Test ASN1 Decode
-# (deftest "RSA key decode meets expectations" (is (= rsa-key-json (asn1/decode rsa-key :json))))
-#(deftest "EC key decode meets expectations" (is (= ec-key-json (asn1/decode ec-key :json))))
+(deftest "RSA key decode meets expectations" (is (= rsa-key-json (asn1/decode rsa-key :json))))
+(deftest "EC key decode meets expectations" (is (= ec-key-json (asn1/decode ec-key :json))))
 
 (deftest "Encode EC key gives same binary" (is (= ec-key (asn1/encode ec-key-json))))
+(deftest "Encode RSA key gives same binary" (is (= rsa-key (asn1/encode rsa-key-json))))
 
 
 (run-tests!)

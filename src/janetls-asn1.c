@@ -27,6 +27,8 @@
 #include "janetls-encoding.h"
 #include <ctype.h>
 
+// #define PRINT_TRACE_EVERYTHING
+
 option_list_entry universal_types[] = {
   {ASN1_UNIVERSAL_TYPE_END_OF_CONTENT, "not-universal", OPTION_LIST_HIDDEN},
   {ASN1_UNIVERSAL_TYPE_END_OF_CONTENT, "end-of-content", OPTION_LIST_HIDDEN},
@@ -89,7 +91,7 @@ int decode_base127(JanetByteView bytes, Janet * destination, int * position, num
 int decode_base127_as_u64(asn1_parser * parser, uint64_t * external_result);
 int decode_class(uint8_t byte_tag, asn1_class * result);
 int decode_asn1(asn1_parser * parser, JanetStruct * output);
-int decode_asn1_construction(asn1_parser * parser, Janet * output);
+int decode_asn1_construction(asn1_parser * parser, Janet * output, size_t length);
 
 // Encode things
 int encode_base127(Janet source, JanetBuffer * buffer);
@@ -224,7 +226,7 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
   parser.base64_variant = base64_variant;
 
   Janet result;
-  check_result(decode_asn1_construction(&parser, &result));
+  check_result(decode_asn1_construction(&parser, &result, parser.length));
   return result;
 }
 
@@ -235,7 +237,6 @@ static Janet asn1_encode(int32_t argc, Janet * argv)
   // The size is arbitrary, I don't know how many are needed right now.
   JanetArray * array = janet_array(100);
   check_result(push_asn1_tag_length_value(array, argv[0]));
-  printf("Actual size is %d\n", array->count);
   Janet result = janet_wrap_nil();
   check_result(flatten_array(&result, array));
   return result;
@@ -615,12 +616,13 @@ int parse_length(asn1_parser * parser, uint64_t * length)
 }
 
 
-int decode_asn1_construction(asn1_parser * parser, Janet * output)
+int decode_asn1_construction(asn1_parser * parser, Janet * output, size_t length)
 {
   JanetArray * array = janet_array(10);
   int ret = 0;
   int count = 0;
-  while (parser->position < parser->length)
+  size_t end_position = parser->position + length;
+  while (parser->position < end_position)
   {
     JanetStruct result;
     ret = decode_asn1(parser, &result);
@@ -945,37 +947,42 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
 
   if (tag.constructed)
   {
-    Janet sub_value;
-    ret = decode_asn1_construction(parser, &sub_value);
-    if (ret != 0) goto end;
-    value = sub_value;
+    Janet nested_value;
+    // Rewind to the tag value start position to continue decoding
+    parser->position = tag.value_position;
+    ret = decode_asn1_construction(parser, &nested_value, tag.value_length);
+    // Fast forward to end of content
+    parser->position = tag.value_position + tag.value_length;
+    thread_position = parser->position;
+    retcheck(ret);
+    value = nested_value;
   }
 
   if (sub_value)
   {
+    // TODO lhs revisit
     // A sub value is POSSIBLE. Not Guaranteed.
     // When we try to decode an ASN.1 document, it may fail!
     // When we fail, we should not fail this document.
     size_t old_thread_position = thread_position;
-    size_t old_position = parser->position;
     size_t old_length = parser->length;
 
     parser->position = tag.value_position;
     parser->length = tag.value_position + tag.value_length;
 
 
-    Janet sub_value;
-    int sub_ret = decode_asn1_construction(parser, &sub_value);
+    Janet nested_value;
+    int sub_ret = decode_asn1_construction(parser, &nested_value, tag.value_length);
 
     if (sub_ret == 0)
     {
       // Decoding succeded!
-      value = sub_value;
+      value = nested_value;
     }
 
     // Restore position data
     thread_position = old_thread_position;
-    parser->position = old_position;
+    parser->position = tag.value_position + tag.value_length;
     parser->length = old_length;
   }
 
@@ -1086,7 +1093,9 @@ int encode_asn1_length(Janet * result, int32_t size)
   if (size < 128)
   {
     uint8_t small_size = size;
+    #ifdef PRINT_TRACE_EVERYTHING
     janet_eprintf("Encoding length of 0x%0x\n", size);
+    #endif
     *result = janet_wrap_string(janet_string(&small_size, 1));
   }
   else
@@ -1225,7 +1234,9 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
   int32_t size = 0;
   JanetBuffer * buffer = NULL;
   bignum_object * bignum  = NULL;
+  #ifdef PRINT_TRACE_EVERYTHING
   janet_eprintf("Push tag-length-value of %p\n", value);
+  #endif
   // https://en.wikipedia.org/wiki/Distinguished_Encoding_Rules
   // DER type tag numbers
   if (janet_is_byte_typed(value))
@@ -1429,9 +1440,9 @@ end:
 int push_asn1_construction(JanetArray * array, const Janet * data, int32_t data_count)
 {
   int ret = 0;
-
+  #ifdef PRINT_TRACE_EVERYTHING
   janet_eprintf("Push ASN1 construction, with %d values\n", data_count);
-
+  #endif
   for (int i = 0; i < data_count; i++)
   {
     retcheck(push_asn1_tag_length_value(array, data[i]));
@@ -1489,8 +1500,9 @@ int push_asn1_struct(JanetArray * array, Janet value)
   retcheck(find_janet_field(&dict_encoding, view, capacity, "encoding"));
   retcheck(find_janet_field(&dict_constructed, view, capacity, "constructed"));
   retcheck(find_janet_field(&dict_bits, view, capacity, "bits"));
-
+  #ifdef PRINT_TRACE_EVERYTHING
   janet_eprintf("Encoding %p\n- type: %p, encoding: %p\n", value, dict_type, dict_encoding);
+  #endif
 
   int constructed = 0;
   int bits = 0;
@@ -1665,15 +1677,17 @@ int push_asn1_struct(JanetArray * array, Janet value)
   janet_array_push(array, janet_wrap_nil());
   int32_t start_position = length_position + 1;
   // Write out the value (this may involve multiple pushes if it is constructed.)
-  janet_eprintf("Before Push ASN1 value\n");
   retcheck(push_asn1_value(array, dict_value, universal_type, bits));
-  janet_eprintf("After Push ASN1 value\n");
   int32_t end_position = array->count;
   retcheck(count_length_in_array(&length, array, start_position, end_position));
   // Encode and replace the placeholder.
+  #ifdef PRINT_TRACE_EVERYTHING
   janet_eprintf("replacing value %p in array at position %d\n", array->data[length_position], length_position);
+  #endif
   retcheck(encode_asn1_length(array->data + length_position, length));
+  #ifdef PRINT_TRACE_EVERYTHING
   janet_eprintf("Length was %d\n", length);
+  #endif
 end:
   return ret;
 }
@@ -1715,7 +1729,9 @@ int determine_types(asn1_class * class, asn1_universal_type * universal_type, in
       int search_class = 0;
       if (search_option_list(asn1_class_types, ASN1_CLASS_TYPES_COUNT, type_bytes, &search_class))
       {
+        #ifdef PRINT_TRACE_EVERYTHING
         janet_eprintf("Parsed class for %p, got %d\n", dict_type, search_class);
+        #endif
         *class = search_class;
         if (*class == ASN1_CLASS_UNIVERSAL)
         {
@@ -1808,7 +1824,9 @@ int determine_type_by_value(asn1_universal_type * universal_type, int * construc
     || janet_checktype(dict_value, JANET_ARRAY)
     )
   {
+    #ifdef PRINT_TRACE_EVERYTHING
     janet_eprintf("Setting type to sequence and constructed Per the value %p\n", dict_value);
+    #endif
     *universal_type = ASN1_UNIVERSAL_TYPE_SEQUENCE;
     *constructed = 1;
   }
@@ -1890,7 +1908,9 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
     }
     case ASN1_UNIVERSAL_TYPE_INTEGER:
     {
+      #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("Integer value %p\n", value);
+      #endif
       // three cases, a string of digits,
       // and an abstract object of a bignum,
       // or a native janet number.
@@ -1909,7 +1929,9 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
     }
     case ASN1_UNIVERSAL_TYPE_OBJECT_IDENTIFIER:
     {
+      #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("Object identifier %p\n", value);
+      #endif
       // two cases, a string case with dots,
       // and a tuple of numbers.
       Janet oid_value = value;
@@ -1953,7 +1975,9 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
     }
     case ASN1_UNIVERSAL_TYPE_BIT_STRING:
     {
+      #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("bit string %p\n", value);
+      #endif
       // Requires an unused bits byte before the rest of the bytes.
       // In most cases, the unused bit count is 0.
       uint8_t unused = 0;
@@ -1971,7 +1995,9 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
     }
     case ASN1_UNIVERSAL_TYPE_OCTET_STRING:
     {
+      #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("Octet string %p\n", value);
+      #endif
       // Binary strings / buffers get put right into the array we're working on.
       if (janet_is_byte_typed(value))
       {
@@ -1991,7 +2017,9 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
     case ASN1_UNIVERSAL_TYPE_SEQUENCE:
     case ASN1_UNIVERSAL_TYPE_SET:
     {
+      #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("Sequence or set with value %p\n", value);
+      #endif
       if (janet_checktype(value, JANET_TUPLE) || janet_checktype(value, JANET_ARRAY))
       {
         const Janet * data = NULL;
@@ -2065,7 +2093,9 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
     case ASN1_UNIVERSAL_TYPE_RELATIVE_OID_IRI:
     default:
     {
+      #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("Type was not supported %p %d\n", value, type);
+      #endif
       ret = JANETLS_ERR_ASN1_UNSUPPORTED_TYPE;
       goto end;
     }

@@ -38,6 +38,7 @@
     "-Imbedtls/include/"
     "-Iinclude/"
     "-g"
+    "-O0"
     ;(if is-win [] ["-Wno-unused-parameter"])
     ]
   :lflags [
