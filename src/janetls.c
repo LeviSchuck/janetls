@@ -72,6 +72,12 @@ const char * result_error_message(int result, uint8_t * unhandled)
     case MBEDTLS_ERR_CTR_DRBG_REQUEST_TOO_BIG:
       return "Too many bytes were requested at once";
     // -------------- JANETLS ERRORS ------------------
+    case JANETLS_ERR_ENCODING_INVALID_CHARACTER:
+      return "Invalid character found during decoding";
+    case JANETLS_ERR_ENCODING_INVALID_LENGTH:
+      return "There are extra or missing characters in the encoded value";
+    case JANETLS_ERR_ENCODING_INVALID_TYPE:
+      return "Invalid encoding type";
     case JANETLS_ERR_ASN1_INVALID_BIT_STRING_LENGTH:
       return "A bitstring had an invalid length while parsing";
     case JANETLS_ERR_ASN1_EMPTY_INPUT:
@@ -96,6 +102,40 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "Invalid boolean length, should be 1 byte";
     case JANETLS_ERR_ASN1_OBJECT_IDENTIFIER_INVALID_LENGTH:
       return "Invalid object identifier length, either too short, or overflowed";
+    case JANETLS_ERR_ASN1_INVALID_OBJECT_IDENTIFIER:
+      return "Invalid ASN.1 Object Identifier";
+    case JANETLS_ERR_ASN1_NUMBER_WAS_FRACTIONAL:
+      return "A number provided as an ASN.1 integer had a fractional value";
+    case JANETLS_ERR_ASN1_MISSING_VALUE:
+      return "Expected to find a value for :value in one of the structs or tables provided for ASN.1 encoding";
+    case JANETLS_ERR_ASN1_INVALID_TAG:
+      return "Invalid ASN.1 tag value";
+    case JANETLS_ERR_ASN1_UNSUPPORTED_ENCODING:
+      return "Unsupported encoding for a value provided for ASN.1 encoding";
+    case JANETLS_ERR_ASN1_LENGTH_OVERFLOW:
+      return "Length overflow occurred during ASN.1 encoding";
+    case JANETLS_ERR_ASN1_UNSUPPORTED_TYPE:
+      return "A value found during ASN.1 encoding could not be encoded, the type is not supported";
+    case JANETLS_ERR_ASN1_INPUT_CANNOT_BE_DECODED:
+      return "An ASN.1 input could not be decoded";
+    case JANETLS_ERR_ASN1_INVALID_CONSTRUCTED_PARAMETER:
+      return "The :constructed field had a non boolean value";
+    case JANETLS_ERR_ASN1_INPUT_TYPE_MISSING:
+      return "An input :type is necessary but was not provided during ASN.1 encoding";
+    case JANETLS_ERR_ASN1_INVALID_INPUT_TYPE:
+      return "An input type provided was not valid during ASN.1 encoding";
+    case JANETLS_ERR_ASN1_INPUT_TYPE_NOT_IMPLEMENTED:
+      return "The input type for an ASN.1 value is not implemented";
+    case JANETLS_ERR_ASN1_INVALID_BITS:
+      return "The input :bits is not numeric or contains a fraction";
+    case JANETLS_ERR_INVALID_BOOLEAN_VALUE:
+      return "The :type was :boolean, but the value was neither true nor false";
+    case JANETLS_ERR_ASN1_INVALID_INTEGER:
+      return "The :type was :integer, but the value was not a number or a bignum";
+    case JANETLS_ERR_ASN1_INVALID_VALUE_TYPE:
+      return "The input value type could not be used during ASN.1 encoding";
+    case JANETLS_ERR_BIGNUM_COULD_NOT_CONVERT:
+      return "Could not convert value to a bignum when an integer or bignum was expected";
   }
   *unhandled = 1;
   return "An internal error occurred";

@@ -37,15 +37,15 @@
     ;default-cflags
     "-Imbedtls/include/"
     "-Iinclude/"
-    # "-g"
+    "-g"
     ;(if is-win [] ["-Wno-unused-parameter"])
     ]
   :lflags [
     ;default-lflags
     # Advapi32 provides windows security primitives, available since server 2003
     ;(if is-win ["Advapi32.lib"] [])
-    # "-g"
-    # "-O0"
+    "-g"
+    "-O0"
     ]
   :defines {
     "MBEDTLS_CONFIG_FILE" "\"janetls-config.h\""

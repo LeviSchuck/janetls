@@ -23,26 +23,37 @@
 #include "janetls.h"
 #include "janetls-encoding.h"
 
+int janetls_hex_decode_internal(Janet * result, const uint8_t * str, unsigned int length, int panic);
+int janetls_hex_encode_internal(Janet * result, const uint8_t * str, unsigned int length, int panic);
+int janetls_base64_encode_internal(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant, int panic);
+int janetls_base64_decode_internal(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant, int panic);
+int janetls_content_to_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant, int panic);
+int janetls_content_from_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant, int panic);
+
 Janet hex_encode(const uint8_t * str, unsigned int length)
 {
-  unsigned int hex_length = length * 2;
-  JanetBuffer * buffer = janet_buffer(hex_length);
-  unsigned int offset;
+  Janet result = janet_wrap_nil();
+  janetls_hex_encode_internal(&result, str, length, 1);
+  return result;
+}
 
-  for(offset = 0; offset < length; offset++)
-  {
-    // sprintf doesn't like unsigned chars, but we are fully within the
-    // signed and unsigned overlap.
-    char out[3];
-    sprintf(out, "%02x", str[offset] & 0xff);
-    janet_buffer_push_u8(buffer, out[0]);
-    janet_buffer_push_u8(buffer, out[1]);
-  }
+Janet hex_decode(const uint8_t * str, unsigned int length)
+{
+  Janet result = janet_wrap_nil();
+  janetls_hex_decode_internal(&result, str, length, 1);
+  return result;
+}
 
-  // from buffer, does a copy.
-  // Don't free the buffer / deinit the buffer
-  // it will lead to a double free.
-  return janet_wrap_string(janet_string(buffer->data, buffer->count));
+// Alternate version which should not panic
+int janetls_hex_encode(Janet * result, const uint8_t * str, unsigned int length)
+{
+  return janetls_hex_encode_internal(result, str, length, 0);
+}
+
+// Alternate version which does not panic (Unless janet buffer does)
+int janetls_hex_decode(Janet * result, const uint8_t * str, unsigned int length)
+{
+  return janetls_hex_decode_internal(result, str, length, 0);
 }
 
 static const unsigned char hex_dec_map[128] =
@@ -62,16 +73,50 @@ static const unsigned char hex_dec_map[128] =
     255, 255, 255, 255, 255, 255, 255, 255,           //
 };
 
-Janet hex_decode(const uint8_t * str, unsigned int length)
+int janetls_hex_encode_internal(Janet * result, const uint8_t * str, unsigned int length, int panic)
 {
+  int ret = 0;
+  unsigned int hex_length = length * 2;
+  JanetBuffer * buffer = janet_buffer(hex_length);
+  unsigned int offset;
+
+  for(offset = 0; offset < length; offset++)
+  {
+    // sprintf doesn't like unsigned chars, but we are fully within the
+    // signed and unsigned overlap.
+    char out[3];
+    sprintf(out, "%02x", str[offset] & 0xff);
+    janet_buffer_push_u8(buffer, out[0]);
+    janet_buffer_push_u8(buffer, out[1]);
+  }
+
+  // from buffer, does a copy.
+  // Don't free the buffer / deinit the buffer
+  // it will lead to a double free.
+  *result = janet_wrap_string(janet_string(buffer->data, buffer->count));
+  // end:
+  return ret;
+}
+
+int janetls_hex_decode_internal(Janet * result, const uint8_t * str, unsigned int length, int panic)
+{
+  int ret = 0;
   unsigned int hex_length = length / 2;
   JanetBuffer * buffer = janet_buffer(hex_length);
   unsigned int offset;
 
   if (length & 1)
   {
-    janet_panicf("Could not decode hex string, the input length should be a "
-      "multiple of two, it is %d", length);
+    if (panic)
+    {
+      janet_panicf("Could not decode hex string, the input length should be a "
+        "multiple of two, it is %d", length);
+    }
+    else
+    {
+      ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
+      goto end;
+    }
   }
 
   for(offset = 0; offset < length; offset+= 2)
@@ -80,22 +125,37 @@ Janet hex_decode(const uint8_t * str, unsigned int length)
     uint8_t lower = str[offset + 1];
     if (higher & 0x80)
     {
-      janet_panicf("Could not decode hex string at position %d, character "
-        "appears outside ascii range", offset);
+      if (panic)
+      {
+        janet_panicf("Could not decode hex string at position %d, character "
+          "appears outside ascii range", offset);
+      }
+      ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
+      goto end;
     }
     if (lower & 0x80)
     {
-      janet_panicf("Could not decode hex string at position %d, character "
+      if (panic)
+      {
+        janet_panicf("Could not decode hex string at position %d, character "
         "appears outside ascii range", offset + 1);
+      }
+      ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
+      goto end;
     }
 
     uint8_t higher_map = hex_dec_map[higher];
     uint8_t lower_map = hex_dec_map[lower];
     if (higher_map == 255 || lower_map == 255)
     {
-      char pair[3] = {higher, lower, 0};
-      janet_panicf("Could not decode hex string at position %d, characters "
-        "must not be hex: %s", offset, pair);
+      if (panic)
+      {
+        char pair[3] = {higher, lower, 0};
+        janet_panicf("Could not decode hex string at position %d, characters "
+          "must not be hex: %s", offset, pair);
+      }
+      ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
+      goto end;
     }
     uint8_t result = (higher_map << 4) | lower_map;
     janet_buffer_push_u8(buffer, result);
@@ -104,7 +164,9 @@ Janet hex_decode(const uint8_t * str, unsigned int length)
   // from buffer, does a copy.
   // Don't free the buffer / deinit the buffer
   // it will lead to a double free.
-  return janet_wrap_string(janet_string(buffer->data, buffer->count));
+  *result = janet_wrap_string(janet_string(buffer->data, buffer->count));
+end:
+  return ret;
 }
 
 // The mbed tls base64 implementation does not support the variants
@@ -157,6 +219,47 @@ static const unsigned char base64_dec_map[256] =
 
 Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant variant)
 {
+  Janet result = janet_wrap_nil();
+  janetls_base64_encode_internal(&result, data, length, variant, 1);
+  return result;
+}
+
+void panic_base64_slice(const uint8_t * data, unsigned int length, unsigned int index)
+{
+  // One of these is 64 or higher. Therefore, there is an invalid
+  // character present.
+  uint8_t chunk[5] = {0, 0, 0, 0, 0};
+  unsigned int position = (index / 4) * 4;
+  unsigned int count = length - position;
+  memcpy(chunk, data + position, (count > 4) ? 4 : count);
+
+  janet_panicf("base64 invalid character discovered within chunk "
+    "starting at position %d, within chunk: %s", index, chunk);
+}
+
+Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant variant)
+{
+  Janet result = janet_wrap_nil();
+  janetls_base64_decode_internal(&result, data, length, variant, 1);
+  return result;
+}
+
+// Alternative which does not panic (unless out of memory for janet buffer)
+int janetls_base64_encode(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant)
+{
+  return janetls_base64_encode_internal(result, data, length, variant, 0);
+}
+// Alternative which does not panic (unless out of memory for janet buffer)
+int janetls_base64_decode(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant)
+{
+  return janetls_base64_decode_internal(result, data, length, variant, 0);
+}
+
+
+// Alternative which does not panic (unless out of memory for janet buffer)
+int janetls_base64_encode_internal(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant, int panic)
+{
+  int ret = 0;
   // TODO Make it so that it can split lines for PGP (76 characters)
   // 64 characters for PEM, and add separators (\r\n)
   // As well as a 24 bit CRC (PGP only)
@@ -243,27 +346,19 @@ Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant va
   // from buffer, does a copy.
   // Don't free the buffer / deinit the buffer
   // it will lead to a double free.
-  return janet_wrap_string(janet_string(buffer->data, buffer->count));
+  *result = janet_wrap_string(janet_string(buffer->data, buffer->count));
+  // end:
+  return ret;
 }
 
-void panic_base64_slice(const uint8_t * data, unsigned int length, unsigned int index)
+// Alternative which does not panic (unless out of memory for janet buffer)
+int janetls_base64_decode_internal(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant, int panic)
 {
-  // One of these is 64 or higher. Therefore, there is an invalid
-  // character present.
-  uint8_t chunk[5] = {0, 0, 0, 0, 0};
-  unsigned int position = (index / 4) * 4;
-  unsigned int count = length - position;
-  memcpy(chunk, data + position, (count > 4) ? 4 : count);
-
-  janet_panicf("base64 invalid character discovered within chunk "
-    "starting at position %d, within chunk: %s", index, chunk);
-}
-
-Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant variant)
-{
+  int ret = 0;
   if (length == 0)
   {
-    return janet_wrap_string(janet_cstring(""));
+    *result = janet_wrap_string(janet_cstring(""));
+    goto end;
   }
   // A janet buffer is used because I find it unsafe to have
   // variable sized stacks which rely on user input.
@@ -305,7 +400,15 @@ Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant va
     uint8_t c = map[ch];
     if (c == 255)
     {
-      panic_base64_slice(data, length, index);
+      if (panic)
+      {
+        panic_base64_slice(data, length, index);
+      }
+      else
+      {
+        ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
+        goto end;
+      }
     }
 
     chunk = chunk << 6 | c;
@@ -333,8 +436,13 @@ Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant va
   }
   else if (revolver == 1)
   {
-    janet_panic("base64 decode failed, appears to be truncated by at least one "
-      "character.");
+    if (panic)
+    {
+      janet_panic("base64 decode failed, appears to be truncated by at least one "
+        "character.");
+    }
+    ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
+    goto end;
   }
   // Possible values at this point are 0, which means the last
   // chunk was fully processed.
@@ -342,21 +450,16 @@ Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant va
   // from buffer, does a copy.
   // Don't free the buffer / deinit the buffer
   // it will lead to a double free.
-  return janet_wrap_string(janet_string(buffer->data, buffer->count));
+  *result = janet_wrap_string(janet_string(buffer->data, buffer->count));
+end:
+  return ret;
 }
 
 Janet content_to_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
 {
-  switch (encoding)
-  {
-    case RAW_BYTE: return janet_wrap_string(janet_string(str, length));
-    case HEX: return hex_encode(str, length);
-    case BASE_64: return base64_encode(str, length, (base64_variant) encoding_variant);
-  }
-  janet_panicf("Internal error: the content encoding provided could not be "
-    "used, it is %d", encoding);
-  // unreachable
-  return janet_wrap_nil();
+  Janet result = janet_wrap_nil();
+  janetls_content_to_encoding_internal(&result, str, length, encoding, encoding_variant, 1);
+  return result;
 }
 
 Janet content_from_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
@@ -371,4 +474,86 @@ Janet content_from_encoding(const uint8_t * str, unsigned int length, content_en
     "used, it is %d", encoding);
   // unreachable
   return janet_wrap_nil();
+}
+
+int janetls_content_to_encoding(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
+{
+  return janetls_content_to_encoding_internal(result, str, length, encoding, encoding_variant, 0);
+}
+
+int janetls_content_from_encoding(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
+{
+  return janetls_content_from_encoding_internal(result, str, length, encoding, encoding_variant, 0);
+}
+
+int janetls_content_to_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant, int panic)
+{
+  int ret = 0;
+  switch (encoding)
+  {
+    case RAW_BYTE:
+    {
+      *result = janet_wrap_string(janet_string(str, length));
+      break;
+    }
+    case HEX:
+    {
+      retcheck(janetls_hex_encode_internal(result, str, length, panic));
+      break;
+    }
+    case BASE_64:
+    {
+      retcheck(janetls_base64_encode_internal(result, str, length, (base64_variant) encoding_variant, panic));
+      break;
+    }
+    default:
+    {
+      if (panic)
+      {
+        janet_panicf("Internal error: the content encoding provided could not be "
+        "used, it is %d", encoding);
+      }
+      ret = JANETLS_ERR_ENCODING_INVALID_TYPE;
+      goto end;
+    }
+  }
+
+end:
+  return ret;
+}
+
+int janetls_content_from_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant, int panic)
+{
+  int ret = 0;
+  switch (encoding)
+  {
+    case RAW_BYTE:
+    {
+      *result = janet_wrap_string(janet_string(str, length));
+      break;
+    }
+    case HEX:
+    {
+      retcheck(janetls_hex_decode_internal(result, str, length, panic));
+      break;
+    }
+    case BASE_64:
+    {
+      retcheck(janetls_base64_decode_internal(result, str, length, (base64_variant) encoding_variant, panic));
+      break;
+    }
+    default:
+    {
+      if (panic)
+      {
+        janet_panicf("Internal error: the content encoding provided could not be "
+        "used, it is %d", encoding);
+      }
+      ret = JANETLS_ERR_ENCODING_INVALID_TYPE;
+      break;
+    }
+  }
+
+end:
+  return ret;
 }

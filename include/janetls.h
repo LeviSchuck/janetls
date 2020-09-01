@@ -38,11 +38,29 @@ typedef struct option_list_entry {
 int search_option_list(option_list_entry * list, int list_size, JanetByteView str, int * destination);
 Janet enumerate_option_list(option_list_entry * list, int size);
 Janet value_to_option(option_list_entry * list, int size, int value);
+const char * value_to_option_text(option_list_entry * list, int size, int value);
 // Byte view helpers
 JanetByteView janet_to_bytes(Janet x);
 int janet_is_byte_typed(Janet x);
-void check_result(int mbedtls_result);
+void check_result(int return_code);
 const char * result_error_message(int result, uint8_t * unhandled);
+int flatten_array(Janet * output, JanetArray * array);
+int janet_byte_cstrcmp_insensitive(JanetByteView str, const char * other);
+int janet_byte_cstrcmp_sensitive(JanetByteView str, const char * other);
+
+typedef enum string_type {
+  STRING_IS_DIGITS,
+  STRING_IS_OID,
+  STRING_IS_ASCII,
+  STRING_IS_PRINTABLE,
+  STRING_IS_UTF8,
+  STRING_IS_BINARY,
+} string_type;
+
+int is_ascii_string(const uint8_t * data, int32_t length);
+int is_digit_string(const uint8_t * data, int32_t length);
+int is_utf8_string(const uint8_t * data, int32_t length);
+string_type classify_string(const uint8_t * data, int32_t length);
 
 void submod_md(JanetTable * env);
 void submod_util(JanetTable * env);
@@ -50,6 +68,14 @@ void submod_bignum(JanetTable * env);
 void submod_random(JanetTable * env);
 void submod_byteslice(JanetTable * env);
 void submod_asn1(JanetTable * env);
+
+#define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
+
+#if defined(__GNUC__) && __GNUC__ >= 7
+ #define fall_through __attribute__ ((fallthrough))
+#else
+ #define fall_through ((void)0)
+#endif /* __GNUC__ >= 7 */
 
 #ifndef NULL
 #define NULL 0

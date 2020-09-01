@@ -45,12 +45,18 @@ typedef enum base64_variant
 
 Janet hex_encode(const uint8_t * str, unsigned int length);
 Janet hex_decode(const uint8_t * str, unsigned int length);
+int janetls_hex_decode(Janet * result, const uint8_t * str, unsigned int length);
+int janetls_hex_encode(Janet * result, const uint8_t * str, unsigned int length);
 Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant variant);
 Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant variant);
+int janetls_base64_encode(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant);
+int janetls_base64_decode(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant);
 int get_base64_variant(int argc, Janet * argv, int index, uint8_t panic, base64_variant * variant);
 int get_content_encoding(int argc, Janet * argv, int index, uint8_t panic, content_encoding * encoding);
 Janet content_to_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
 Janet content_from_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
+int janetls_content_to_encoding(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
+int janetls_content_from_encoding(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant);
 // Tries to consume arguments pertaining to encoding
 int extract_encoding(int argc, Janet * argv, int offset, content_encoding * encoding, int * variant);
 

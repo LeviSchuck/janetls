@@ -34,4 +34,7 @@ extern JanetAbstractType bignum_object_type;
 bignum_object * new_bignum();
 Janet unknown_to_bignum(Janet value);
 Janet unknown_to_bignum_opt(Janet value, int panic, int radix);
+int janetls_unknown_to_bignum(Janet * destination, Janet value, int radix);
+int janetls_bignum_to_bytes(Janet * destination, Janet value);
+int janetls_bignum_to_digits(Janet * destination, Janet value);
 #endif
