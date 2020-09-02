@@ -90,7 +90,7 @@ int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed);
 int decode_base127(JanetByteView bytes, Janet * destination, int * position, number_type bignum);
 int decode_base127_as_u64(asn1_parser * parser, uint64_t * external_result);
 int decode_class(uint8_t byte_tag, asn1_class * result);
-int decode_asn1(asn1_parser * parser, JanetStruct * output);
+int decode_asn1(asn1_parser * parser, Janet * output);
 int decode_asn1_construction(asn1_parser * parser, Janet * output, size_t length);
 
 // Encode things
@@ -121,6 +121,8 @@ static Janet asn1_encode_127(int32_t argc, Janet * argv);
 static Janet asn1_decode_127(int32_t argc, Janet * argv);
 static Janet asn1_decode(int32_t argc, Janet * argv);
 static Janet asn1_encode(int32_t argc, Janet * argv);
+static Janet asn1_enumerate_types(int32_t argc, Janet * argv);
+static Janet asn1_enumerate_classes(int32_t argc, Janet * argv);
 
 static const JanetReg cfuns[] =
 {
@@ -134,14 +136,89 @@ static const JanetReg cfuns[] =
     "type is by default :bignum, but can also be :number and :u64.\n"
     "It is highly unlikely that you will have use for this function."
     },
-  {"asn1/decode", asn1_decode, "()"},
-  {"asn1/encode", asn1_encode, "()"},
+  {"asn1/decode", asn1_decode, "(janetls/asn1/decode str &opt options)\n\n"
+    "Decode a binary ASN.1 value, the entire string will be consumed, so "
+    "if there is surrounding data, you must slice it out.\n"
+    "options include:\n"
+    ":bignum-as-string - this will encode bignumbers as plain strings\n"
+    ":base64-non-ascii - for binary data, the values will be base64 encoded\n"
+    ":base64-url - when accompanying :base64-non-ascii, will use the url "
+    "variant\n"
+    ":string-oid - encodes OIDs as strings, instead of number tuples\n"
+    ":collapse-single-constructions - When sequences or sets have only one "
+    "value, the value is given directly, rather than nested in a tuple.\n"
+    ":collapse-guessable-values - Certain values, such as bignumbers, OIDs, "
+    "can be emitted as just strings and later classified and encoded back "
+    "to the source type.\n"
+    ":eager-parse - when a binary value is encountered, like :bit-string and "
+    ":octet-string, or in a non-constructed non-universal tag, the parser "
+    "will attempt to decode the value as an ASN.1 document. If it fails, "
+    "the result is retained as a binary value, prior to encoding as base64\n"
+    ":json - This is a shortcut for multiple options: :base64-as-string, "
+    ":base64-url, :bignum-as-string, :collapse-single-constructions, "
+    ":collapse-guessable-values, and :string-oid. Note that this shortcut "
+    "may change between releases."
+    },
+  {"asn1/encode", asn1_encode, "(janetls/asn1/encode value)\n\n"
+    "Encode a structured value into an ASN.1 document, the result is binary."
+    "When the value is a string or buffer, the "
+    "contents will be inspected. For example, if \"123\" is given, it will "
+    "be decoded as a bignumber and encoded as an ASN.1 integer.\n"
+    "When it consists of ASN.1's printable character set, :printable-string "
+    "will be used.\n"
+    "When it conists of ASCII only (not UTF-8), :ia5-string will be used.\n"
+    "When it consists of UTF-8, :utf8-string will be used.\n"
+    "Otherwise the string will be assigned the type :octet-string.\n"
+    "When a tuple or array is found as a value, it will be interpreted as "
+    "an ASN.1 sequence.\n"
+    "When struct or table is found as a value, the following keys are probed: "
+    ":value, :type, :tag, :encoding, :constructed, :bits."
+    ":type should be a value within (janetls/asn1/types) or "
+    "(janetls/asn1/classes) except for :universal.\n"
+    ":tag is to be provided when the :type is not within (janetls/asn1/types) "
+    "as a numerical value.\n"
+    ":constructed may be provided as true when the non universal "
+    ":type is used. This essentially marks the ASN.1 tag bit and the value "
+    "is a nested ASN.1 document.\n"
+    ":bits is used on :bit-string values to account for how many unused bits "
+    "are in the value at the end. In general, this should only need to be set "
+    "if the value is not a multiple of 8 bits."
+    ":encoding may be :base64, :base64-url, or :hex. When specified the "
+    ":value must be a string and in that format. It will be decoded prior to "
+    "insertion into the ASN.1 document.\n"
+    ":value is encoded with all the other values described above in account, "
+    "if type information is missing then the inspection method described first "
+    "is used.\n"
+    "When the :type happens to be :bit-string or :object-string and a "
+    "structured :value is given, it will be encoded like constructed "
+    "non-universal types."
+    },
+  {"asn1/classes", asn1_enumerate_classes, "(janetls/asn1/classes)\n\n"
+    "Enumerates ASN.1 classes, besides :universal, the others "
+    "should be used as the :type value with an accompanying :tag to identify"
+    "the value to the application."
+    },
+  {"asn1/types", asn1_enumerate_types, "(janetls/asn1/types)\n\n"
+    "Enumerates the types this library understands."
+    },
   {NULL, NULL, NULL}
 };
 
 void submod_asn1(JanetTable * env)
 {
   janet_cfuns(env, "janetls", cfuns);
+}
+
+static Janet asn1_enumerate_types(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 0);
+  return enumerate_option_list(universal_types, UNIVERSAL_TYPES_COUNT);
+}
+
+static Janet asn1_enumerate_classes(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 0);
+  return enumerate_option_list(asn1_class_types, ASN1_CLASS_TYPES_COUNT);
 }
 
 
@@ -202,12 +279,17 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
     {
       flags |= ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS;
     }
+    else if (janet_cstrcmp(keyword, "collapse-guessable-values") == 0)
+    {
+      flags |= ASN1_FLAG_COLLAPSE_GUESSABLE_VALUES;
+    }
     else if (janet_cstrcmp(keyword, "json") == 0)
     {
       flags |= ASN1_BASE64_NON_ASCII
         | ASN1_FLAG_BIGNUM_AS_STRING
         | ASN1_FLAG_STRING_OID
-        | ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS;
+        | ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS
+        | ASN1_FLAG_COLLAPSE_GUESSABLE_VALUES;
       base64_variant = URL;
     }
     else
@@ -227,6 +309,19 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
 
   Janet result;
   check_result(decode_asn1_construction(&parser, &result, parser.length));
+
+  const Janet * data;
+  int32_t tuple_size = 0;
+  // Unwrap the first item
+  // The decoding procedure is conservative and treats all constructions
+  // as possibly multiple, even the root construction.
+  if (janet_indexed_view(result, &data, &tuple_size))
+  {
+    if (tuple_size == 1)
+    {
+      result = data[0];
+    }
+  }
   return result;
 }
 
@@ -421,7 +516,7 @@ int decode_base127_as_u64(asn1_parser * parser, uint64_t * external_result)
 int encode_base127(Janet wrapped_source, JanetBuffer * buffer)
 {
   // For now this only supports bignumbers.
-  bignum_object * source = janet_unwrap_abstract(unknown_to_bignum(wrapped_source));
+  bignum_object * source = janet_unwrap_abstract(unknown_to_bignum_opt(wrapped_source, 0, 10));
   int ret = 0;
   if (mbedtls_mpi_cmp_int(&source->mpi, 0) == 0)
   {
@@ -624,10 +719,10 @@ int decode_asn1_construction(asn1_parser * parser, Janet * output, size_t length
   size_t end_position = parser->position + length;
   while (parser->position < end_position)
   {
-    JanetStruct result;
+    Janet result = janet_wrap_nil();
     ret = decode_asn1(parser, &result);
     if (ret != 0) goto end;
-    janet_array_push(array, janet_wrap_struct(result));
+    janet_array_push(array, result);
     count++;
   }
 
@@ -650,7 +745,7 @@ end:
   return ret;
 }
 
-int decode_asn1(asn1_parser * parser, JanetStruct * output)
+int decode_asn1(asn1_parser * parser, Janet * output)
 {
   asn1_parsed_tag tag;
   int ret = parse_header(parser, &tag);
@@ -685,6 +780,8 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
     type_keyword = "not-universal";
   }
 
+  int guessable = 0;
+
   #define INCLUDE_RAW_VALUE value = janet_wrap_string(janet_string((parser->buffer) + (tag.value_position), tag.value_length)); \
     parser->position += tag.value_length
   switch (tag.asn1_universal_type)
@@ -717,6 +814,7 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
       if (parser->flags & ASN1_FLAG_BIGNUM_AS_STRING)
       {
         retcheck(janetls_bignum_to_digits(&value, janet_wrap_abstract(bignum)));
+        guessable = 1;
       }
       else
       {
@@ -774,6 +872,7 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
       parser->position += tag.value_length; // Technically should be zero..
       // but if it isn't then we'll skip it anyway.
       type_keyword = "null";
+      guessable = 1;
       break;
     }
     case ASN1_UNIVERSAL_TYPE_OBJECT_IDENTIFIER:
@@ -846,6 +945,7 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
           janet_buffer_push_cstring(buffer, digit_buffer);
         }
         value = janet_wrap_string(janet_string(buffer->data, buffer->count));
+        guessable = 1;
       }
       else
       {
@@ -866,6 +966,7 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
           janet_array_push(array, janet_wrap_number(oid_part));
         }
         value = janet_wrap_tuple(janet_tuple_n(array->data, array->count));
+        guessable = 1;
       }
       if (parser->position > end_position)
       {
@@ -956,11 +1057,16 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
     thread_position = parser->position;
     retcheck(ret);
     value = nested_value;
+    sub_value = 0;
+    if (tag.asn1_class != ASN1_CLASS_UNIVERSAL)
+    {
+      // This is only necessary on non universal types
+      janet_table_put(result, janet_ckeywordv("constructed"), janet_wrap_boolean(1));
+    }
   }
 
   if (sub_value)
   {
-    // TODO lhs revisit
     // A sub value is POSSIBLE. Not Guaranteed.
     // When we try to decode an ASN.1 document, it may fail!
     // When we fail, we should not fail this document.
@@ -1003,6 +1109,27 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
     janet_table_put(result, janet_ckeywordv("type"), janet_ckeywordv(class_keyword));
   }
 
+  if (tag.asn1_class == ASN1_CLASS_UNIVERSAL
+    && tag.asn1_universal_type == ASN1_UNIVERSAL_TYPE_SEQUENCE
+    && janet_checktype(value, JANET_TUPLE)
+    )
+  {
+    const Janet * data;
+    int32_t tuple_size = 0;
+    if (janet_indexed_view(value, &data, &tuple_size))
+    {
+      if (tuple_size > 1)
+      {
+        guessable = 1;
+      }
+      else if (!(parser->flags & ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS))
+      {
+        // Can't guess on collapsed values.
+        guessable = 1;
+      }
+    }
+  }
+
   if (janet_checktype(value, JANET_STRING) && (parser->flags & ASN1_BASE64_NON_ASCII))
   {
     JanetStringHead * head = janet_string_head(janet_unwrap_string(value));
@@ -1023,6 +1150,7 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
           break;
       }
       janet_table_put(result, janet_ckeywordv("encoding"), encoding);
+      guessable = 0;
     }
   }
 
@@ -1033,8 +1161,15 @@ int decode_asn1(asn1_parser * parser, JanetStruct * output)
   // janet_table_put(result, janet_cstringv("raw-value"), janet_wrap_abstract(gen_byteslice(parser->source, tag.value_position, tag.value_length)));
   // janet_table_put(result, janet_cstringv("raw-tag"), janet_wrap_abstract(gen_byteslice(parser->source, tag.tag_position, tag.value_length)));
 
-  // Everything good? Populate the value.
-  *output = janet_table_to_struct(result);
+  if (guessable && (parser->flags & ASN1_FLAG_COLLAPSE_GUESSABLE_VALUES))
+  {
+    *output = value;
+  }
+  else
+  {
+    *output = janet_wrap_struct(janet_table_to_struct(result));
+  }
+
   // Check for corruption in parsing.
   if (parser->position < thread_position)
   {
@@ -1216,9 +1351,13 @@ int encode_asn1_oid_numbers(Janet * result, int32_t * size, const Janet * number
   retcheck(encode_base127(janet_wrap_number((value1 * 40) + value2), buffer));
 
   // Now for the rest of the numbers..
-  const Janet * end = numbers + count;
+  // Subtract 2 because we handled value1/2 above.
+  const Janet * end = numbers + count - 2;
   while (numbers < end)
   {
+    #ifdef PRINT_TRACE_EVERYTHING
+    janet_eprintf("Encoding to base 127 %p\n", *numbers);
+    #endif
     retcheck(encode_base127(*numbers++, buffer));
   }
 
@@ -1331,7 +1470,23 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
     else
     {
       retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_SEQUENCE));
+      // TODO structure this length wrapping stuff
+      int32_t length_position = array->count;
+      janet_array_push(array, janet_wrap_nil());
+      int32_t start_position = length_position + 1;
+      int32_t length = 0;
+      // Write out the value (this may involve multiple pushes if it is constructed.)
       retcheck(push_asn1_construction(array, data, data_count));
+      int32_t end_position = array->count;
+      retcheck(count_length_in_array(&length, array, start_position, end_position));
+      // Encode and replace the placeholder.
+      #ifdef PRINT_TRACE_EVERYTHING
+      janet_eprintf("replacing value %p in array at position %d\n", array->data[length_position], length_position);
+      #endif
+      retcheck(encode_asn1_length(array->data + length_position, length));
+      #ifdef PRINT_TRACE_EVERYTHING
+      janet_eprintf("Length was %d\n", length);
+      #endif
     }
   }
   else if (janet_checktype(value, JANET_ABSTRACT))
@@ -1408,7 +1563,6 @@ int encode_asn1_tag(Janet * result, uint64_t tag, asn1_class class, int construc
   {
     first |= (tag & 0x1F);
     *result = janet_wrap_string(janet_string(&first, 1));
-    goto end;
   }
   else
   {
@@ -1419,6 +1573,9 @@ int encode_asn1_tag(Janet * result, uint64_t tag, asn1_class class, int construc
     retcheck(encode_base127(janet_wrap_number(tag), buffer));
     *result = janet_wrap_buffer(buffer);
   }
+  #ifdef PRINT_TRACE_EVERYTHING
+  janet_eprintf("Pushed tag 0x%0x\n", tag);
+  #endif
 end:
   return ret;
 }
@@ -1446,6 +1603,9 @@ int encode_asn1_tag_universal(Janet * result, asn1_universal_type type)
 int push_asn1_tag_universal(JanetArray * array, asn1_universal_type type)
 {
   int ret = 0;
+  #ifdef PRINT_TRACE_EVERYTHING
+  janet_eprintf("Pushing universal tag 0x%0x\n", type);
+  #endif
   Janet asn1_type = janet_wrap_nil();
   retcheck(encode_asn1_tag_universal(&asn1_type, type));
   janet_array_push(array, asn1_type);
@@ -1456,6 +1616,9 @@ end:
 int push_asn1_length(JanetArray * array, int32_t length)
 {
   int ret = 0;
+  #ifdef PRINT_TRACE_EVERYTHING
+  janet_eprintf("Pushing length %d\n", length);
+  #endif
   Janet asn1_length = janet_wrap_nil();
   retcheck(encode_asn1_length(&asn1_length, length));
   janet_array_push(array, asn1_length);
@@ -2087,6 +2250,11 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
       }
       else if (janet_checktype(value, JANET_TABLE) || janet_checktype(value, JANET_STRUCT))
       {
+        retcheck(push_asn1_construction(array, &value, 1));
+      }
+      else if (janet_is_byte_typed(value))
+      {
+        // Strings can be interpreted as a sub value
         retcheck(push_asn1_construction(array, &value, 1));
       }
       else if (janet_checktype(value, JANET_NIL))

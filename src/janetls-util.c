@@ -259,8 +259,11 @@ string_type classify_string(const uint8_t * data, int32_t length)
       {
         // Nothing changes, still oid
       }
-      else
+      else if (digits && oid)
       {
+        // only relevant if already oid
+        // don't leave this as a blank else
+        // or it will catch everything.
         not_oid = 1;
       }
       continue;
