@@ -48,6 +48,7 @@ static Janet bignum_is_prime(int32_t argc, Janet * argv);
 static Janet bignum_compare_janet(int32_t argc, Janet * argv);
 static Janet bignum_shift_left(int32_t argc, Janet * argv);
 static Janet bignum_shift_right(int32_t argc, Janet * argv);
+static Janet bignum_to_number(int32_t argc, Janet * argv);
 static int bignum_compare_untyped(void * x, void * y);
 int bignum_compare(bignum_object * x, bignum_object * y);
 static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer);
@@ -80,6 +81,7 @@ static JanetMethod bignum_methods[] = {
   {"size", bignum_size},
   {"to-string", bignum_to_string},
   {"to-bytes", bignum_to_bytes},
+  {"to-number", bignum_to_number},
   {"+", bignum_add},
   {"-", bignum_subtract},
   {"*", bignum_multiply},
@@ -211,6 +213,10 @@ static const JanetReg cfuns[] =
     "By default, variant is :big-endian, as most standards expect this "
     "format. Valid options are (for big endian): :big-endian or :big or :be, "
     "(for little endian): :little-endian or :little or :le."
+    },
+  {"bignum/to-number", bignum_to_number, "(janetls/bignum/to-number bignum)\n\n"
+    "Converts to a janet number if possible. If the number is out of range, "
+    "then nil will be returned."
     },
   {"bignum/add", bignum_add, "(janetls/bignum/add bignum-x bignum-y)\n\n"
     "Adds x and y together, returns a bignum."
@@ -671,7 +677,8 @@ static Janet bignum_parse_bytes(int32_t argc, Janet * argv)
 
 static Janet bignum_to_bytes(int32_t argc, Janet * argv)
 {
-  bignum_object * bignum = janet_getabstract(argv, 0, &bignum_object_type);
+  janet_arity(argc, 1, 2);
+  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
   int little_endian = check_little_endian(argc, argv, 1);
   size_t size = mbedtls_mpi_size(&bignum->mpi);
   uint8_t * bytes = janet_smalloc(size);
@@ -689,6 +696,38 @@ static Janet bignum_to_bytes(int32_t argc, Janet * argv)
   }
 
   return janet_wrap_string(janet_string(bytes, size));
+}
+
+static Janet bignum_to_number(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  int64_t value = 0;
+  uint8_t buffer[8];
+  size_t size = mbedtls_mpi_size(&bignum->mpi);
+  if (size > 8)
+  {
+    // beyond the size we can put into a double
+    return janet_wrap_nil();
+  }
+  int ret = mbedtls_mpi_write_binary(&bignum->mpi, buffer, size);
+  if (ret != 0)
+  {
+    // could not encode, weird.
+    return janet_wrap_nil();
+  }
+  for (size_t i = 0; i < size; i++)
+  {
+    // big endian load into the number
+    value = (value << 8) | buffer[i];
+  }
+  if (value >= JANET_INTMIN_DOUBLE && value <= JANET_INTMAX_DOUBLE)
+  {
+    // wrap if within the safe region
+    return janet_wrap_number(value);
+  }
+  // outside the safe region
+  return janet_wrap_nil();
 }
 
 static Janet bignum_shift_left(int32_t argc, Janet * argv)

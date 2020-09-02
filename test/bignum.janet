@@ -105,4 +105,6 @@
 (deftest "Shift Left 2" (is (= (bignum/parse 400) (:<< hundred 2))))
 (deftest "Shift Right 2" (is (= (bignum/parse 25) (:>> hundred 2))))
 
+(deftest "To number works in range" (is (= 100 (:to-number hundred))))
+(deftest "To number is nil out of range" (is (= nil (bignum/to-number "100000000000000000000000000"))))
 (run-tests!)
