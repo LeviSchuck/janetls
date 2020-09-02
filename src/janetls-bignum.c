@@ -963,3 +963,87 @@ bignum_object * new_bignum()
   mbedtls_mpi_init(&result->mpi);
   return result;
 }
+
+int janetls_unknown_to_bignum(Janet * destination, Janet value, int radix)
+{
+  int ret = 0;
+
+  Janet bignum_value = unknown_to_bignum_opt(value, 0, radix);
+
+  if (janet_checktype(bignum_value, JANET_NIL))
+  {
+    ret = JANETLS_ERR_BIGNUM_COULD_NOT_CONVERT;
+    goto end;
+  }
+
+  *destination = bignum_value;
+end:
+  return ret;
+}
+
+int janetls_bignum_to_digits(Janet * destination, Janet value)
+{
+  int ret = 0;
+  char * string_value = NULL;
+  Janet bignum_value = janet_wrap_nil();
+
+  retcheck(janetls_unknown_to_bignum(&bignum_value, value, 10));
+
+  bignum_object * bignum = janet_unwrap_abstract(bignum_value);
+  size_t bytes = 0;
+  // Return value is intentionally ignored
+  // This method call populates the bytes count so we can allocate only what
+  // we need.
+  mbedtls_mpi_write_string(&bignum->mpi, 10, NULL, 0, &bytes);
+  string_value = janet_smalloc(bytes);
+  if (string_value == NULL)
+  {
+    ret = JANETLS_ERR_ALLOCATION_FAILED;
+    goto end;
+  }
+  retcheck(mbedtls_mpi_write_string(&bignum->mpi, 10, string_value, bytes, &bytes));
+  *destination = janet_cstringv(string_value);
+
+end:
+  if (string_value != NULL)
+  {
+    // Make sure to free the intermediate value
+    janet_sfree(string_value);
+  }
+  return ret;
+}
+
+int janetls_bignum_to_bytes(Janet * destination, Janet value)
+{
+  int ret = 0;
+  uint8_t * string_value = NULL;
+  Janet bignum_value = janet_wrap_nil();
+
+  retcheck(janetls_unknown_to_bignum(&bignum_value, value, 10));
+
+  bignum_object * bignum = janet_unwrap_abstract(bignum_value);
+  size_t bytes = mbedtls_mpi_size(&bignum->mpi);
+  if (bytes == 0)
+  {
+    *destination = janet_cstringv("");
+    goto end;
+  }
+
+  string_value = janet_smalloc(bytes);
+  if (string_value == NULL)
+  {
+    ret = JANETLS_ERR_ALLOCATION_FAILED;
+    goto end;
+  }
+
+  retcheck(mbedtls_mpi_write_binary(&bignum->mpi, string_value, bytes));
+  *destination = janet_wrap_string(janet_string(string_value, bytes));
+
+end:
+  if (string_value != NULL)
+  {
+    // Make sure to free the intermediate value
+    janet_sfree(string_value);
+  }
+  return ret;
+}

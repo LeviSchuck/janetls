@@ -22,6 +22,7 @@
 
 #include "janetls.h"
 #include "janetls-md.h"
+#include "janetls-encoding.h"
 
 typedef struct janetls_digest_algorithms {
   mbedtls_md_type_t type;

@@ -21,6 +21,7 @@
  */
 
 #include "janetls.h"
+#include "janetls-encoding.h"
 
 option_list_entry base64_variants[] = {
   {PEM, "pem", 0},
