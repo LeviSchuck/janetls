@@ -26,6 +26,7 @@
 #include "janetls-byteslice.h"
 #include "janetls-encoding.h"
 #include <ctype.h>
+#include <inttypes.h>
 
 // #define PRINT_TRACE_EVERYTHING
 
@@ -936,7 +937,10 @@ int decode_asn1(asn1_parser * parser, Janet * output)
           {
             goto end;
           }
-          s_ret = sprintf(digit_buffer, ".%lu", oid_part);
+          // PRIu64 comes from inttypes.h, it is a macro that
+          // specifies the correct formatting for uint64_t
+          // This apparently differs on windows.
+          s_ret = sprintf(digit_buffer, ".%"PRIu64, oid_part);
           if (s_ret < 0)
           {
             ret = JANETLS_ERR_ASN1_OTHER;
