@@ -214,7 +214,22 @@ string_type classify_string(const uint8_t * data, int32_t length)
   while (data < end)
   {
     uint8_t first = *data++;
-    if (first < 0x80)
+    if (first == 0)
+    {
+      binary = 1;
+    }
+    else if (first == '\n' || first == '\t' || first == '\r')
+    {
+      // standard whitespace is ascii..
+      ascii = 1;
+      utf8 = 1;
+    }
+    else if (first < ' ')
+    {
+      // But the other values there are just terminal control codes.
+      binary = 1;
+    }
+    else if (first >= ' ' && first < 0x80)
     {
       // ascii is technically 0-128
       ascii = 1;
