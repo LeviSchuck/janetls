@@ -74,6 +74,9 @@
     "mbedtls/library/entropy_poll.c"
     # mbed tls big numbers
     "mbedtls/library/bignum.c"
+    # RSA
+    "mbedtls/library/rsa.c"
+    "mbedtls/library/oid.c"
     # Everything in mbed tls requires error, platform, platform_util
     "mbedtls/library/error.c"
     "mbedtls/library/platform.c"

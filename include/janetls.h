@@ -68,6 +68,7 @@ void submod_bignum(JanetTable * env);
 void submod_random(JanetTable * env);
 void submod_byteslice(JanetTable * env);
 void submod_asn1(JanetTable * env);
+void submod_rsa(JanetTable * env);
 
 #define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
 

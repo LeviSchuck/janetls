@@ -24,6 +24,10 @@
 #include "mbedtls/bignum.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/md.h"
+#include "mbedtls/bignum.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/md.h"
+#include "mbedtls/rsa.h"
 
 JANET_MODULE_ENTRY(JanetTable *env)
 {
@@ -33,6 +37,8 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_random(env);
   submod_byteslice(env);
   submod_asn1(env);
+  submod_asn1(env);
+  submod_rsa(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)
@@ -42,13 +48,13 @@ const char * result_error_message(int result, uint8_t * unhandled)
     case 0:
       return "There is no error.";
     case MBEDTLS_ERR_MPI_NOT_ACCEPTABLE:
-      return "The input value was not acceptable";
+      return "MPI: The input value was not acceptable";
     case MBEDTLS_ERR_MPI_NEGATIVE_VALUE:
-      return "An input value was negative when it cannot be";
+      return "MPI: An input value was negative when it cannot be";
     case MBEDTLS_ERR_MPI_INVALID_CHARACTER:
-      return "Cannot parse, an invalid character was found";
+      return "MPI: Cannot parse, an invalid character was found";
     case MBEDTLS_ERR_MPI_DIVISION_BY_ZERO:
-      return "Division by zero";
+      return "MPI: Division by zero";
     case MBEDTLS_ERR_MD_ALLOC_FAILED:
     case MBEDTLS_ERR_MPI_ALLOC_FAILED:
     case JANETLS_ERR_ALLOCATION_FAILED:
@@ -66,11 +72,29 @@ const char * result_error_message(int result, uint8_t * unhandled)
     case MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE:
       return "Message Digest feature unavailable";
     case MBEDTLS_ERR_CTR_DRBG_ENTROPY_SOURCE_FAILED:
-      return "Unable to gather entropy for random number generation";
+      return "AES CTR: Unable to gather entropy for random number generation";
     case MBEDTLS_ERR_CTR_DRBG_INPUT_TOO_BIG:
-      return "The input was too big";
+      return "AES CTR: The input was too big";
     case MBEDTLS_ERR_CTR_DRBG_REQUEST_TOO_BIG:
-      return "Too many bytes were requested at once";
+      return "AES CTR: Too many bytes were requested at once";
+    case MBEDTLS_ERR_RSA_BAD_INPUT_DATA:
+      return "RSA: bad input parameters";
+    case MBEDTLS_ERR_RSA_INVALID_PADDING:
+      return "RSA: Bad padding on the input data, don't let the client know";
+    case MBEDTLS_ERR_RSA_KEY_GEN_FAILED:
+      return "RSA: Could not generate key, something failed";
+    case MBEDTLS_ERR_RSA_KEY_CHECK_FAILED:
+      return "RSA: the key did not validate";
+    case MBEDTLS_ERR_RSA_PUBLIC_FAILED:
+      return "RSA: A public key operation failed";
+    case MBEDTLS_ERR_RSA_PRIVATE_FAILED:
+      return "RSA: A private key operation failed";
+    case MBEDTLS_ERR_RSA_VERIFY_FAILED:
+      return "RSA: PKCS#1 signature verification failed";
+    case MBEDTLS_ERR_RSA_OUTPUT_TOO_LARGE:
+      return "RSA: The output buffer for decryption is not large enough";
+    case MBEDTLS_ERR_RSA_RNG_FAILED:
+      return "RSA: The random generator used failed to generate non zero values";
     // -------------- JANETLS ERRORS ------------------
     case JANETLS_ERR_ENCODING_INVALID_CHARACTER:
       return "Invalid character found during decoding";
