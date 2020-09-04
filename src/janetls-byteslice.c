@@ -24,7 +24,7 @@
 #include "janetls-byteslice.h"
 
 static int byteslice_get_fn(void * data, Janet key, Janet * out);
-static int byteslice_gcmark(void *data, size_t len);
+static int byteslice_gcmark(void * data, size_t len);
 static Janet byteslice_start(int32_t argc, Janet * argv);
 static Janet byteslice_get_bytes(int32_t argc, Janet * argv);
 
