@@ -37,5 +37,6 @@ typedef struct random_object {
 // This will wrap around random_object for use elsewhere
 int janetls_random_rng(void *, unsigned char *, size_t);
 random_object * get_or_gen_random_object(int argc, Janet * argv, int offset);
+random_object * janetls_new_random();
 
 #endif

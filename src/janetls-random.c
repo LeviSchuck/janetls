@@ -89,7 +89,7 @@ void submod_random(JanetTable *env)
   janet_register_abstract_type(&random_object_type);
 }
 
-random_object * gen_random()
+random_object * janetls_new_random()
 {
   random_object * random = janet_abstract(&random_object_type, sizeof(random_object));
   memset(random, 0, sizeof(random_object));
@@ -106,7 +106,7 @@ random_object * gen_random()
 static Janet random_start(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 0);
-  return janet_wrap_abstract(gen_random());
+  return janet_wrap_abstract(janetls_new_random());
 }
 
 static Janet random_get_bytes(int32_t argc, Janet * argv)
@@ -164,7 +164,7 @@ random_object * get_or_gen_random_object(int argc, Janet * argv, int offset)
   }
   else
   {
-    return gen_random();
+    return janetls_new_random();
   }
 }
 
