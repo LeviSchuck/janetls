@@ -25,10 +25,10 @@
 
 int janetls_hex_decode_internal(Janet * result, const uint8_t * str, unsigned int length, int panic);
 int janetls_hex_encode_internal(Janet * result, const uint8_t * str, unsigned int length, int panic);
-int janetls_base64_encode_internal(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant, int panic);
-int janetls_base64_decode_internal(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant, int panic);
-int janetls_content_to_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant, int panic);
-int janetls_content_from_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant, int panic);
+int janetls_base64_encode_internal(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant, int panic);
+int janetls_base64_decode_internal(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant, int panic);
+int janetls_content_to_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant, int panic);
+int janetls_content_from_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant, int panic);
 
 Janet hex_encode(const uint8_t * str, unsigned int length)
 {
@@ -217,7 +217,7 @@ static const unsigned char base64_dec_map[256] =
     255, 255, 255, 255, 255, 255                      //
 };
 
-Janet base64_encode(const uint8_t * data, unsigned int length, base64_variant variant)
+Janet base64_encode(const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant)
 {
   Janet result = janet_wrap_nil();
   janetls_base64_encode_internal(&result, data, length, variant, 1);
@@ -237,7 +237,7 @@ void panic_base64_slice(const uint8_t * data, unsigned int length, unsigned int 
     "starting at position %d, within chunk: %s", index, chunk);
 }
 
-Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant variant)
+Janet base64_decode(const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant)
 {
   Janet result = janet_wrap_nil();
   janetls_base64_decode_internal(&result, data, length, variant, 1);
@@ -245,19 +245,19 @@ Janet base64_decode(const uint8_t * data, unsigned int length, base64_variant va
 }
 
 // Alternative which does not panic (unless out of memory for janet buffer)
-int janetls_base64_encode(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant)
+int janetls_base64_encode(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant)
 {
   return janetls_base64_encode_internal(result, data, length, variant, 0);
 }
 // Alternative which does not panic (unless out of memory for janet buffer)
-int janetls_base64_decode(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant)
+int janetls_base64_decode(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant)
 {
   return janetls_base64_decode_internal(result, data, length, variant, 0);
 }
 
 
 // Alternative which does not panic (unless out of memory for janet buffer)
-int janetls_base64_encode_internal(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant, int panic)
+int janetls_base64_encode_internal(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant, int panic)
 {
   int ret = 0;
   // TODO Make it so that it can split lines for PGP (76 characters)
@@ -267,15 +267,18 @@ int janetls_base64_encode_internal(Janet * result, const uint8_t * data, unsigne
   uint8_t s1, s2, s3;
   uint8_t padded = 1; // Padding is mandatory in most cases.
   const unsigned char * map = base64_enc_map;
-  if (variant == STANDARD_UNPADDED || variant == URL_UNPADDED || variant == IMAP)
+  if (variant == janetls_encoding_base64_variant_standard_unpadded
+    || variant == janetls_encoding_base64_variant_url_unpadded
+    || variant == janetls_encoding_base64_variant_imap)
   {
     padded = 0;
   }
-  if (variant == URL || variant == URL_UNPADDED)
+  if (variant == janetls_encoding_base64_variant_url
+    || variant == janetls_encoding_base64_variant_url_unpadded)
   {
     map = base64_web_enc_map;
   }
-  if (variant == IMAP)
+  if (variant == janetls_encoding_base64_variant_imap)
   {
     map = base64_imap_enc_map;
   }
@@ -352,7 +355,7 @@ int janetls_base64_encode_internal(Janet * result, const uint8_t * data, unsigne
 }
 
 // Alternative which does not panic (unless out of memory for janet buffer)
-int janetls_base64_decode_internal(Janet * result, const uint8_t * data, unsigned int length, base64_variant variant, int panic)
+int janetls_base64_decode_internal(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant, int panic)
 {
   int ret = 0;
   if (length == 0)
@@ -455,20 +458,20 @@ end:
   return ret;
 }
 
-Janet content_to_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
+Janet content_to_encoding(const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant)
 {
   Janet result = janet_wrap_nil();
   janetls_content_to_encoding_internal(&result, str, length, encoding, encoding_variant, 1);
   return result;
 }
 
-Janet content_from_encoding(const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
+Janet content_from_encoding(const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant)
 {
   switch (encoding)
   {
-    case RAW_BYTE: return janet_wrap_string(janet_string(str, length));
-    case HEX: return hex_decode(str, length);
-    case BASE_64: return base64_decode(str, length, (base64_variant) encoding_variant);
+    case janetls_encoding_type_raw: return janet_wrap_string(janet_string(str, length));
+    case janetls_encoding_type_hex: return hex_decode(str, length);
+    case janetls_encoding_type_base64: return base64_decode(str, length, (janetls_encoding_base64_variant) encoding_variant);
   }
   janet_panicf("Internal error: the content encoding provided could not be "
     "used, it is %d", encoding);
@@ -476,34 +479,34 @@ Janet content_from_encoding(const uint8_t * str, unsigned int length, content_en
   return janet_wrap_nil();
 }
 
-int janetls_content_to_encoding(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
+int janetls_content_to_encoding(Janet * result, const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant)
 {
   return janetls_content_to_encoding_internal(result, str, length, encoding, encoding_variant, 0);
 }
 
-int janetls_content_from_encoding(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant)
+int janetls_content_from_encoding(Janet * result, const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant)
 {
   return janetls_content_from_encoding_internal(result, str, length, encoding, encoding_variant, 0);
 }
 
-int janetls_content_to_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant, int panic)
+int janetls_content_to_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant, int panic)
 {
   int ret = 0;
   switch (encoding)
   {
-    case RAW_BYTE:
+    case janetls_encoding_type_raw:
     {
       *result = janet_wrap_string(janet_string(str, length));
       break;
     }
-    case HEX:
+    case janetls_encoding_type_hex:
     {
       retcheck(janetls_hex_encode_internal(result, str, length, panic));
       break;
     }
-    case BASE_64:
+    case janetls_encoding_type_base64:
     {
-      retcheck(janetls_base64_encode_internal(result, str, length, (base64_variant) encoding_variant, panic));
+      retcheck(janetls_base64_encode_internal(result, str, length, (janetls_encoding_base64_variant) encoding_variant, panic));
       break;
     }
     default:
@@ -522,24 +525,24 @@ end:
   return ret;
 }
 
-int janetls_content_from_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, content_encoding encoding, int encoding_variant, int panic)
+int janetls_content_from_encoding_internal(Janet * result, const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant, int panic)
 {
   int ret = 0;
   switch (encoding)
   {
-    case RAW_BYTE:
+    case janetls_encoding_type_raw:
     {
       *result = janet_wrap_string(janet_string(str, length));
       break;
     }
-    case HEX:
+    case janetls_encoding_type_hex:
     {
       retcheck(janetls_hex_decode_internal(result, str, length, panic));
       break;
     }
-    case BASE_64:
+    case janetls_encoding_type_base64:
     {
-      retcheck(janetls_base64_decode_internal(result, str, length, (base64_variant) encoding_variant, panic));
+      retcheck(janetls_base64_decode_internal(result, str, length, (janetls_encoding_base64_variant) encoding_variant, panic));
       break;
     }
     default:

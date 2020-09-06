@@ -62,6 +62,7 @@
     "src/janetls-random.c"
     "src/janetls-byteslice.c"
     "src/janetls-asn1.c"
+    "src/janetls-rsa.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
@@ -77,6 +78,7 @@
     "mbedtls/library/bignum.c"
     # RSA
     "mbedtls/library/rsa.c"
+    "mbedtls/library/rsa_internal.c"
     "mbedtls/library/oid.c"
     # Everything in mbed tls requires error, platform, platform_util
     "mbedtls/library/error.c"

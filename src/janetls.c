@@ -160,8 +160,10 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "The input value type could not be used during ASN.1 encoding";
     case JANETLS_ERR_BIGNUM_COULD_NOT_CONVERT:
       return "Could not convert value to a bignum when an integer or bignum was expected";
-    case JANETLS_ERR_SEARH_OPTION_NOT_FOUND:
+    case JANETLS_ERR_SEARCH_OPTION_NOT_FOUND:
       return "The option input could not be matched";
+    case JANETLS_ERR_SEARCH_OPTION_INPUT_INVALID_TYPE:
+      return "Invalid input type for search option";
   }
   *unhandled = 1;
   return "An internal error occurred";

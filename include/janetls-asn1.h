@@ -50,12 +50,4 @@ typedef struct asn1_parsed_tag {
   size_t value_length;
 } asn1_parsed_tag;
 
-#define ASN1_FLAG_BIGNUM_AS_STRING (1 << janetls_asn1_flag_bignum_as_string)
-#define ASN1_FLAG_EAGER_PARSE (1 << janetls_asn1_flag_eager_parse)
-#define ASN1_FLAG_BASE64_NON_ASCII (1 << janetls_asn1_flag_base64_non_ascii)
-#define ASN1_FLAG_BASE64_USE_URL (1 << janetls_asn1_flag_base64_use_url)
-#define ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS (1 << janetls_asn1_flag_collapse_single_constructions)
-#define ASN1_FLAG_COLLAPSE_GUESSABLE_VALUES (1 << janetls_asn1_flag_collapse_guessable_values)
-#define ASN1_FLAG_STRING_OID (1 << janetls_asn1_flag_string_oid)
-
 #endif

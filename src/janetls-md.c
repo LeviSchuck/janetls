@@ -25,15 +25,15 @@
 #include "janetls-encoding.h"
 
 mbedtls_md_type_t symbol_to_alg(Janet value) {
-  mbedtls_md_type_t result = MBEDTLS_MD_NONE;
-  int ret = janetls_search_supported_algorithms(value, &result);
-  if (ret == JANETLS_ERR_SEARH_OPTION_NOT_FOUND)
+  janetls_md_algorithm result = janetls_md_algorithm_none;
+  int ret = janetls_search_md_supported_algorithms(value, &result);
+  if (ret == JANETLS_ERR_SEARCH_OPTION_NOT_FOUND)
   {
     janet_panicf("Given algorithm %p is not expected, please review "
       "janetls/md/algorithms for supported values", value);
   }
   check_result(ret);
-  return result;
+  return (mbedtls_md_type_t) result;
 }
 
 void assert_commands_consumed(int32_t argc, Janet * argv, int required, int optional)

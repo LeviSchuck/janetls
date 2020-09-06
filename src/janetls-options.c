@@ -26,7 +26,7 @@
 #define JANETLS_SEARCH_OPTION_LIST(NAME, TYPE) \
   int janetls_search_ ## NAME ## _count() \
   {\
-    return (sizeof(supported_algorithms) / sizeof(option_list_entry)); \
+    return (sizeof(NAME) / sizeof(option_list_entry)); \
   }\
   \
   int janetls_search_ ## NAME(Janet value, TYPE * output) \
@@ -39,11 +39,11 @@
         *output = type; \
         return 0; \
       } \
-      return JANETLS_ERR_SEARH_OPTION_INPUT_INVALID_TYPE; \
+      return JANETLS_ERR_SEARCH_OPTION_NOT_FOUND; \
     } \
-    return JANETLS_ERR_SEARH_OPTION_NOT_FOUND; \
+    return JANETLS_ERR_SEARCH_OPTION_INPUT_INVALID_TYPE; \
   } \
-  static Janet janetls_search_ ## NAME ## _set(int32_t argc, Janet * argv) \
+  Janet janetls_search_ ## NAME ## _set(int32_t argc, Janet * argv) \
   { \
     janet_fixarity(argc, 0); \
     return enumerate_option_list(NAME, janetls_search_ ## NAME ## _count()); \
@@ -51,9 +51,11 @@
   Janet janetls_search_ ## NAME ## _to_janet(TYPE type) \
   { \
     return value_to_option(NAME, janetls_search_ ## NAME ## _count(), type);\
+  } \
+  const char * janetls_search_ ## NAME ## _text(TYPE type) \
+  { \
+    return value_to_option_text(NAME, janetls_search_ ## NAME ## _count(), type); \
   }
-
-
 
 option_list_entry md_supported_algorithms[] = {
   {janetls_md_algorithm_none, "none", OPTION_LIST_HIDDEN},
@@ -155,10 +157,10 @@ option_list_entry asn1_universal_type[] = {
 
 JANETLS_SEARCH_OPTION_LIST(asn1_universal_type, janetls_asn1_universal_type)
 
-option_list_entry asn1_class_type[] = {
+option_list_entry asn1_class[] = {
   {janetls_asn1_class_universal, "universal", 0},
   {janetls_asn1_class_application, "application", 0},
   {janetls_asn1_class_context_specific, "context-specific", 0},
   {janetls_asn1_class_private, "private", 0},
 };
-JANETLS_SEARCH_OPTION_LIST(asn1_class_type, janetls_asn1_class)
+JANETLS_SEARCH_OPTION_LIST(asn1_class, janetls_asn1_class)

@@ -135,7 +135,7 @@ static const JanetReg cfuns[] =
   {NULL, NULL, NULL}
 };
 
-void submod_rsa(JanetTable *env)
+void submod_rsa(JanetTable * env)
 {
   janet_cfuns(env, "janetls", cfuns);
 }
@@ -145,6 +145,7 @@ Janet rsa_is_private(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  (void)rsa;
 
   return janet_wrap_nil();
 }
@@ -153,6 +154,7 @@ Janet rsa_is_public(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  (void)rsa;
   return janet_wrap_nil();
 }
 
@@ -196,6 +198,7 @@ Janet rsa_get_version(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  (void)rsa;
   return janet_wrap_nil();
 }
 
@@ -203,6 +206,7 @@ Janet rsa_get_mgf(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  (void)rsa;
   return janet_wrap_nil();
 }
 
@@ -210,6 +214,7 @@ Janet rsa_get_digest(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  (void)rsa;
   return janet_wrap_nil();
 }
 
@@ -217,6 +222,7 @@ Janet rsa_get_sizebits(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  (void)rsa;
   return janet_wrap_nil();
 }
 
@@ -224,6 +230,7 @@ Janet rsa_get_sizebytes(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  (void)rsa;
   return janet_wrap_nil();
 }
 
@@ -231,6 +238,7 @@ Janet rsa_export_public(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  (void)rsa;
   return janet_wrap_nil();
 }
 
@@ -238,6 +246,7 @@ Janet rsa_export_private(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  (void)rsa;
   return janet_wrap_nil();
 }
 
@@ -367,6 +376,7 @@ Janet rsa_generate(int32_t argc, Janet * argv)
 
   rsa_object * rsa = new_rsa();
   random_object * random = NULL;
+  (void)random; // todo remove when used
   // The type will always be private
   janetls_rsa_pkcs1_version version = janetls_rsa_pkcs1_version_v15;
   janetls_md_algorithm mgf1 = janetls_md_algorithm_none;

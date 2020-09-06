@@ -28,8 +28,9 @@
 #define JANETLS_SEARCH_OPTION_FORWARD_DECLARE(NAME, TYPE) \
   int janetls_search_ ## NAME ## _count(); \
   int janetls_search_ ## NAME(Janet value, TYPE * output); \
-  static Janet janetls_search_ ## NAME ## _set(int32_t argc, Janet * argv); \
-  Janet janetls_search_ ## NAME ## _to_janet(TYPE type);
+  Janet janetls_search_ ## NAME ## _set(int32_t argc, Janet * argv); \
+  Janet janetls_search_ ## NAME ## _to_janet(TYPE type); \
+  const char * janetls_search_ ## NAME ## _text(TYPE type);
 
 typedef enum janetls_rsa_pkcs1_version {
   janetls_rsa_pkcs1_version_v15 = 0,
