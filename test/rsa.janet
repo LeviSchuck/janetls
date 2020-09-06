@@ -6,7 +6,8 @@
 # Generate a default key, RSASSA-PKCS1-v1_5 using SHA-256
 (def key (rsa/generate))
 
-(def data "hello")
+(def data "hello mike")
+(def other-data "goodbye joe")
 
 (deftest "Default key is 2048 bits" (is (= 2048 (:bits key))))
 (deftest "Default key is 256 bytes" (is (= 256 (:bytes key))))
@@ -19,7 +20,9 @@
 
 (deftest "Default key can sign and verify" (do
   (def sig (:sign key data))
+  (def sig2 (:sign key other-data))
   (is (:verify key data sig))
+  (is (= false (:verify key data sig2)))
   ))
 
 (def key2 (rsa/generate {
@@ -40,7 +43,9 @@
 
 (deftest "Custom key can sign and verify" (do
   (def sig (rsa/sign key2 data))
+  (def sig2 (:sign key other-data))
   (is (rsa/verify key2 data sig))
+  (is (= false (rsa/verify key data sig2)))
   ))
 
 (run-tests!)
