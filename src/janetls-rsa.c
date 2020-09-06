@@ -22,6 +22,7 @@
 
 #include "janetls.h"
 #include "janetls-rsa.h"
+#include "mbedtls/md.h"
 
 
 static int rsa_gc_fn(void * data, size_t len);
@@ -43,9 +44,10 @@ Janet rsa_export_private(int32_t argc, Janet * argv);
 Janet rsa_import(int32_t argc, Janet * argv);
 Janet rsa_generate(int32_t argc, Janet * argv);
 
-int rsa_set_pkcs_v15(rsa_object * rsa);
-int rsa_set_pkcs_v21(rsa_object * rsa, janetls_md_algorithm md);
-int read_integer(Janet key, Janet value);
+static int rsa_set_pkcs_v15(rsa_object * rsa);
+static int rsa_set_pkcs_v21(rsa_object * rsa, janetls_md_algorithm md);
+static int read_integer(Janet key, Janet value);
+static void assert_verify_sign_size(rsa_object * rsa, janetls_md_algorithm alg, JanetByteView bytes);
 
 JanetAbstractType rsa_object_type = {
   "janetls/rsa",
@@ -182,21 +184,97 @@ Janet rsa_is_public(int32_t argc, Janet * argv)
 Janet rsa_sign(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 2, 3);
-  // RSA object
-  // Data to hash
-  // Hash function
+  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
+  }
+  janetls_md_algorithm alg = rsa->digest;
+  if (argc > 2)
+  {
+    check_result(janetls_search_md_supported_algorithms(argv[2], &alg));
+  }
+  else if (alg == janetls_md_algorithm_none)
+  {
+    janet_panicf("This RSA object has no default digest, "
+        "see janetls/md/algorithms for an expected value");
+  }
+  JanetByteView bytes = janet_to_bytes(argv[1]);
+  assert_verify_sign_size(rsa, alg, bytes);
+  uint8_t * signature = janet_smalloc(rsa->ctx.len);
 
-  return janet_wrap_nil();
+  int ret = mbedtls_rsa_pkcs1_sign(
+    &rsa->ctx,
+    rsa->random ? janetls_random_rng : NULL,
+    rsa->random,
+    MBEDTLS_RSA_PRIVATE,
+    (mbedtls_md_type_t)alg,
+    bytes.len,
+    bytes.bytes,
+    signature
+    );
+  if (ret != 0)
+  {
+    janet_sfree(signature);
+  }
+  check_result(ret);
+
+  Janet result = janet_wrap_string(janet_string(signature, rsa->ctx.len));
+  // janet_string copies the bytes, it's time to free it now.
+  janet_sfree(signature);
+
+  return result;
 }
 
 Janet rsa_verify(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 3, 4);
-  // RSA object
-  // Data to hash
-  // Signature
-  // Hash function
-  return janet_wrap_nil();
+  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
+  }
+  if (!janet_is_byte_typed(argv[2]))
+  {
+    janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
+  }
+  janetls_md_algorithm alg = rsa->digest;
+  if (argc > 3)
+  {
+    check_result(janetls_search_md_supported_algorithms(argv[3], &alg));
+  }
+  else if (alg == janetls_md_algorithm_none)
+  {
+    janet_panicf("This RSA object has no default digest, "
+        "see janetls/md/algorithms for an expected value");
+  }
+  JanetByteView bytes = janet_to_bytes(argv[1]);
+
+  assert_verify_sign_size(rsa, alg, bytes);
+
+  JanetByteView signature = janet_to_bytes(argv[2]);
+
+  if (signature.len != (int32_t) rsa->ctx.len)
+  {
+    janet_panicf("The signature provided is not the same length as "
+      "this rsa key, this key expects %d, but the signature is %d bytes.",
+      rsa->ctx.len, signature.len);
+  }
+
+  int ret = mbedtls_rsa_pkcs1_verify(
+    &rsa->ctx,
+    janetls_random_rng,
+    rsa->random,
+    MBEDTLS_RSA_PUBLIC,
+    (mbedtls_md_type_t)alg,
+    bytes.len,
+    bytes.bytes,
+    signature.bytes
+    );
+
+  // Don't indicate why it failed.
+  // Also simplifies verify checks, no need to try catch.
+  return janet_wrap_boolean(ret == 0);
 }
 
 Janet rsa_encrypt(int32_t argc, Janet * argv)
@@ -392,7 +470,7 @@ Janet rsa_generate(int32_t argc, Janet * argv)
       janet_panic("Expected a struct or table");
     }
   }
-
+  rsa_object * rsa = new_rsa();
   random_object * random = NULL;
   (void)random; // todo remove when used
   // The type will always be private
@@ -436,6 +514,7 @@ Janet rsa_generate(int32_t argc, Janet * argv)
           janet_panicf("Expected a janetls/random but got %p", kv->value);
         }
         random = (random_object *) value_random;
+        rsa->random = value_random;
       }
       else if (janet_byte_cstrcmp_insensitive(key, "mgf") == 0
         || janet_byte_cstrcmp_insensitive(key, "mgf1") == 0
@@ -497,8 +576,10 @@ Janet rsa_generate(int32_t argc, Janet * argv)
     random = janetls_new_random();
   }
 
-  rsa_object * rsa = new_rsa();
+  // Random will assist the concept of "blinding" in v1.5
+  // It is necessary in v2.1
   rsa->random = random;
+
   rsa->digest = digest;
   // This is a new key made on this machine
   // it will have private components
@@ -545,4 +626,36 @@ int read_integer(Janet key, Janet value)
   }
   // unreachable
   return -1;
+}
+
+static void assert_verify_sign_size(rsa_object * rsa, janetls_md_algorithm alg, JanetByteView bytes)
+{
+  // None has been passed explicitly by this point.
+  // refer to https://www.foo.be/docs/opensst/ref/pkcs/pkcs-1/pkcs-1v2-1d1.pdf
+  // section 9.1.2.1 for v1.5
+
+  int minPadding = 10;
+  if (rsa->version == janetls_rsa_pkcs1_version_v21)
+  {
+    // refer to section 9.1.1.1
+    const mbedtls_md_info_t * info = mbedtls_md_info_from_type((mbedtls_md_type_t)rsa->mgf1);
+    if (info == NULL)
+    {
+      janet_panicf("Expected a mask generation function, but no algorithm is present");
+    }
+    int hash_size = mbedtls_md_get_size(info);
+    minPadding = hash_size + 1;
+  }
+  if (alg == janetls_md_algorithm_none
+    // safe PKCS#1 v1.5 requires at least 10 bytes to prefix
+    && bytes.len > (int32_t) (rsa->ctx.len - minPadding)
+    // Let's not sign anything shorter than an MD5.
+    && bytes.len < 16)
+  {
+    // It is possible to sign an existing body,
+    // if it is within safe bounds for padding.
+    janet_panicf("When directly signing content, which is generally unsafe, "
+      "the size was outside of acceptable bounds. The size observed is %d",
+      bytes.len);
+  }
 }
