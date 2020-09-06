@@ -23,22 +23,6 @@
 #include "janetls.h"
 #include "janetls-rsa.h"
 
-option_list_entry pkcs1_versions[] = {
-  {rsa_pkcs1_version_v15, "pkcs1-v1.5", 0},
-  {rsa_pkcs1_version_v21, "pkcs1-v2.1", 0},
-  {rsa_pkcs1_version_v15, "pkcs1-v1_5", OPTION_LIST_HIDDEN},
-  {rsa_pkcs1_version_v21, "pkcs1-v2_1", OPTION_LIST_HIDDEN},
-  {rsa_pkcs1_version_v15, "v1.5", OPTION_LIST_HIDDEN},
-  {rsa_pkcs1_version_v21, "v2.1", OPTION_LIST_HIDDEN},
-  {rsa_pkcs1_version_v15, "v1_5", OPTION_LIST_HIDDEN},
-  {rsa_pkcs1_version_v21, "v2_1", OPTION_LIST_HIDDEN},
-  {rsa_pkcs1_version_v15, "ssa", OPTION_LIST_HIDDEN},
-  {rsa_pkcs1_version_v21, "rsaes", OPTION_LIST_HIDDEN},
-  {rsa_pkcs1_version_v21, "oeap", OPTION_LIST_HIDDEN},
-  {rsa_pkcs1_version_v21, "pss", OPTION_LIST_HIDDEN},
-};
-
-#define PKCS1_VERSIONS_COUNT (sizeof(pkcs1_versions) / sizeof(option_list_entry))
 
 static int rsa_gc_fn(void * data, size_t len);
 static int rsa_gcmark(void * data, size_t len);
@@ -60,7 +44,7 @@ Janet rsa_import(int32_t argc, Janet * argv);
 Janet rsa_generate(int32_t argc, Janet * argv);
 
 int rsa_set_pkcs_v15(rsa_object * rsa);
-int rsa_set_pkcs_v21(rsa_object * rsa, mbedtls_md_type_t md);
+int rsa_set_pkcs_v21(rsa_object * rsa, janetls_md_algorithm md);
 
 JanetAbstractType rsa_object_type = {
   "janetls/rsa",
@@ -120,24 +104,28 @@ rsa_object * new_rsa()
   mbedtls_rsa_init(&rsa->ctx, MBEDTLS_RSA_PKCS_V15, MBEDTLS_MD_NONE);
   // Lazy random
   rsa->random = NULL;
-  rsa->type = rsa_key_type_public;
-  rsa->version = rsa_pkcs1_version_v15;
-  rsa->digest = MBEDTLS_MD_NONE;
+  rsa->type = janetls_pk_key_type_public;
+  rsa->version = janetls_rsa_pkcs1_version_v15;
+  rsa->digest = janetls_md_algorithm_none;
+  rsa->mgf1 = janetls_md_algorithm_none;
   return rsa;
 }
 
 int rsa_set_pkcs_v15(rsa_object * rsa)
 {
   mbedtls_rsa_set_padding(&rsa->ctx, MBEDTLS_RSA_PKCS_V15, MBEDTLS_MD_NONE);
-  rsa->version = rsa_pkcs1_version_v15;
+  rsa->version = janetls_rsa_pkcs1_version_v15;
+  rsa->mgf1 = janetls_md_algorithm_none;
   // in case return codes are used later
   return 0;
 }
 
-int rsa_set_pkcs_v21(rsa_object * rsa, mbedtls_md_type_t md)
+int rsa_set_pkcs_v21(rsa_object * rsa, janetls_md_algorithm md)
 {
-  mbedtls_rsa_set_padding(&rsa->ctx, MBEDTLS_RSA_PKCS_V21, md);
-  rsa->version = rsa_pkcs1_version_v21;
+  mbedtls_rsa_set_padding(&rsa->ctx, MBEDTLS_RSA_PKCS_V21, (mbedtls_md_type_t)md);
+  rsa->version = janetls_rsa_pkcs1_version_v21;
+  rsa->mgf1 = md;
+
   // in case return codes are used later
   return 0;
 }
@@ -378,56 +366,78 @@ Janet rsa_generate(int32_t argc, Janet * argv)
   }
 
   rsa_object * rsa = new_rsa();
+  random_object * random = NULL;
+  // The type will always be private
+  janetls_rsa_pkcs1_version version = janetls_rsa_pkcs1_version_v15;
+  janetls_md_algorithm mgf1 = janetls_md_algorithm_none;
+  janetls_md_algorithm digest = janetls_md_algorithm_none;
+  // also most common
+  unsigned int nbits = 2048;
+  // most common
+  int exponent = 0x100001;
 
   const JanetKV * kv = NULL;
   const JanetKV * kvs = NULL;
   int32_t len;
   int32_t cap = 0;
-  unsigned int nbits = 0;
-  int exponent = 0;
   janet_dictionary_view(argv[0], &kvs, &len, &cap);
   while ((kv = janet_dictionary_next(kvs, cap, kv)))
   {
     if (janet_is_byte_typed(kv->key))
     {
       JanetByteView key = janet_to_bytes(kv->key);
-      if (janet_byte_cstrcmp_insensitive(key, "type") == 0)
-      {
-        // public, private
-      }
-      else if (janet_byte_cstrcmp_insensitive(key, "version") == 0)
+      if (janet_byte_cstrcmp_insensitive(key, "version") == 0)
       {
         // check pkcs1_versions
+        if (janetls_search_rsa_pkcs1_version(kv->value, &version) != 0)
+        {
+          janet_panicf("Expected :pkcs1-v1.5 or :pkcs1-v2.1 for :version, but got %p", kv->value);
+        }
       }
       else if (janet_byte_cstrcmp_insensitive(key, "rng") == 0
         || janet_byte_cstrcmp_insensitive(key, "random") == 0)
       {
         // verify it is random, copy reference to rsa->random
+        void * value_random = janet_checkabstract(kv->value, &random_object_type);
+        if (value_random == NULL)
+        {
+          janet_panicf("Expected a janetls/random but got %p", kv->value);
+        }
+        random = (random_object *) value_random;
       }
       else if (janet_byte_cstrcmp_insensitive(key, "mgf") == 0
         || janet_byte_cstrcmp_insensitive(key, "mgf1") == 0
         || janet_byte_cstrcmp_insensitive(key, "mask-generation-function") == 0
         || janet_byte_cstrcmp_insensitive(key, "mask") == 0)
       {
-        // mbedtls_md_type_t symbol_to_alg(Janet keyword);
+        if (janetls_search_md_supported_algorithms(kv->value, &mgf1) != 0)
+        {
+          janet_panicf("Given algorithm %p is not expected for %p, please review "
+            "janetls/md/algorithms for supported values", kv->key, kv->value);
+        }
       }
       else if (janet_byte_cstrcmp_insensitive(key, "hash") == 0
         || janet_byte_cstrcmp_insensitive(key, "digest") == 0)
       {
-        // mbedtls_md_type_t symbol_to_alg(Janet keyword);
+        if (janetls_search_md_supported_algorithms(kv->value, &digest) != 0)
+        {
+          janet_panicf("Given algorithm %p is not expected for %p, please review "
+            "janetls/md/algorithms for supported values", kv->key, kv->value);
+        }
       }
       else if (janet_byte_cstrcmp_insensitive(key, "bits") == 0)
       {
-
+        // TODO read number
       }
       else if (janet_byte_cstrcmp_insensitive(key, "bytes") == 0)
       {
         // get bytes, set bits = bytes * 8
+        // TODO read number
       }
       else if (janet_byte_cstrcmp_insensitive(key, "e") == 0
         || janet_byte_cstrcmp_insensitive(key, "exponent") == 0)
       {
-
+        // TODO read number
       }
     }
     else

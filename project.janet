@@ -55,6 +55,7 @@
     "src/janetls.c"
     "src/janetls-md.c"
     "src/janetls-util.c"
+    "src/janetls-options.c"
     "src/janetls-encode.c"
     "src/janetls-encoding.c"
     "src/janetls-bignum.c"

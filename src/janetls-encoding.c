@@ -23,27 +23,6 @@
 #include "janetls.h"
 #include "janetls-encoding.h"
 
-option_list_entry base64_variants[] = {
-  {PEM, "pem", 0},
-  {MIME, "mime", 0},
-  {IMAP, "imap", 0},
-  {STANDARD, "standard", 0},
-  {STANDARD_UNPADDED, "standard-unpadded", 0},
-  {URL, "url", 0},
-  {URL_UNPADDED, "url-unpadded", 0},
-  {PGP, "pgp", 0},
-};
-
-#define BASE64_VARIANT_COUNT (sizeof(base64_variants) / sizeof(option_list_entry))
-
-option_list_entry content_encodings[] = {
-  {RAW_BYTE, "raw", 0},
-  {HEX, "hex", 0},
-  {BASE_64, "base64", 0},
-};
-
-#define CONTENT_ENCODING_COUNT (sizeof(content_encodings) / sizeof(option_list_entry))
-
 Janet hex_encoder(int argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
@@ -60,72 +39,43 @@ Janet hex_decoder(int argc, Janet * argv)
   return hex_decode(data.bytes, data.len);
 }
 
-int get_base64_variant(int argc, Janet * argv, int index, uint8_t panic, base64_variant * variant)
+int get_base64_variant(int argc, Janet * argv, int index, uint8_t panic, janetls_encoding_base64_variant * variant)
 {
   if (index < argc)
   {
-    // Parse option if available
-    if (janet_is_byte_typed(argv[index]))
+    int result = janetls_search_encoding_base64_variant(argv[index], variant);
+    if (panic && result != 0)
     {
-      int found_variant = 0;
-      if (search_option_list(base64_variants, BASE64_VARIANT_COUNT, janet_to_bytes(argv[index]), &found_variant))
-      {
-        *variant = (base64_variant) found_variant;
-        return 0;
-      }
-      if (panic)
-      {
-        janet_panicf("Given option %p is not expected, please review "
-          "janetls/base64/variants for supported options", argv[index]);
-      }
+      janet_panicf("Given option %p is not expected, please review "
+        "janetls/base64/variants for supported options", argv[index]);
     }
+    return result;
   }
 
   return -1;
 }
 
-
-static Janet base64_variants_set(int32_t argc, Janet *argv)
-{
-  janet_fixarity(argc, 0);
-  return enumerate_option_list(base64_variants, BASE64_VARIANT_COUNT);
-}
-
-int get_content_encoding(int argc, Janet * argv, int index, uint8_t panic, content_encoding * encoding)
+int get_content_encoding(int argc, Janet * argv, int index, uint8_t panic, janetls_encoding_type * encoding)
 {
   if (index < argc)
   {
-    // Parse option if available
-    if (janet_is_byte_typed(argv[index]))
+    int result = janetls_search_encoding_type(argv[index], encoding);
+    if (panic && result != 0)
     {
-      int found_encoding = 0;
-      if (search_option_list(content_encodings, CONTENT_ENCODING_COUNT, janet_to_bytes(argv[index]), &found_encoding))
-      {
-        *encoding = (content_encoding) found_encoding;
-        return 0;
-      }
-      if (panic)
-      {
-        janet_panicf("Given option %p is not expected, please review "
+      janet_panicf("Given option %p is not expected, please review "
           "janetls/encoding/types for supported options", argv[index]);
-      }
     }
+    return result;
   }
 
   return -1;
-}
-
-static Janet content_encoding_set(int32_t argc, Janet *argv)
-{
-  janet_fixarity(argc, 0);
-  return enumerate_option_list(content_encodings, CONTENT_ENCODING_COUNT);
 }
 
 Janet base64_encoder(int argc, Janet * argv)
 {
   janet_arity(argc, 1, 2);
   JanetByteView data = janet_getbytes(argv, 0);
-  base64_variant variant = STANDARD;
+  janetls_encoding_base64_variant variant = janetls_encoding_base64_variant_standard;
   if (argc > 1) {
     get_base64_variant(argc, argv, 1, 1, &variant);
   }
@@ -136,14 +86,14 @@ Janet base64_decoder(int argc, Janet * argv)
 {
   janet_arity(argc, 1, 2);
   JanetByteView data = janet_getbytes(argv, 0);
-  base64_variant variant = STANDARD;
+  janetls_encoding_base64_variant variant = janetls_encoding_base64_variant_standard;
   if (argc > 1) {
     get_base64_variant(argc, argv, 1, 1, &variant);
   }
   return base64_decode(data.bytes, data.len, variant);
 }
 
-int extract_encoding(int argc, Janet * argv, int offset, content_encoding * encoding, int * variant)
+int extract_encoding(int argc, Janet * argv, int offset, janetls_encoding_type * encoding, int * variant)
 {
   int consumed = 0;
   if (argc + offset > 0)
@@ -151,9 +101,9 @@ int extract_encoding(int argc, Janet * argv, int offset, content_encoding * enco
     if (get_content_encoding(argc, argv, offset + 0, 0, encoding) == 0)
     {
       consumed++;
-      if (*encoding == BASE_64)
+      if (*encoding == janetls_encoding_type_base64)
       {
-        if (argc + offset > 1 && get_base64_variant(argc, argv, offset + 1, 0, (base64_variant *)variant) == 0) {
+        if (argc + offset > 1 && get_base64_variant(argc, argv, offset + 1, 0, (janetls_encoding_base64_variant *)variant) == 0) {
           consumed++;
         }
       }
@@ -164,7 +114,7 @@ int extract_encoding(int argc, Janet * argv, int offset, content_encoding * enco
   return consumed;
 }
 
-void assert_generic_encoding_parameters(int argc, Janet * argv, content_encoding * encoding, int * variant)
+void assert_generic_encoding_parameters(int argc, Janet * argv, janetls_encoding_type * encoding, int * variant)
 {
   // Sanity check the parameters
   int consumed_arguments = extract_encoding(argc, argv, 1, encoding, variant);
@@ -188,7 +138,7 @@ void assert_generic_encoding_parameters(int argc, Janet * argv, content_encoding
 Janet generic_encoder(int argc, Janet * argv)
 {
   janet_arity(argc, 2, 3);
-  content_encoding encoding = RAW_BYTE;
+  janetls_encoding_type encoding = janetls_encoding_type_raw;
   int variant = 0;
   JanetByteView data = janet_getbytes(argv, 0);
   assert_generic_encoding_parameters(argc, argv, &encoding, &variant);
@@ -198,7 +148,7 @@ Janet generic_encoder(int argc, Janet * argv)
 Janet generic_decoder(int argc, Janet * argv)
 {
   janet_arity(argc, 2, 3);
-  content_encoding encoding = RAW_BYTE;
+  janetls_encoding_type encoding = janetls_encoding_type_raw;
   int variant = 0;
   JanetByteView data = janet_getbytes(argv, 0);
   assert_generic_encoding_parameters(argc, argv, &encoding, &variant);
@@ -226,11 +176,11 @@ static const JanetReg cfuns[] =
     "Permitted variants are described in (janetls/base64/variants). "
     "It will by by default :standard"
     },
-  {"base64/variants", base64_variants_set,
+  {"base64/variants", janetls_search_encoding_base64_variant_set,
     "(janetls/base64/variants)\n\n"
     "Enumerates acceptable variants for other base64 functions"
     },
-  {"encoding/types", content_encoding_set,
+  {"encoding/types", janetls_search_encoding_type_set,
     "(janetls/encoding/types)\n\n"
     "Enumerates acceptable encoding types which are supplied to the encode "
     "and decode functions."

@@ -23,26 +23,18 @@
 #ifndef JANETLS_RSA_H
 #define JANETLS_RSA_H
 #include <janet.h>
+#include "janetls-options.h"
 #include "mbedtls/rsa.h"
 #include "mbedtls/md.h"
 #include "janetls-random.h"
 
-typedef enum rsa_pkcs1_version {
-  rsa_pkcs1_version_v15 = 0,
-  rsa_pkcs1_version_v21 = 1,
-} rsa_pkcs1_version;
-
-typedef enum rsa_key_type {
-  rsa_key_type_public,
-  rsa_key_type_private
-} rsa_key_type;
-
 typedef struct rsa_object {
   mbedtls_rsa_context ctx;
   random_object * random;
-  rsa_pkcs1_version version;
-  rsa_key_type type;
-  mbedtls_md_type_t digest;
+  janetls_rsa_pkcs1_version version;
+  janetls_pk_key_type type;
+  janetls_md_algorithm digest;
+  janetls_md_algorithm mgf1;
 } rsa_object;
 extern JanetAbstractType rsa_object_type;
 
