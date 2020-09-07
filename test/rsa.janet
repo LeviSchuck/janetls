@@ -3,11 +3,18 @@
 # https://github.com/pyrmont/testament/blob/master/api.md
 (import ../build/janetls :prefix "" :exit true)
 
+(def r (random/start))
+
 # Generate a default key, RSASSA-PKCS1-v1_5 using SHA-256
 (def key (rsa/generate))
 
 (def data "hello mike")
 (def other-data "goodbye joe")
+(def some-random-data (:get r 32))
+
+(def encrypted-data (:encrypt key data))
+(def encrypted-other-data (:encrypt key other-data))
+(def encrypted-random-data (:encrypt key some-random-data))
 
 (deftest "Default key is 2048 bits" (is (= 2048 (:bits key))))
 (deftest "Default key is 256 bytes" (is (= 256 (:bytes key))))
@@ -25,11 +32,17 @@
   (is (= false (:verify key data sig2)))
   ))
 
+(deftest "Default key encrypted data is expected length" (= (:bytes key) (length encrypted-data)))
+(deftest "Default key encrypted data decrypts" (= data (:decrypt key encrypted-data)))
+(deftest "Default key encrypted other data decrypts" (= other-data (:decrypt key encrypted-other-data)))
+(deftest "Default key encrypted some random data decrypts" (= some-random-data (:decrypt key encrypted-random-data)))
+
 (def key2 (rsa/generate {
   :bits 1024
   :version :pkcs1-v2.1
   :mgf1 :sha1
   :digest :sha1
+  :random r
   }))
 
 (deftest "Custom key is 1024 bits" (is (= 1024 (rsa/get-size-bits key2))))
@@ -47,5 +60,20 @@
   (is (rsa/verify key2 data sig))
   (is (= false (rsa/verify key data sig2)))
   ))
+
+(def encrypted-data2 (:encrypt key2 data))
+(def encrypted-other-data2 (:encrypt key2 other-data))
+(def encrypted-random-data2 (:encrypt key2 some-random-data))
+
+(deftest "Custom key encrypted data is expected length" (= (:bytes key2) (length encrypted-data2)))
+(deftest "Custom key encrypted data decrypts" (= data (:decrypt key2 encrypted-data2)))
+(deftest "Custom key encrypted other data decrypts" (= other-data (:decrypt key2 encrypted-other-data2)))
+(deftest "Custom key encrypted some random data decrypts" (= some-random-data (:decrypt key2 encrypted-random-data2)))
+
+(def key3 (rsa/generate))
+(deftest "Encryption between different keys differs" (is (not= (:encrypt key3 data) encrypted-data)))
+(deftest "Decryption between different keys fails" (is (= nil (:decrypt key3 encrypted-data))))
+
+(deftest "Refuses incorrect lengths" (assert-thrown (:decrypt key2 encrypted-data)))
 
 (run-tests!)

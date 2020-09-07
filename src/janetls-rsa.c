@@ -280,17 +280,79 @@ Janet rsa_verify(int32_t argc, Janet * argv)
 Janet rsa_encrypt(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  // RSA object
-  // Data to encrypt
-  return janet_wrap_nil();
+  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
+  }
+  JanetByteView plaintext = janet_to_bytes(argv[1]);
+  // TODO ensure that the plaintext is under a certain length which can be
+  // padded safely and correctly
+  uint8_t * ciphertext = janet_smalloc(rsa->ctx.len);
+
+  int ret = mbedtls_rsa_pkcs1_encrypt(
+    &rsa->ctx,
+    rsa->random ? janetls_random_rng : NULL,
+    rsa->random,
+    MBEDTLS_RSA_PRIVATE,
+    plaintext.len,
+    plaintext.bytes,
+    ciphertext
+    );
+  if (ret != 0)
+  {
+    janet_sfree(ciphertext);
+  }
+  check_result(ret);
+
+  Janet result = janet_wrap_string(janet_string(ciphertext, rsa->ctx.len));
+  // janet_string copies the bytes, it's time to free it now.
+  janet_sfree(ciphertext);
+
+  return result;
 }
 
 Janet rsa_decrypt(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  // RSA object
-  // Data to decrypt
-  return janet_wrap_nil();
+  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
+  }
+  JanetByteView ciphertext = janet_to_bytes(argv[1]);
+
+  if (ciphertext.len != (int32_t)rsa->ctx.len)
+  {
+    janet_panicf("Ciphertext does not match RSA key size of %d bytes", rsa->ctx.len);
+  }
+  // TODO ensure that the ciphertext is under a certain length which can be
+  // padded safely and correctly
+  uint8_t * plaintext = janet_smalloc(rsa->ctx.len);
+
+  size_t output_size = 0;
+
+  int ret = mbedtls_rsa_pkcs1_decrypt(
+    &rsa->ctx,
+    rsa->random ? janetls_random_rng : NULL,
+    rsa->random,
+    MBEDTLS_RSA_PUBLIC,
+    &output_size,
+    ciphertext.bytes,
+    plaintext,
+    rsa->ctx.len
+    );
+  if (ret != 0)
+  {
+    janet_sfree(plaintext);
+    return janet_wrap_nil();
+  }
+
+  Janet result = janet_wrap_string(janet_string(plaintext, output_size));
+  // janet_string copies the bytes, it's time to free it now.
+  janet_sfree(plaintext);
+
+  return result;
 }
 
 Janet rsa_get_version(int32_t argc, Janet * argv)
