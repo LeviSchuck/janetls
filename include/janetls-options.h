@@ -39,9 +39,16 @@ typedef enum janetls_rsa_pkcs1_version {
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(rsa_pkcs1_version, janetls_rsa_pkcs1_version)
 
+typedef enum janetls_pk_information_class {
+  janetls_pk_information_class_public = 0,
+  janetls_pk_information_class_private
+} janetls_pk_information_class;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(pk_information_class, janetls_pk_information_class)
+
 typedef enum janetls_pk_key_type {
-  janetls_pk_key_type_public,
-  janetls_pk_key_type_private
+  janetls_pk_key_type_rsa,
+  janetls_pk_key_type_ec,
 } janetls_pk_key_type;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(pk_key_type, janetls_pk_key_type)

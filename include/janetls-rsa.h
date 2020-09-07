@@ -32,7 +32,7 @@ typedef struct rsa_object {
   mbedtls_rsa_context ctx;
   random_object * random;
   janetls_rsa_pkcs1_version version;
-  janetls_pk_key_type type;
+  janetls_pk_information_class information_class;
   janetls_md_algorithm digest;
   janetls_md_algorithm mgf1;
 } rsa_object;

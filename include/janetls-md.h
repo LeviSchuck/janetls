@@ -24,6 +24,8 @@
 #define JANETLS_MD_H
 #include <janet.h>
 #include "mbedtls/md.h"
+#include "janetls-options.h"
 
 mbedtls_md_type_t symbol_to_alg(Janet keyword);
+int janetls_md_digest(Janet * result, janetls_md_algorithm algorithm, const Janet data);
 #endif

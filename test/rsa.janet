@@ -76,4 +76,57 @@
 
 (deftest "Refuses incorrect lengths" (assert-thrown (:decrypt key2 encrypted-data)))
 
+(deftest "RSA Import and Export works" (do
+  (def pub (rsa/export-public key))
+  (def priv (rsa/export-private key))
+  (is (not= nil pub))
+  (is (not= nil priv))
+  (is (not= nil (get pub :n)))
+  (is (not= nil (get pub :e)))
+  (is (not= nil (get pub :version)))
+  (is (= :public (get pub :information-class)))
+  (is (= :rsa (get pub :type)))
+  # Private parameters are not included
+  (is (= nil (get pub :d)))
+  (is (= nil (get pub :p)))
+  (is (= nil (get pub :q)))
+
+  (is (not= nil (get priv :n)))
+  (is (not= nil (get priv :e)))
+  (is (not= nil (get priv :version)))
+  (is (= :private (get priv :information-class)))
+  (is (= :rsa (get priv :type)))
+  # Private parameters are included
+  (is (not= nil (get priv :d)))
+  (is (not= nil (get priv :p)))
+  (is (not= nil (get priv :q)))
+
+  (def pub-key (rsa/import pub))
+  (is (not= nil pub-key))
+  (is (:public? pub-key))
+  (is (not (:private? pub-key)))
+
+  (def private-key (rsa/import priv))
+  (is (not= nil private-key))
+  (is (:private? private-key))
+  (is (not (:public? private-key)))
+
+
+  (def sig (rsa/sign key data))
+
+  # Signature made with original key is accepted by all
+  (is (:verify key data sig))
+  (is (:verify pub-key data sig))
+  (is (:verify private-key data sig))
+
+  (def sig2 (:sign private-key data))
+  # Signature made by the imported private key is accepted by all
+  (is (:verify key data sig2))
+  (is (:verify pub-key data sig2))
+  (is (:verify private-key data sig2))
+
+  # Public keys cannot sign
+  (assert-thrown (:sign pub-key data))
+  ))
+
 (run-tests!)

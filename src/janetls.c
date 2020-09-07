@@ -102,6 +102,10 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "There are extra or missing characters in the encoded value";
     case JANETLS_ERR_ENCODING_INVALID_TYPE:
       return "Invalid encoding type";
+    case JANETLS_ERR_MD_INVALID_INPUT_TYPE:
+      return "Invalid input type, should be string or buffer";
+    case JANETLS_ERR_MD_INVALID_ALGORITHM:
+      return "Invalid algorithm";
     case JANETLS_ERR_ASN1_INVALID_BIT_STRING_LENGTH:
       return "A bitstring had an invalid length while parsing";
     case JANETLS_ERR_ASN1_EMPTY_INPUT:

@@ -164,3 +164,15 @@ option_list_entry asn1_class[] = {
   {janetls_asn1_class_private, "private", 0},
 };
 JANETLS_SEARCH_OPTION_LIST(asn1_class, janetls_asn1_class)
+
+option_list_entry pk_information_class[] = {
+  {janetls_pk_information_class_private, "private", 0},
+  {janetls_pk_information_class_public, "public", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(pk_information_class, janetls_pk_information_class)
+
+option_list_entry pk_key_type[] = {
+  {janetls_pk_key_type_rsa, "rsa", 0},
+  {janetls_pk_key_type_ec, "ec", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(pk_key_type, janetls_pk_key_type)

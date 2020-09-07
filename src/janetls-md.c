@@ -82,6 +82,34 @@ static Janet md(int32_t argc, Janet * argv)
   return content_to_encoding(digest, mbedtls_md_get_size(md_info), encoding, variant);
 }
 
+int janetls_md_digest(Janet * result, janetls_md_algorithm algorithm, const Janet data)
+{
+  int ret = 0;
+  if (!janet_is_byte_typed(data))
+  {
+    ret = JANETLS_ERR_INVALID_BOOLEAN_VALUE;
+    goto end;
+  }
+  JanetByteView bytes = janet_to_bytes(data);
+
+  const mbedtls_md_info_t * md_info;
+  md_info = mbedtls_md_info_from_type((mbedtls_md_type_t)algorithm);
+
+  if (md_info == NULL)
+  {
+    ret = JANETLS_ERR_MD_INVALID_ALGORITHM;
+    goto end;
+  }
+
+  unsigned char digest[MBEDTLS_MD_MAX_SIZE];
+
+  retcheck(mbedtls_md(md_info, bytes.bytes, bytes.len, digest));
+
+  *result = janet_wrap_string(janet_string(digest, mbedtls_md_get_size(md_info)));
+end:
+  return 0;
+}
+
 typedef struct digest_object {
   mbedtls_md_type_t algorithm;
   const mbedtls_md_info_t * info;
