@@ -55,12 +55,14 @@
     "src/janetls.c"
     "src/janetls-md.c"
     "src/janetls-util.c"
+    "src/janetls-options.c"
     "src/janetls-encode.c"
     "src/janetls-encoding.c"
     "src/janetls-bignum.c"
     "src/janetls-random.c"
     "src/janetls-byteslice.c"
     "src/janetls-asn1.c"
+    "src/janetls-rsa.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
@@ -74,6 +76,10 @@
     "mbedtls/library/entropy_poll.c"
     # mbed tls big numbers
     "mbedtls/library/bignum.c"
+    # RSA
+    "mbedtls/library/rsa.c"
+    "mbedtls/library/rsa_internal.c"
+    "mbedtls/library/oid.c"
     # Everything in mbed tls requires error, platform, platform_util
     "mbedtls/library/error.c"
     "mbedtls/library/platform.c"

@@ -20,34 +20,24 @@
  * SOFTWARE.
  */
 
-#ifndef JANETLS_ASN1_H
-#define JANETLS_ASN1_H
+#ifndef JANETLS_RSA_H
+#define JANETLS_RSA_H
 #include <janet.h>
-#include "janetls-encoding.h"
 #include "janetls-options.h"
+#include "mbedtls/rsa.h"
+#include "mbedtls/md.h"
+#include "janetls-random.h"
 
-typedef struct asn1_parser {
-  Janet source;
-  const uint8_t * buffer;
-  size_t position;
-  size_t length;
-  uint64_t flags;
-  janetls_encoding_base64_variant base64_variant;
-} asn1_parser;
+typedef struct rsa_object {
+  mbedtls_rsa_context ctx;
+  random_object * random;
+  janetls_rsa_pkcs1_version version;
+  janetls_pk_information_class information_class;
+  janetls_md_algorithm digest;
+  janetls_md_algorithm mgf1;
+} rsa_object;
+extern JanetAbstractType rsa_object_type;
 
-typedef struct asn1_parsed_tag {
-  uint64_t tag;
-  janetls_asn1_class asn1_class;
-  janetls_asn1_universal_type asn1_universal_type;
-  uint8_t base_tag_byte;
-  uint8_t constructed;
-  const uint8_t * tag_start;
-  const uint8_t * value_start;
-  const uint8_t * value_end;
-  size_t tag_position;
-  size_t value_position;
-  size_t header_length;
-  size_t value_length;
-} asn1_parsed_tag;
+rsa_object * new_rsa();
 
 #endif

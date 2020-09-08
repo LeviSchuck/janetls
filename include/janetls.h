@@ -39,6 +39,7 @@ int search_option_list(option_list_entry * list, int list_size, JanetByteView st
 Janet enumerate_option_list(option_list_entry * list, int size);
 Janet value_to_option(option_list_entry * list, int size, int value);
 const char * value_to_option_text(option_list_entry * list, int size, int value);
+
 // Byte view helpers
 JanetByteView janet_to_bytes(Janet x);
 int janet_is_byte_typed(Janet x);
@@ -68,6 +69,7 @@ void submod_bignum(JanetTable * env);
 void submod_random(JanetTable * env);
 void submod_byteslice(JanetTable * env);
 void submod_asn1(JanetTable * env);
+void submod_rsa(JanetTable * env);
 
 #define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
 

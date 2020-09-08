@@ -24,44 +24,16 @@
 #include "janetls-md.h"
 #include "janetls-encoding.h"
 
-typedef struct janetls_digest_algorithms {
-  mbedtls_md_type_t type;
-  char algorithm[20];
-} janetls_digest_algorithms;
-
-option_list_entry supported_algorithms[] = {
-  {MBEDTLS_MD_MD5, "md5", 0},
-  {MBEDTLS_MD_SHA1, "sha1", 0},
-  {MBEDTLS_MD_SHA1, "sha-1", OPTION_LIST_HIDDEN},
-  {MBEDTLS_MD_SHA224, "sha224", 0},
-  {MBEDTLS_MD_SHA256, "sha256", 0},
-  {MBEDTLS_MD_SHA384, "sha384", 0},
-  {MBEDTLS_MD_SHA512, "sha512", 0},
-  {MBEDTLS_MD_SHA224, "sha-224", OPTION_LIST_HIDDEN},
-  {MBEDTLS_MD_SHA256, "sha-256", OPTION_LIST_HIDDEN},
-  {MBEDTLS_MD_SHA384, "sha-384", OPTION_LIST_HIDDEN},
-  {MBEDTLS_MD_SHA512, "sha-512", OPTION_LIST_HIDDEN},
-};
-
-// If you use fixed sizes for things like strings
-// Then you can determine the size this way
-// Rather than looping over it until you find null.
-#define SUPPORTED_ALG_COUNT (sizeof(supported_algorithms) / sizeof(option_list_entry))
-
 mbedtls_md_type_t symbol_to_alg(Janet value) {
-  if (janet_is_byte_typed(value))
+  janetls_md_algorithm result = janetls_md_algorithm_none;
+  int ret = janetls_search_md_supported_algorithms(value, &result);
+  if (ret == JANETLS_ERR_SEARCH_OPTION_NOT_FOUND)
   {
-    int type = MBEDTLS_MD_NONE;
-    if (search_option_list(supported_algorithms, SUPPORTED_ALG_COUNT, janet_to_bytes(value), &type))
-    {
-      return (mbedtls_md_type_t) type;
-    }
+    janet_panicf("Given algorithm %p is not expected, please review "
+      "janetls/md/algorithms for supported values", value);
   }
-
-  janet_panicf("Given algorithm %p is not expected, please review "
-    "janetls/md/algorithms for supported values", value);
-  // unreachable
-  return MBEDTLS_MD_NONE;
+  check_result(ret);
+  return (mbedtls_md_type_t) result;
 }
 
 void assert_commands_consumed(int32_t argc, Janet * argv, int required, int optional)
@@ -91,7 +63,7 @@ static Janet md(int32_t argc, Janet * argv)
 
   mbedtls_md_type_t algorithm = symbol_to_alg(argv[0]);
   JanetByteView data = janet_getbytes(argv, 1);
-  content_encoding encoding = HEX;
+  janetls_encoding_type encoding = janetls_encoding_type_hex;
   int variant = 0;
   int consumed = extract_encoding(argc, argv, 2, &encoding, &variant);
 
@@ -108,6 +80,34 @@ static Janet md(int32_t argc, Janet * argv)
   }
 
   return content_to_encoding(digest, mbedtls_md_get_size(md_info), encoding, variant);
+}
+
+int janetls_md_digest(Janet * result, janetls_md_algorithm algorithm, const Janet data)
+{
+  int ret = 0;
+  if (!janet_is_byte_typed(data))
+  {
+    ret = JANETLS_ERR_INVALID_BOOLEAN_VALUE;
+    goto end;
+  }
+  JanetByteView bytes = janet_to_bytes(data);
+
+  const mbedtls_md_info_t * md_info;
+  md_info = mbedtls_md_info_from_type((mbedtls_md_type_t)algorithm);
+
+  if (md_info == NULL)
+  {
+    ret = JANETLS_ERR_MD_INVALID_ALGORITHM;
+    goto end;
+  }
+
+  unsigned char digest[MBEDTLS_MD_MAX_SIZE];
+
+  retcheck(mbedtls_md(md_info, bytes.bytes, bytes.len, digest));
+
+  *result = janet_wrap_string(janet_string(digest, mbedtls_md_get_size(md_info)));
+end:
+  return 0;
 }
 
 typedef struct digest_object {
@@ -131,7 +131,6 @@ static Janet md_update(int32_t argc, Janet * argv);
 static Janet md_finish(int32_t argc, Janet * argv);
 static Janet md_size(int32_t argc, Janet * argv);
 static Janet md_algorithm(int32_t argc, Janet * argv);
-static Janet md_algorithms_set(int32_t argc, Janet * argv);
 static Janet md(int32_t argc, Janet * argv);
 static Janet hmac(int32_t argc, Janet * argv);
 static Janet hmac_start(int32_t argc, Janet * argv);
@@ -258,7 +257,7 @@ static const JanetReg cfuns[] =
     "janetls/md/reset. This will allow multiple update and finish calls on "
     "the same object."
     },
-  {"md/algorithms", md_algorithms_set, "(janetls/md/algorithms)\n\n"
+  {"md/algorithms", janetls_search_md_supported_algorithms_set, "(janetls/md/algorithms)\n\n"
     "Provides an array of keywords for available algorithms"},
   {NULL, NULL, NULL}
 };
@@ -439,7 +438,7 @@ static Janet md_finish(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 1, 3);
   digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
-  content_encoding encoding = HEX;
+  janetls_encoding_type encoding = janetls_encoding_type_hex;
   int variant = 0;
   int consumed = extract_encoding(argc, argv, 1, &encoding, &variant);
 
@@ -543,7 +542,7 @@ static Janet md_algorithm(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   digest_object * digest = janet_getabstract(argv, 0, &digest_object_type);
-  return value_to_option(supported_algorithms, SUPPORTED_ALG_COUNT, digest->algorithm);
+  return janetls_search_md_supported_algorithms_to_janet((janetls_md_algorithm)digest->algorithm);
 }
 
 static Janet hmac(int32_t argc, Janet * argv)
@@ -553,7 +552,7 @@ static Janet hmac(int32_t argc, Janet * argv)
   mbedtls_md_type_t algorithm = symbol_to_alg(argv[0]);
   JanetByteView key = janet_getbytes(argv, 1);
   JanetByteView data = janet_getbytes(argv, 2);
-  content_encoding encoding = HEX;
+  janetls_encoding_type encoding = janetls_encoding_type_hex;
   int variant = 0;
   int consumed = extract_encoding(argc, argv, 3, &encoding, &variant);
 
@@ -570,11 +569,4 @@ static Janet hmac(int32_t argc, Janet * argv)
   }
 
   return content_to_encoding(digest, mbedtls_md_get_size(md_info), encoding, variant);
-}
-
-
-static Janet md_algorithms_set(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 0);
-  return enumerate_option_list(supported_algorithms, SUPPORTED_ALG_COUNT);
 }

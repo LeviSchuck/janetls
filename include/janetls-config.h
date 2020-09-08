@@ -70,6 +70,12 @@
 #define MBEDTLS_HAVE_ASM
 #define MBEDTLS_GENPRIME
 
+// RSA support
+#define MBEDTLS_RSA_C
+#define MBEDTLS_OID_C
+#define MBEDTLS_PKCS1_V15
+#define MBEDTLS_PKCS1_V21
+
 #include "mbedtls/check_config.h"
 
 #endif

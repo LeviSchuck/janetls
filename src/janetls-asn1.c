@@ -30,67 +30,13 @@
 
 // #define PRINT_TRACE_EVERYTHING
 
-option_list_entry universal_types[] = {
-  {ASN1_UNIVERSAL_TYPE_END_OF_CONTENT, "not-universal", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_END_OF_CONTENT, "end-of-content", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_BOOLEAN, "boolean", 0},
-  {ASN1_UNIVERSAL_TYPE_INTEGER, "integer", 0},
-  {ASN1_UNIVERSAL_TYPE_BIT_STRING, "bit-string", 0},
-  {ASN1_UNIVERSAL_TYPE_OCTET_STRING, "octet-string", 0},
-  {ASN1_UNIVERSAL_TYPE_NULL, "null", 0},
-  {ASN1_UNIVERSAL_TYPE_OBJECT_IDENTIFIER, "object-identifier", 0},
-  {ASN1_UNIVERSAL_TYPE_OBJECT_IDENTIFIER, "oid", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_OBJECT_DESCRIPTOR, "object-descriptor", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_EXTERNAL, "external", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_REAL_FLOAT, "real-float", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_ENUMERATED, "enumerated", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_EMBEDDED_PDV, "embedded-pdv", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_UTF8_STRING, "utf8-string", 0},
-  {ASN1_UNIVERSAL_TYPE_UTF8_STRING, "utf8", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_RELATIVE_OID, "relative-oid", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_TIME, "time", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_SEQUENCE, "sequence", 0},
-  {ASN1_UNIVERSAL_TYPE_SET, "set", 0},
-  {ASN1_UNIVERSAL_TYPE_NUMERIC_STRING, "numeric-string", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_PRINTABLE_STRING, "printable-string", 0},
-  {ASN1_UNIVERSAL_TYPE_TELETEX_STRING, "teletex-string", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_VIDEOTEX_STRING, "videotex-string", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_IA5_ASCII_STRING, "ia5-string", 0},
-  {ASN1_UNIVERSAL_TYPE_IA5_ASCII_STRING, "ascii", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_UTC_TIME, "utc-time", 0},
-  {ASN1_UNIVERSAL_TYPE_GENERALIZED_TIME, "generalized-time", 0},
-  {ASN1_UNIVERSAL_TYPE_GRAPHIC_STRING, "graphic-string", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_VISIBLE_STRING, "visible-string", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_GENERAL_STRING, "generalized-string", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_UNIVERSAL_STRING, "universal-string", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_CHARACTER_STRING, "character-string", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_BITMAP_STRING, "bitmap-string", 0},
-  {ASN1_UNIVERSAL_TYPE_DATE, "date", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_TIME_OF_DAY, "time-of-day", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_DATE_TIME, "date-time", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_DURATION, "duration", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_OID_IRI, "oid-iri", OPTION_LIST_HIDDEN},
-  {ASN1_UNIVERSAL_TYPE_RELATIVE_OID_IRI, "relative-oid-iri", OPTION_LIST_HIDDEN},
-};
-
-#define UNIVERSAL_TYPES_COUNT (sizeof(universal_types) / sizeof(option_list_entry))
-
-option_list_entry asn1_class_types[] = {
-  {ASN1_CLASS_UNIVERSAL, "universal", 0},
-  {ASN1_CLASS_APPLICATION, "application", 0},
-  {ASN1_CLASS_CONTEXT_SPECIFIC, "context-specific", 0},
-  {ASN1_CLASS_PRIVATE, "private", 0},
-};
-
-#define ASN1_CLASS_TYPES_COUNT (sizeof(asn1_class_types) / sizeof(option_list_entry))
-
 int parse_length(asn1_parser * parser, uint64_t * length);
 int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed);
 
 // Decode things
-int decode_base127(JanetByteView bytes, Janet * destination, int * position, number_type bignum);
+int decode_base127(JanetByteView bytes, Janet * destination, int * position, janetls_asn1_number_type bignum);
 int decode_base127_as_u64(asn1_parser * parser, uint64_t * external_result);
-int decode_class(uint8_t byte_tag, asn1_class * result);
+int decode_class(uint8_t byte_tag, janetls_asn1_class * result);
 int decode_asn1(asn1_parser * parser, Janet * output);
 int decode_asn1_construction(asn1_parser * parser, Janet * output, size_t length);
 
@@ -98,32 +44,30 @@ int decode_asn1_construction(asn1_parser * parser, Janet * output, size_t length
 int encode_base127(Janet source, JanetBuffer * buffer);
 int encode_asn1_length(Janet * result, int32_t size);
 int encode_asn1_integer(uint8_t * bytes, int32_t * bytes_used, uint64_t number, int max_bytes);
-int encode_asn1_tag(Janet * result, uint64_t tag, asn1_class class, int constructed);
-int encode_asn1_tag_universal(Janet * result, asn1_universal_type type);
+int encode_asn1_tag(Janet * result, uint64_t tag, janetls_asn1_class class, int constructed);
+int encode_asn1_tag_universal(Janet * result, janetls_asn1_universal_type type);
 int encode_asn1_oid_numbers(Janet * result, int32_t * size, const Janet * numbers, int32_t count);
 int encode_asn1_oid_string(Janet * result, int32_t * size, JanetByteView oid_string);
 
 // Push values onto an in progress encoded document
 int push_asn1_tag_length_value(JanetArray * array, Janet value);
-int push_asn1_tag_universal(JanetArray * array, asn1_universal_type type);
+int push_asn1_tag_universal(JanetArray * array, janetls_asn1_universal_type type);
 int push_asn1_length(JanetArray * array, int32_t length);
 int push_asn1_construction(JanetArray * array, const Janet * data, int32_t data_count);
 int push_asn1_struct(JanetArray * array, Janet value);
-int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, int bits);
+int push_asn1_value(JanetArray * array, Janet value, janetls_asn1_universal_type type, int bits);
 
 // Misc inspection
 int find_janet_field(Janet * destination, const JanetKV * view, int32_t capacity, const char * key);
 int check_if_oid_list(const Janet * data, int32_t data_count);
-int determine_types(asn1_class * class, asn1_universal_type * universal_type, int * constructed, uint64_t tag, Janet dict_type, Janet dict_value);
-int determine_type_by_value(asn1_universal_type * universal_type, int * constructed, Janet dict_value);
+int determine_types(janetls_asn1_class * class, janetls_asn1_universal_type * universal_type, int * constructed, uint64_t tag, Janet dict_type, Janet dict_value);
+int determine_type_by_value(janetls_asn1_universal_type * universal_type, int * constructed, Janet dict_value);
 int count_length_in_array(int32_t * length, JanetArray * array, int32_t start, int32_t end);
 
 static Janet asn1_encode_127(int32_t argc, Janet * argv);
 static Janet asn1_decode_127(int32_t argc, Janet * argv);
 static Janet asn1_decode(int32_t argc, Janet * argv);
 static Janet asn1_encode(int32_t argc, Janet * argv);
-static Janet asn1_enumerate_types(int32_t argc, Janet * argv);
-static Janet asn1_enumerate_classes(int32_t argc, Janet * argv);
 
 static const JanetReg cfuns[] =
 {
@@ -194,12 +138,12 @@ static const JanetReg cfuns[] =
     "structured :value is given, it will be encoded like constructed "
     "non-universal types."
     },
-  {"asn1/classes", asn1_enumerate_classes, "(janetls/asn1/classes)\n\n"
+  {"asn1/classes", janetls_search_asn1_class_set, "(janetls/asn1/classes)\n\n"
     "Enumerates ASN.1 classes, besides :universal, the others "
     "should be used as the :type value with an accompanying :tag to identify"
     "the value to the application."
     },
-  {"asn1/types", asn1_enumerate_types, "(janetls/asn1/types)\n\n"
+  {"asn1/types", janetls_search_asn1_universal_type_set, "(janetls/asn1/types)\n\n"
     "Enumerates the types this library understands."
     },
   {NULL, NULL, NULL}
@@ -210,18 +154,13 @@ void submod_asn1(JanetTable * env)
   janet_cfuns(env, "janetls", cfuns);
 }
 
-static Janet asn1_enumerate_types(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 0);
-  return enumerate_option_list(universal_types, UNIVERSAL_TYPES_COUNT);
-}
-
-static Janet asn1_enumerate_classes(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 0);
-  return enumerate_option_list(asn1_class_types, ASN1_CLASS_TYPES_COUNT);
-}
-
+#define ASN1_FLAG_BIGNUM_AS_STRING (1 << janetls_asn1_flags_bignum_as_string)
+#define ASN1_FLAG_EAGER_PARSE (1 << janetls_asn1_flags_eager_parse)
+#define ASN1_FLAG_BASE64_NON_ASCII (1 << janetls_asn1_flags_base64_non_ascii)
+#define ASN1_FLAG_BASE64_USE_URL (1 << janetls_asn1_flags_base64_use_url)
+#define ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS (1 << janetls_asn1_flags_collapse_single_constructions)
+#define ASN1_FLAG_COLLAPSE_GUESSABLE_VALUES (1 << janetls_asn1_flags_collapse_guessable_values)
+#define ASN1_FLAG_STRING_OID (1 << janetls_asn1_flags_string_oid)
 
 // ASN1 Object:
 // Type (byte)
@@ -251,7 +190,7 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
     janet_panicf("Expected string or buffer, but got %p", argv[0]);
   }
   uint64_t flags = 0;
-  base64_variant base64_variant = STANDARD;
+  janetls_encoding_base64_variant base64_variant = janetls_encoding_base64_variant_standard;
 
   for (int i = 1; i < argc; i++)
   {
@@ -266,11 +205,11 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
     }
     else if (janet_cstrcmp(keyword, "base64-non-ascii") == 0)
     {
-      flags |= ASN1_BASE64_NON_ASCII;
+      flags |= ASN1_FLAG_BASE64_NON_ASCII;
     }
     else if (janet_cstrcmp(keyword, "base64-url") == 0)
     {
-      base64_variant = URL;
+      base64_variant = janetls_encoding_base64_variant_url;
     }
     else if (janet_cstrcmp(keyword, "string-oid") == 0)
     {
@@ -286,12 +225,12 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
     }
     else if (janet_cstrcmp(keyword, "json") == 0)
     {
-      flags |= ASN1_BASE64_NON_ASCII
+      flags |= ASN1_FLAG_BASE64_NON_ASCII
         | ASN1_FLAG_BIGNUM_AS_STRING
         | ASN1_FLAG_STRING_OID
         | ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS
         | ASN1_FLAG_COLLAPSE_GUESSABLE_VALUES;
-      base64_variant = URL;
+      base64_variant = janetls_encoding_base64_variant_url;
     }
     else
     {
@@ -353,21 +292,22 @@ static Janet asn1_decode_127(int32_t argc, Janet * argv)
   {
     janet_panicf("Expected string or buffer to decode from, but got %p", argv[0]);
   }
-  number_type type = BIGNUM;
+  janetls_asn1_number_type type = janetls_asn1_number_type_bignum;
   if (argc > 1)
   {
+    // TODO search list replace
     JanetKeyword keyword = janet_getkeyword(argv, 1);
     if (janet_cstrcmp(keyword, "bignum") == 0)
     {
-      type = BIGNUM;
+      type = janetls_asn1_number_type_bignum;
     }
     else if (janet_cstrcmp(keyword, "number") == 0)
     {
-      type = NUMBER;
+      type = janetls_asn1_number_type_number;
     }
     else if (janet_cstrcmp(keyword, "u64") == 0)
     {
-      type = U64;
+      type = janetls_asn1_number_type_u64;
     }
     else
     {
@@ -389,10 +329,10 @@ static Janet asn1_decode_127(int32_t argc, Janet * argv)
 
 // int decode_base127(const uint8_t * buffer, int buffer_length, bignum_object * destination, int * position)
 #define MAX_BITS (sizeof(uint64_t) * 8)
-int decode_base127(JanetByteView bytes, Janet * wrapped_destination, int * position, number_type type)
+int decode_base127(JanetByteView bytes, Janet * wrapped_destination, int * position, janetls_asn1_number_type type)
 {
   int ret = 0;
-  if (type == BIGNUM)
+  if (type == janetls_asn1_number_type_bignum)
   {
     bignum_object * destination = new_bignum();
     mbedtls_mpi * num = &destination->mpi;
@@ -448,14 +388,14 @@ int decode_base127(JanetByteView bytes, Janet * wrapped_destination, int * posit
     parser.length = bytes.len;
     parser.position = 0;
     parser.source = janet_wrap_nil();
-    parser.base64_variant = STANDARD;
+    parser.base64_variant = janetls_encoding_base64_variant_standard;
     parser.flags = 0;
     uint64_t result;
     ret = decode_base127_as_u64(&parser, &result);
     *position = parser.position;
     if (ret == 0)
     {
-      if (type == NUMBER)
+      if (type == janetls_asn1_number_type_number)
       {
         if (result > JANET_INTMAX_INT64)
         {
@@ -589,8 +529,8 @@ int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed)
   uint8_t constructed = (tag_byte & 0x20) != 0;
   uint8_t base_tag = tag_byte & 0x1F;
   uint64_t tag = base_tag;
-  asn1_class class;
-  asn1_universal_type universal_type;
+  janetls_asn1_class class;
+  janetls_asn1_universal_type universal_type;
   const uint8_t * value_start;
   size_t value_length;
 
@@ -600,8 +540,8 @@ int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed)
     if (ret != 0) goto end;
   }
 
-  if ((base_tag >= ASN1_UNIVERSAL_TYPE_BOOLEAN && base_tag <= ASN1_UNIVERSAL_TYPE_TIME)
-    || (base_tag >= ASN1_UNIVERSAL_TYPE_SEQUENCE && base_tag <= ASN1_UNIVERSAL_TYPE_RELATIVE_OID_IRI)
+  if ((base_tag >= janetls_asn1_universal_type_boolean && base_tag <= janetls_asn1_universal_type_time)
+    || (base_tag >= janetls_asn1_universal_type_sequence && base_tag <= janetls_asn1_universal_type_relative_oid_iri)
     )
   {
     universal_type = base_tag;
@@ -609,15 +549,15 @@ int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed)
   else
   {
     // it isn't, but the value is 0 and this is how I'm marking that it isn't universal.
-    universal_type = ASN1_UNIVERSAL_TYPE_END_OF_CONTENT;
+    universal_type = janetls_asn1_universal_type_end_of_content;
   }
 
   ret = decode_class(tag_byte, &class);
   if (ret != 0) goto end;
 
-  if (class != ASN1_CLASS_UNIVERSAL)
+  if (class != janetls_asn1_class_universal)
   {
-    universal_type = ASN1_UNIVERSAL_TYPE_END_OF_CONTENT;
+    universal_type = janetls_asn1_universal_type_end_of_content;
   }
 
   ret = parse_length(parser, &value_length);
@@ -647,22 +587,22 @@ end:
   return ret;
 }
 
-int decode_class(uint8_t byte_tag, asn1_class * result)
+int decode_class(uint8_t byte_tag, janetls_asn1_class * result)
 {
   int ret = 0;
   switch (byte_tag >> 6)
   {
     case 0:
-      *result = ASN1_CLASS_UNIVERSAL;
+      *result = janetls_asn1_class_universal;
       break;
     case 1:
-      *result = ASN1_CLASS_APPLICATION;
+      *result = janetls_asn1_class_application;
       break;
     case 2:
-      *result = ASN1_CLASS_CONTEXT_SPECIFIC;
+      *result = janetls_asn1_class_context_specific;
       break;
     case 3:
-      *result = ASN1_CLASS_PRIVATE;
+      *result = janetls_asn1_class_private;
       break;
     default:
       ret = JANETLS_ERR_ASN1_INVALID_ASN1_CLASS;
@@ -760,21 +700,21 @@ int decode_asn1(asn1_parser * parser, Janet * output)
   const char * class_keyword = "invalid";
   switch (tag.asn1_class)
   {
-    case ASN1_CLASS_UNIVERSAL:
+    case janetls_asn1_class_universal:
       class_keyword = "universal";
       break;
-    case ASN1_CLASS_CONTEXT_SPECIFIC:
+    case janetls_asn1_class_context_specific:
       class_keyword = "context-specific";
       break;
-    case ASN1_CLASS_APPLICATION:
+    case janetls_asn1_class_application:
       class_keyword = "application";
       break;
-    case ASN1_CLASS_PRIVATE:
+    case janetls_asn1_class_private:
       class_keyword = "private";
       break;
   }
 
-  const char * type_keyword = value_to_option_text(universal_types, UNIVERSAL_TYPES_COUNT, tag.asn1_universal_type);
+  const char * type_keyword = janetls_search_asn1_universal_type_text(tag.asn1_universal_type);
 
   if (type_keyword == NULL)
   {
@@ -783,11 +723,13 @@ int decode_asn1(asn1_parser * parser, Janet * output)
 
   int guessable = 0;
 
-  #define INCLUDE_RAW_VALUE value = janet_wrap_string(janet_string((parser->buffer) + (tag.value_position), tag.value_length)); \
-    parser->position += tag.value_length
+  #define INCLUDE_RAW_VALUE do { \
+    value = janet_wrap_string(janet_string((parser->buffer) + (tag.value_position), tag.value_length)); \
+    parser->position += tag.value_length; \
+    } while(0)
   switch (tag.asn1_universal_type)
   {
-    case ASN1_UNIVERSAL_TYPE_BOOLEAN:
+    case janetls_asn1_universal_type_boolean:
     {
       if (tag.value_length != 1)
       {
@@ -799,7 +741,7 @@ int decode_asn1(asn1_parser * parser, Janet * output)
       type_keyword = "boolean";
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_INTEGER:
+    case janetls_asn1_universal_type_integer:
     {
       bignum_object * bignum = new_bignum();
       if (tag.value_length == 0)
@@ -825,7 +767,7 @@ int decode_asn1(asn1_parser * parser, Janet * output)
       type_keyword = "integer";
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_BIT_STRING:
+    case janetls_asn1_universal_type_bit_string:
     {
       if (tag.value_length == 0)
       {
@@ -855,7 +797,7 @@ int decode_asn1(asn1_parser * parser, Janet * output)
       }
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_OCTET_STRING:
+    case janetls_asn1_universal_type_octet_string:
     {
       type_keyword = "octet-string";
 
@@ -867,7 +809,7 @@ int decode_asn1(asn1_parser * parser, Janet * output)
       INCLUDE_RAW_VALUE;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_NULL:
+    case janetls_asn1_universal_type_null:
     {
       value = janet_wrap_nil();
       parser->position += tag.value_length; // Technically should be zero..
@@ -876,7 +818,7 @@ int decode_asn1(asn1_parser * parser, Janet * output)
       guessable = 1;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_OBJECT_IDENTIFIER:
+    case janetls_asn1_universal_type_object_identifier:
     {
       size_t end_position = tag.value_position + tag.value_length;
       if (end_position > parser->length)
@@ -981,61 +923,61 @@ int decode_asn1(asn1_parser * parser, Janet * output)
       type_keyword = "object-identifier";
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_UTF8_STRING:
+    case janetls_asn1_universal_type_utf8_string:
     {
       type_keyword = "utf8-string";
       INCLUDE_RAW_VALUE;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_SEQUENCE:
+    case janetls_asn1_universal_type_sequence:
     {
       type_keyword = "sequence";
       sub_value = 1;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_SET:
+    case janetls_asn1_universal_type_set:
     {
       type_keyword = "set";
       sub_value = 1;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_PRINTABLE_STRING:
+    case janetls_asn1_universal_type_printable_string:
     {
       type_keyword = "printable-string";
       INCLUDE_RAW_VALUE;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_TELETEX_STRING:
+    case janetls_asn1_universal_type_teletext_string:
     {
       type_keyword = "teletext-string";
       INCLUDE_RAW_VALUE;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_IA5_ASCII_STRING:
+    case janetls_asn1_universal_type_ia5_string:
     {
       type_keyword = "ia5-string";
       INCLUDE_RAW_VALUE;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_UTC_TIME:
+    case janetls_asn1_universal_type_utc_time:
     {
       type_keyword = "utc-time";
       INCLUDE_RAW_VALUE;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_GENERALIZED_TIME:
+    case janetls_asn1_universal_type_generalized_time:
     {
       type_keyword = "generalized-time";
       INCLUDE_RAW_VALUE;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_UNIVERSAL_STRING:
+    case janetls_asn1_universal_type_universal_string:
     {
       type_keyword = "universal-string";
       INCLUDE_RAW_VALUE;
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_BITMAP_STRING:
+    case janetls_asn1_universal_type_bitmap_string:
     {
       type_keyword = "bitmap-string";
       INCLUDE_RAW_VALUE;
@@ -1062,7 +1004,7 @@ int decode_asn1(asn1_parser * parser, Janet * output)
     retcheck(ret);
     value = nested_value;
     sub_value = 0;
-    if (tag.asn1_class != ASN1_CLASS_UNIVERSAL)
+    if (tag.asn1_class != janetls_asn1_class_universal)
     {
       // This is only necessary on non universal types
       janet_table_put(result, janet_ckeywordv("constructed"), janet_wrap_boolean(1));
@@ -1096,15 +1038,15 @@ int decode_asn1(asn1_parser * parser, Janet * output)
     parser->length = old_length;
   }
 
-  if (tag.asn1_class == ASN1_CLASS_CONTEXT_SPECIFIC
-    || tag.asn1_class == ASN1_CLASS_APPLICATION
-    || tag.asn1_class == ASN1_CLASS_PRIVATE
+  if (tag.asn1_class == janetls_asn1_class_context_specific
+    || tag.asn1_class == janetls_asn1_class_application
+    || tag.asn1_class == janetls_asn1_class_private
     )
   {
     janet_table_put(result, janet_ckeywordv("tag"), janet_wrap_number(tag.tag));
   }
 
-  if (tag.asn1_class == ASN1_CLASS_UNIVERSAL)
+  if (tag.asn1_class == janetls_asn1_class_universal)
   {
     janet_table_put(result, janet_ckeywordv("type"), janet_ckeywordv(type_keyword));
   }
@@ -1113,8 +1055,8 @@ int decode_asn1(asn1_parser * parser, Janet * output)
     janet_table_put(result, janet_ckeywordv("type"), janet_ckeywordv(class_keyword));
   }
 
-  if (tag.asn1_class == ASN1_CLASS_UNIVERSAL
-    && tag.asn1_universal_type == ASN1_UNIVERSAL_TYPE_SEQUENCE
+  if (tag.asn1_class == janetls_asn1_class_universal
+    && tag.asn1_universal_type == janetls_asn1_universal_type_sequence
     && janet_checktype(value, JANET_TUPLE)
     )
   {
@@ -1134,7 +1076,7 @@ int decode_asn1(asn1_parser * parser, Janet * output)
     }
   }
 
-  if (janet_checktype(value, JANET_STRING) && (parser->flags & ASN1_BASE64_NON_ASCII))
+  if (janet_checktype(value, JANET_STRING) && (parser->flags & ASN1_FLAG_BASE64_NON_ASCII))
   {
     JanetStringHead * head = janet_string_head(janet_unwrap_string(value));
     if (!is_ascii_string(head->data, head->length))
@@ -1143,10 +1085,10 @@ int decode_asn1(asn1_parser * parser, Janet * output)
       Janet encoding = janet_wrap_nil();
       switch (parser->base64_variant)
       {
-        case STANDARD:
+        case janetls_encoding_base64_variant_standard:
           encoding = janet_ckeywordv("base64");
           break;
-        case URL:
+        case janetls_encoding_base64_variant_url:
           encoding = janet_ckeywordv("base64-url");
           break;
         default:
@@ -1394,7 +1336,7 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
       Janet asn1_value = janet_wrap_nil();
       int32_t length = 0;
       retcheck(encode_asn1_oid_string(&asn1_value, &length, bytes));
-      retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_OBJECT_IDENTIFIER));
+      retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_object_identifier));
       retcheck(push_asn1_length(array, length));
       janet_array_push(array, asn1_value);
     }
@@ -1408,22 +1350,22 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
     }
     else if (string_type == STRING_IS_PRINTABLE)
     {
-      retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_PRINTABLE_STRING));
+      retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_printable_string));
       retcheck(push_asn1_byteview(array, bytes));
     }
     else if (string_type == STRING_IS_ASCII)
     {
-      retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_IA5_ASCII_STRING));
+      retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_ia5_string));
       retcheck(push_asn1_byteview(array, bytes));
     }
     else if (string_type == STRING_IS_UTF8)
     {
-      retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_UTF8_STRING));
+      retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_utf8_string));
       retcheck(push_asn1_byteview(array, bytes));
     }
     else
     {
-      retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_OCTET_STRING));
+      retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_octet_string));
       retcheck(push_asn1_byteview(array, bytes));
     }
   }
@@ -1437,7 +1379,7 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
       int32_t bytes_used;
 
       retcheck(encode_asn1_integer(bytes, &bytes_used, integer, 8));
-      retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_INTEGER));
+      retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_integer));
       retcheck(push_asn1_length(array, bytes_used));
       janet_array_push(array, janet_wrap_string(janet_string(bytes, bytes_used)));
     }
@@ -1467,13 +1409,13 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
       Janet result = janet_wrap_nil();
       int32_t length = 0;
       retcheck(encode_asn1_oid_numbers(&result, &length, data, data_count));
-      retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_INTEGER));
+      retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_integer));
       retcheck(push_asn1_length(array, length));
       janet_array_push(array, result);
     }
     else
     {
-      retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_SEQUENCE));
+      retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_sequence));
       // TODO structure this length wrapping stuff
       int32_t length_position = array->count;
       janet_array_push(array, janet_wrap_nil());
@@ -1507,7 +1449,7 @@ push_bignum:
       {
         uint8_t zero = 0;
         // Zero needs at least one byte.
-        retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_INTEGER));
+        retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_integer));
         retcheck(push_asn1_length(array, 1));
         janet_array_push(array, janet_wrap_string(janet_string(&zero, 1)));
       }
@@ -1519,7 +1461,7 @@ push_bignum:
         buffer->count += size;
 
         // Now that the value is intact, prepare the other details
-        retcheck(push_asn1_tag_universal(array, ASN1_UNIVERSAL_TYPE_INTEGER));
+        retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_integer));
 
         uint8_t first_byte = buffer->data[0];
         int prepend_byte = 0;
@@ -1555,7 +1497,7 @@ end:
   return ret;
 }
 
-int encode_asn1_tag(Janet * result, uint64_t tag, asn1_class class, int constructed)
+int encode_asn1_tag(Janet * result, uint64_t tag, janetls_asn1_class class, int constructed)
 {
   int ret = 0;
   uint8_t first = (class & 0x3) << 6;
@@ -1584,27 +1526,27 @@ end:
   return ret;
 }
 
-int encode_asn1_tag_universal(Janet * result, asn1_universal_type type)
+int encode_asn1_tag_universal(Janet * result, janetls_asn1_universal_type type)
 {
   int constructed = 0;
 
   switch (type)
   {
-    case ASN1_UNIVERSAL_TYPE_EXTERNAL:
-    case ASN1_UNIVERSAL_TYPE_EMBEDDED_PDV:
-    case ASN1_UNIVERSAL_TYPE_SEQUENCE:
-    case ASN1_UNIVERSAL_TYPE_SET:
+    case janetls_asn1_universal_type_external:
+    case janetls_asn1_universal_type_embedded_pdv:
+    case janetls_asn1_universal_type_sequence:
+    case janetls_asn1_universal_type_set:
       constructed = 1;
       break;
     default:
       break;
   }
 
-  return encode_asn1_tag(result, type, ASN1_CLASS_UNIVERSAL, constructed);
+  return encode_asn1_tag(result, type, janetls_asn1_class_universal, constructed);
 }
 
 
-int push_asn1_tag_universal(JanetArray * array, asn1_universal_type type)
+int push_asn1_tag_universal(JanetArray * array, janetls_asn1_universal_type type)
 {
   int ret = 0;
   #ifdef PRINT_TRACE_EVERYTHING
@@ -1701,8 +1643,8 @@ int push_asn1_struct(JanetArray * array, Janet value)
   int bits = 0;
   uint64_t tag = 0;
   value_encoded value_encoded = VALUE_ENCODED_BINARY;
-  asn1_class class = ASN1_CLASS_UNIVERSAL;
-  asn1_universal_type universal_type = ASN1_UNIVERSAL_TYPE_OCTET_STRING;
+  janetls_asn1_class class = janetls_asn1_class_universal;
+  janetls_asn1_universal_type universal_type = janetls_asn1_universal_type_octet_string;
 
   // Check the tag
   if (janet_checktype(dict_tag, JANET_NIL))
@@ -1779,26 +1721,26 @@ int push_asn1_struct(JanetArray * array, Janet value)
     {
       JanetByteView value_bytes = janet_to_bytes(dict_value);
       int variant = 0;
-      content_encoding encoding = RAW_BYTE;
+      janetls_encoding_type encoding = janetls_encoding_type_raw;
 
       // decode the encoded body into binary
       switch (value_encoded)
       {
         case VALUE_ENCODED_BASE64:
         {
-          encoding = BASE_64;
-          variant = STANDARD;
+          encoding = janetls_encoding_type_base64;
+          variant = janetls_encoding_base64_variant_standard;
           break;
         }
         case VALUE_ENCODED_BASE64URL:
         {
-          encoding = BASE_64;
-          variant = URL;
+          encoding = janetls_encoding_type_base64;
+          variant = janetls_encoding_base64_variant_url;
           break;
         }
         case VALUE_ENCODED_HEX:
         {
-          encoding = HEX;
+          encoding = janetls_encoding_type_hex;
           break;
         }
         default:
@@ -1853,7 +1795,7 @@ int push_asn1_struct(JanetArray * array, Janet value)
 
   retcheck(determine_types(&class, &universal_type, &constructed, tag, dict_type, dict_value));
 
-  if (class == ASN1_CLASS_UNIVERSAL)
+  if (class == janetls_asn1_class_universal)
   {
     retcheck(push_asn1_tag_universal(array, universal_type));
   }
@@ -1903,34 +1845,37 @@ int check_if_oid_list(const Janet * data, int32_t data_count)
   return numbers == data_count;
 }
 
-int determine_types(asn1_class * class, asn1_universal_type * universal_type, int * constructed, uint64_t tag, Janet dict_type, Janet dict_value)
+int determine_types(janetls_asn1_class * class, janetls_asn1_universal_type * universal_type, int * constructed, uint64_t tag, Janet dict_type, Janet dict_value)
 {
   int ret = 0;
   // By default everything is bytes..
-  *universal_type = ASN1_UNIVERSAL_TYPE_OCTET_STRING;
-  *class = ASN1_CLASS_UNIVERSAL;
+  *universal_type = janetls_asn1_universal_type_octet_string;
+  *class = janetls_asn1_class_universal;
 
   if (janet_is_byte_typed(dict_type))
   {
-    JanetByteView type_bytes = janet_to_bytes(dict_type);
-    int search_type = 0;
-    if (!search_option_list(universal_types, UNIVERSAL_TYPES_COUNT, type_bytes, &search_type))
+    ret = janetls_search_asn1_universal_type(dict_type, universal_type);
+    if (ret == 0)
+    {
+      // Good to continue
+    }
+    else if (ret == JANETLS_ERR_SEARCH_OPTION_NOT_FOUND)
     {
       // Ah.. so the type can be universal, and can also represent non
       // universal classes.
       // Try those before giving up.
-      int search_class = 0;
-      if (search_option_list(asn1_class_types, ASN1_CLASS_TYPES_COUNT, type_bytes, &search_class))
+      ret = janetls_search_asn1_class(dict_type, class);
+      if (ret == 0)
       {
         #ifdef PRINT_TRACE_EVERYTHING
         janet_eprintf("Parsed class for %p, got %d\n", dict_type, search_class);
         #endif
-        *class = search_class;
-        if (*class == ASN1_CLASS_UNIVERSAL)
+        if (*class == janetls_asn1_class_universal)
         {
           ret = JANETLS_ERR_ASN1_INVALID_INPUT_TYPE;
           goto end;
         }
+
         // So class is now set to something not universal
         // set the universal type to 0 (end of content officially)
         // But we don't really know what the content is yet.
@@ -1941,17 +1886,20 @@ int determine_types(asn1_class * class, asn1_universal_type * universal_type, in
       }
       else
       {
-        ret = JANETLS_ERR_ASN1_INVALID_INPUT_TYPE;
         goto end;
       }
     }
+    else if (ret == 0)
+    {
+      // nothing
+    }
     else
     {
-      *universal_type = search_type;
+      goto end;
     }
   }
-  else if ((tag >= ASN1_UNIVERSAL_TYPE_BOOLEAN && tag <= ASN1_UNIVERSAL_TYPE_TIME)
-    || (tag >= ASN1_UNIVERSAL_TYPE_SEQUENCE && tag <= ASN1_UNIVERSAL_TYPE_RELATIVE_OID_IRI))
+  else if ((tag >= janetls_asn1_universal_type_boolean && tag <= janetls_asn1_universal_type_time)
+    || (tag >= janetls_asn1_universal_type_sequence && tag <= janetls_asn1_universal_type_relative_oid_iri))
   {
     // The tag value is set above.
     // it is by default 0 which is out of this range.
@@ -1964,27 +1912,27 @@ int determine_types(asn1_class * class, asn1_universal_type * universal_type, in
     string_type string_type = classify_string(bytes.bytes, bytes.len);
     if (string_type == STRING_IS_DIGITS)
     {
-      *universal_type = ASN1_UNIVERSAL_TYPE_INTEGER;
+      *universal_type = janetls_asn1_universal_type_integer;
     }
     else if (string_type == STRING_IS_OID)
     {
-      *universal_type = ASN1_UNIVERSAL_TYPE_OBJECT_IDENTIFIER;
+      *universal_type = janetls_asn1_universal_type_object_identifier;
     }
     else if (string_type == STRING_IS_ASCII)
     {
-      *universal_type = ASN1_UNIVERSAL_TYPE_IA5_ASCII_STRING;
+      *universal_type = janetls_asn1_universal_type_ia5_string;
     }
     else if (string_type == STRING_IS_PRINTABLE)
     {
-      *universal_type = ASN1_UNIVERSAL_TYPE_PRINTABLE_STRING;
+      *universal_type = janetls_asn1_universal_type_printable_string;
     }
     else if (string_type == STRING_IS_UTF8)
     {
-      *universal_type = ASN1_UNIVERSAL_TYPE_UTF8_STRING;
+      *universal_type = janetls_asn1_universal_type_utf8_string;
     }
     else if (string_type == STRING_IS_OID)
     {
-      *universal_type = ASN1_UNIVERSAL_TYPE_OCTET_STRING;
+      *universal_type = janetls_asn1_universal_type_octet_string;
     }
     else
     {
@@ -2000,16 +1948,16 @@ end:
   return ret;
 }
 
-int determine_type_by_value(asn1_universal_type * universal_type, int * constructed, Janet dict_value)
+int determine_type_by_value(janetls_asn1_universal_type * universal_type, int * constructed, Janet dict_value)
 {
   int ret = 0;
   if (janet_checktype(dict_value, JANET_NIL))
   {
-    *universal_type = ASN1_UNIVERSAL_TYPE_NULL;
+    *universal_type = janetls_asn1_universal_type_null;
   }
   else if (janet_checktype(dict_value, JANET_NUMBER))
   {
-    *universal_type = ASN1_UNIVERSAL_TYPE_INTEGER;
+    *universal_type = janetls_asn1_universal_type_integer;
   }
   else if (janet_checktype(dict_value, JANET_TABLE)
     || janet_checktype(dict_value, JANET_STRUCT)
@@ -2020,12 +1968,12 @@ int determine_type_by_value(asn1_universal_type * universal_type, int * construc
     #ifdef PRINT_TRACE_EVERYTHING
     janet_eprintf("Setting type to sequence and constructed Per the value %p\n", dict_value);
     #endif
-    *universal_type = ASN1_UNIVERSAL_TYPE_SEQUENCE;
+    *universal_type = janetls_asn1_universal_type_sequence;
     *constructed = 1;
   }
   else if (*constructed)
   {
-    *universal_type = ASN1_UNIVERSAL_TYPE_SEQUENCE;
+    *universal_type = janetls_asn1_universal_type_sequence;
   }
   else if (janet_checktype(dict_value, JANET_ABSTRACT))
   {
@@ -2033,7 +1981,7 @@ int determine_type_by_value(asn1_universal_type * universal_type, int * construc
     JanetAbstractHead * head = janet_abstract_head(abstract_value);
     if (head->type == &bignum_object_type)
     {
-      *universal_type = ASN1_UNIVERSAL_TYPE_INTEGER;
+      *universal_type = janetls_asn1_universal_type_integer;
     }
     else
     {
@@ -2074,11 +2022,11 @@ end:
   return ret;
 }
 
-int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, int bits)
+int push_asn1_value(JanetArray * array, Janet value, janetls_asn1_universal_type type, int bits)
 {
   int ret = 0;
   switch (type) {
-    case ASN1_UNIVERSAL_TYPE_BOOLEAN:
+    case janetls_asn1_universal_type_boolean:
     {
       uint8_t boolean = 0;
 
@@ -2099,7 +2047,7 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
 
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_INTEGER:
+    case janetls_asn1_universal_type_integer:
     {
       #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("Integer value %p\n", value);
@@ -2141,14 +2089,14 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
       janet_array_push(array, bignum_value);
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_NULL:
+    case janetls_asn1_universal_type_null:
     {
       // An easy case, we dont push any data at all here for the value.
       // Null is the type tag for it and the length,
       // both of which are handled outside
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_OBJECT_IDENTIFIER:
+    case janetls_asn1_universal_type_object_identifier:
     {
       #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("Object identifier %p\n", value);
@@ -2194,7 +2142,7 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
       }
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_BIT_STRING:
+    case janetls_asn1_universal_type_bit_string:
     {
       #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("bit string %p\n", value);
@@ -2214,7 +2162,7 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
       // encoding the value is the same as octet strings
       fall_through;
     }
-    case ASN1_UNIVERSAL_TYPE_OCTET_STRING:
+    case janetls_asn1_universal_type_octet_string:
     {
       #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("Octet string %p\n", value);
@@ -2235,8 +2183,8 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
       // Fall through to encoding an embedded ASN.1 document.
       fall_through;
     }
-    case ASN1_UNIVERSAL_TYPE_SEQUENCE:
-    case ASN1_UNIVERSAL_TYPE_SET:
+    case janetls_asn1_universal_type_sequence:
+    case janetls_asn1_universal_type_set:
     {
       #ifdef PRINT_TRACE_EVERYTHING
       janet_eprintf("Sequence or set with value %p\n", value);
@@ -2275,25 +2223,25 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
 
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_UTF8_STRING:
-    case ASN1_UNIVERSAL_TYPE_NUMERIC_STRING:
-    case ASN1_UNIVERSAL_TYPE_TIME:
-    case ASN1_UNIVERSAL_TYPE_PRINTABLE_STRING:
-    case ASN1_UNIVERSAL_TYPE_TELETEX_STRING:
-    case ASN1_UNIVERSAL_TYPE_VIDEOTEX_STRING:
-    case ASN1_UNIVERSAL_TYPE_IA5_ASCII_STRING:
-    case ASN1_UNIVERSAL_TYPE_UTC_TIME:
-    case ASN1_UNIVERSAL_TYPE_GENERALIZED_TIME:
-    case ASN1_UNIVERSAL_TYPE_GRAPHIC_STRING:
-    case ASN1_UNIVERSAL_TYPE_VISIBLE_STRING:
-    case ASN1_UNIVERSAL_TYPE_GENERAL_STRING:
-    case ASN1_UNIVERSAL_TYPE_UNIVERSAL_STRING:
-    case ASN1_UNIVERSAL_TYPE_CHARACTER_STRING:
-    case ASN1_UNIVERSAL_TYPE_BITMAP_STRING:
-    case ASN1_UNIVERSAL_TYPE_DATE:
-    case ASN1_UNIVERSAL_TYPE_TIME_OF_DAY:
-    case ASN1_UNIVERSAL_TYPE_DATE_TIME:
-    case ASN1_UNIVERSAL_TYPE_DURATION:
+    case janetls_asn1_universal_type_utf8_string:
+    case janetls_asn1_universal_type_numeric_string:
+    case janetls_asn1_universal_type_time:
+    case janetls_asn1_universal_type_printable_string:
+    case janetls_asn1_universal_type_teletext_string:
+    case janetls_asn1_universal_type_videotex_string:
+    case janetls_asn1_universal_type_ia5_string:
+    case janetls_asn1_universal_type_utc_time:
+    case janetls_asn1_universal_type_generalized_time:
+    case janetls_asn1_universal_type_graphic_string:
+    case janetls_asn1_universal_type_visible_string:
+    case janetls_asn1_universal_type_general_string:
+    case janetls_asn1_universal_type_universal_string:
+    case janetls_asn1_universal_type_character_string:
+    case janetls_asn1_universal_type_bitmap_string:
+    case janetls_asn1_universal_type_date:
+    case janetls_asn1_universal_type_time_of_day:
+    case janetls_asn1_universal_type_date_time:
+    case janetls_asn1_universal_type_duration:
     {
       // These are all string like. So encode them as strings.
       // note that only octet string can house nested ASN.1 documents.
@@ -2309,14 +2257,14 @@ int push_asn1_value(JanetArray * array, Janet value, asn1_universal_type type, i
       }
       break;
     }
-    case ASN1_UNIVERSAL_TYPE_EXTERNAL:
-    case ASN1_UNIVERSAL_TYPE_REAL_FLOAT:
-    case ASN1_UNIVERSAL_TYPE_OBJECT_DESCRIPTOR:
-    case ASN1_UNIVERSAL_TYPE_ENUMERATED:
-    case ASN1_UNIVERSAL_TYPE_EMBEDDED_PDV:
-    case ASN1_UNIVERSAL_TYPE_OID_IRI:
-    case ASN1_UNIVERSAL_TYPE_RELATIVE_OID:
-    case ASN1_UNIVERSAL_TYPE_RELATIVE_OID_IRI:
+    case janetls_asn1_universal_type_external:
+    case janetls_asn1_universal_type_real_float:
+    case janetls_asn1_universal_type_object_descriptor:
+    case janetls_asn1_universal_type_enumerated:
+    case janetls_asn1_universal_type_embedded_pdv:
+    case janetls_asn1_universal_type_oid_iri:
+    case janetls_asn1_universal_type_relative_oid:
+    case janetls_asn1_universal_type_relative_oid_iri:
     default:
     {
       #ifdef PRINT_TRACE_EVERYTHING
