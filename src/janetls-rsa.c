@@ -51,6 +51,7 @@ static int rsa_set_pkcs_v21(rsa_object * rsa, janetls_md_algorithm md);
 static int read_integer(Janet key, Janet value);
 static void assert_verify_sign_size(rsa_object * rsa, janetls_md_algorithm alg, JanetByteView bytes);
 static bignum_object * bignum_from_kv(const JanetKV * kv);
+static JanetByteView signature_bytes(Janet data, janetls_md_algorithm alg);
 
 JanetAbstractType rsa_object_type = {
   "janetls/rsa",
@@ -206,24 +207,7 @@ Janet rsa_sign(int32_t argc, Janet * argv)
     janet_panicf("This RSA object has no default digest, "
         "see janetls/md/algorithms for an expected value");
   }
-  // TODO refactor the hashing block below
-  JanetByteView bytes;
-  if (alg == janetls_md_algorithm_none)
-  {
-    janet_smalloc(MBEDTLS_MD_MAX_SIZE);
-    bytes = janet_to_bytes(argv[1]);
-    if (bytes.len > MBEDTLS_MD_MAX_SIZE)
-    {
-      janet_panicf("When using :none which is not recommended, the size of "
-        "the hash (%d) must be <= to %d", bytes.len, MBEDTLS_MD_MAX_SIZE);
-    }
-  }
-  else
-  {
-    Janet result;
-    check_result(janetls_md_digest(&result, alg, argv[1]));
-    bytes = janet_to_bytes(result);
-  }
+  JanetByteView bytes = signature_bytes(argv[1], alg);
 
   assert_verify_sign_size(rsa, alg, bytes);
   uint8_t * signature = janet_smalloc(rsa->ctx.len);
@@ -275,23 +259,7 @@ Janet rsa_verify(int32_t argc, Janet * argv)
         "see janetls/md/algorithms for an expected value");
   }
 
-  JanetByteView bytes;
-  if (alg == janetls_md_algorithm_none)
-  {
-    janet_smalloc(MBEDTLS_MD_MAX_SIZE);
-    bytes = janet_to_bytes(argv[1]);
-    if (bytes.len > MBEDTLS_MD_MAX_SIZE)
-    {
-      janet_panicf("When using :none which is not recommended, the size of "
-        "the hash (%d) must be <= to %d", bytes.len, MBEDTLS_MD_MAX_SIZE);
-    }
-  }
-  else
-  {
-    Janet result;
-    check_result(janetls_md_digest(&result, alg, argv[1]));
-    bytes = janet_to_bytes(result);
-  }
+  JanetByteView bytes = signature_bytes(argv[1], alg);
 
   assert_verify_sign_size(rsa, alg, bytes);
 
@@ -315,8 +283,6 @@ Janet rsa_verify(int32_t argc, Janet * argv)
     signature.bytes
     );
 
-
-  janet_eprintf("Ret is %x\n", -ret);
   // Don't indicate why it failed.
   // Also simplifies verify checks, no need to try catch.
   return janet_wrap_boolean(ret == 0);
@@ -324,6 +290,8 @@ Janet rsa_verify(int32_t argc, Janet * argv)
 
 Janet rsa_encrypt(int32_t argc, Janet * argv)
 {
+  // refer to https://www.foo.be/docs/opensst/ref/pkcs/pkcs-1/pkcs-1v2-1d1.pdf
+  // for sizes
   janet_fixarity(argc, 2);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   if (!janet_is_byte_typed(argv[1]))
@@ -331,15 +299,35 @@ Janet rsa_encrypt(int32_t argc, Janet * argv)
     janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
   }
   JanetByteView plaintext = janet_to_bytes(argv[1]);
-  // TODO ensure that the plaintext is under a certain length which can be
-  // padded safely and correctly
+  // v1.5 as described in section 7.2.1
+  int32_t max_size = rsa->ctx.len - 11;
+
+  if (rsa->version == janetls_rsa_pkcs1_version_v21)
+  {
+    const mbedtls_md_info_t * info = mbedtls_md_info_from_type((mbedtls_md_type_t)rsa->mgf1);
+    if (info == NULL)
+    {
+      janet_panicf("Expected a mask generation function, but no algorithm "
+        "is present");
+    }
+    int32_t hash_size = mbedtls_md_get_size(info);
+
+    // v2.1 as described in section 7.1.1
+    max_size = rsa->ctx.len - 2 - (2 * hash_size);
+  }
+
+  if (plaintext.len > max_size)
+  {
+    janet_panicf("The max size a plaintext can be with this key is %d bytes, "
+      "but the message is %d bytes", max_size, plaintext.len);
+  }
   uint8_t * ciphertext = janet_smalloc(rsa->ctx.len);
 
   int ret = mbedtls_rsa_pkcs1_encrypt(
     &rsa->ctx,
     rsa->random ? janetls_random_rng : NULL,
     rsa->random,
-    MBEDTLS_RSA_PRIVATE,
+    MBEDTLS_RSA_PUBLIC,
     plaintext.len,
     plaintext.bytes,
     ciphertext
@@ -371,8 +359,6 @@ Janet rsa_decrypt(int32_t argc, Janet * argv)
   {
     janet_panicf("Ciphertext does not match RSA key size of %d bytes", rsa->ctx.len);
   }
-  // TODO ensure that the ciphertext is under a certain length which can be
-  // padded safely and correctly
   uint8_t * plaintext = janet_smalloc(rsa->ctx.len);
 
   size_t output_size = 0;
@@ -381,7 +367,7 @@ Janet rsa_decrypt(int32_t argc, Janet * argv)
     &rsa->ctx,
     rsa->random ? janetls_random_rng : NULL,
     rsa->random,
-    MBEDTLS_RSA_PUBLIC,
+    MBEDTLS_RSA_PRIVATE,
     &output_size,
     ciphertext.bytes,
     plaintext,
@@ -557,6 +543,7 @@ Janet rsa_import(int32_t argc, Janet * argv)
 
   int no_private_components = 1;
   int explicit_information_class = 0;
+  int explicit_mgf1 = 0;
   const JanetKV * kv = NULL;
   const JanetKV * kvs = NULL;
   int32_t len;
@@ -617,7 +604,12 @@ Janet rsa_import(int32_t argc, Janet * argv)
         {
           janet_panicf("Expected a value from janetls/md/algorithms for %p, but got %p", kv->key, kv->value);
         }
+        if (mgf1 == janetls_md_algorithm_none)
+        {
+          janet_panicf("The mask generation function cannot be %p for %p", kv->value, kv->key);
+        }
         rsa->mgf1 = mgf1;
+        explicit_mgf1 = 1;
       }
       else if (janet_byte_cstrcmp_insensitive(key, "hash") == 0
         || janet_byte_cstrcmp_insensitive(key, "digest") == 0)
@@ -672,6 +664,19 @@ Janet rsa_import(int32_t argc, Janet * argv)
   }
   else if (rsa->version == janetls_rsa_pkcs1_version_v21)
   {
+    if (rsa->mgf1 == janetls_md_algorithm_none && !explicit_mgf1)
+    {
+      if (rsa->digest != janetls_md_algorithm_none)
+      {
+        // Common tactic: same as the digest
+        rsa->mgf1 = rsa->digest;
+      }
+      else
+      {
+        // Otherwise a safe default
+        rsa->mgf1 = janetls_md_algorithm_sha256;
+      }
+    }
     rsa_set_pkcs_v21(rsa, rsa->mgf1);
   }
 
@@ -715,10 +720,9 @@ Janet rsa_generate(int32_t argc, Janet * argv)
   }
   rsa_object * rsa = new_rsa();
   random_object * random = NULL;
-  (void)random; // todo remove when used
   // The type will always be private
   janetls_rsa_pkcs1_version version = janetls_rsa_pkcs1_version_v15;
-  janetls_md_algorithm mgf1 = janetls_md_algorithm_none;
+  janetls_md_algorithm mgf1 = janetls_md_algorithm_sha256;
   // RS256 is a common JWT algorithm combo.
   janetls_md_algorithm digest = janetls_md_algorithm_sha256;
   // also most common
@@ -768,6 +772,10 @@ Janet rsa_generate(int32_t argc, Janet * argv)
         {
           janet_panicf("Given algorithm %p is not expected for %p, please review "
             "janetls/md/algorithms for supported values", kv->key, kv->value);
+        }
+        if (mgf1 == janetls_md_algorithm_none)
+        {
+          janet_panicf("The mask generation function cannot be %p for %p", kv->value, kv->key);
         }
       }
       else if (janet_byte_cstrcmp_insensitive(key, "hash") == 0
@@ -910,4 +918,26 @@ static bignum_object * bignum_from_kv(const JanetKV * kv)
     janet_panicf("Expected a bignum for %p, but got %p", kv->key, kv->value);
   }
   return janet_unwrap_abstract(bignum);
+}
+
+static JanetByteView signature_bytes(Janet data, janetls_md_algorithm alg)
+{
+  JanetByteView bytes;
+  if (alg == janetls_md_algorithm_none)
+  {
+    janet_smalloc(MBEDTLS_MD_MAX_SIZE);
+    bytes = janet_to_bytes(data);
+    if (bytes.len > MBEDTLS_MD_MAX_SIZE)
+    {
+      janet_panicf("When using :none which is not recommended, the size of "
+        "the hash (%d) must be <= to %d", bytes.len, MBEDTLS_MD_MAX_SIZE);
+    }
+  }
+  else
+  {
+    Janet result;
+    check_result(janetls_md_digest(&result, alg, data));
+    bytes = janet_to_bytes(result);
+  }
+  return bytes;
 }

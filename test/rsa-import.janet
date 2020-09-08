@@ -175,6 +175,22 @@ cM42i5CWJyUPchegKgE="))
 (deftest "Imported RSA private key can encrypt and decrypt" (do
   (def [private-v1.5 public-v1.5 private-v2.1 public-v2.1] (import-keys))
   # nil checks in prior test.
+  # This is a public key operation, so both keys can be used to encrypt
+  (def enc1 (:encrypt private-v1.5 data))
+  (def enc2 (:encrypt public-v1.5 data))
+  # Only the private key can be used to decrypt
+  (is (= data (:decrypt private-v1.5 enc1)))
+  (is (= data (:decrypt private-v1.5 enc2)))
+  # OpenSSL test case
+  (is (= data (:decrypt private-v1.5 openssl-enc-pkcs1-v15)))
+
+  (def enc3 (:encrypt private-v2.1 data))
+  (def enc4 (:encrypt public-v2.1 data))
+  # Only the private key can be used to decrypt
+  (is (= data (:decrypt private-v2.1 enc3)))
+  (is (= data (:decrypt private-v2.1 enc4)))
+  # OpenSSL test case
+  (is (= data (:decrypt private-v2.1 openssl-enc-pkcs1-v21)))
 
   ))
 
