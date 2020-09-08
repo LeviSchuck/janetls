@@ -48,6 +48,7 @@ const char * result_error_message(int result, uint8_t * unhandled);
 int flatten_array(Janet * output, JanetArray * array);
 int janet_byte_cstrcmp_insensitive(JanetByteView str, const char * other);
 int janet_byte_cstrcmp_sensitive(JanetByteView str, const char * other);
+int janetls_constant_compare(Janet x, Janet y);
 
 typedef enum string_type {
   STRING_IS_DIGITS,
@@ -65,6 +66,7 @@ string_type classify_string(const uint8_t * data, int32_t length);
 
 void submod_md(JanetTable * env);
 void submod_util(JanetTable * env);
+void submod_encoding(JanetTable * env);
 void submod_bignum(JanetTable * env);
 void submod_random(JanetTable * env);
 void submod_byteslice(JanetTable * env);

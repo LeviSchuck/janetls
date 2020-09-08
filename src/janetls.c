@@ -33,6 +33,7 @@ JANET_MODULE_ENTRY(JanetTable *env)
 {
   submod_md(env);
   submod_util(env);
+  submod_encoding(env);
   submod_bignum(env);
   submod_random(env);
   submod_byteslice(env);

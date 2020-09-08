@@ -200,7 +200,7 @@ static const JanetReg cfuns[] =
   {NULL, NULL, NULL}
 };
 
-void submod_util(JanetTable *env)
+void submod_encoding(JanetTable *env)
 {
   janet_cfuns(env, "janetls", cfuns);
 }
