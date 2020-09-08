@@ -376,3 +376,64 @@ string_type classify_string(const uint8_t * data, int32_t length)
   // This isn't logical.
   return STRING_IS_BINARY;
 }
+
+int janetls_constant_compare(Janet x, Janet y)
+{
+  if (!janet_is_byte_typed(x))
+  {
+    return -1;
+  }
+
+  if (!janet_is_byte_typed(y))
+  {
+    return 1;
+  }
+
+  JanetByteView xv = janet_to_bytes(x);
+  JanetByteView yv = janet_to_bytes(y);
+
+  if (xv.len < yv.len)
+  {
+    return -1;
+  }
+
+  if (yv.len < xv.len)
+  {
+    return 1;
+  }
+
+  int diff = 0;
+
+  // Constant time, every byte is compared
+  // now that we know the buffers are of equal length
+  // (This is where constant time matters)
+  for (int32_t i = 0; i < xv.len; i++)
+  {
+    diff |= xv.bytes[i] ^ yv.bytes[i];
+  }
+
+  // The result will zero if equal
+  // Will be between 1-255 otherwise, the actual value
+  // carries no meaning.
+  return diff;
+}
+
+static Janet constant_equals(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 2);
+  return janet_wrap_boolean(janetls_constant_compare(argv[0], argv[1]) == 0);
+}
+
+static const JanetReg cfuns[] =
+{
+  {"constant=", constant_equals,
+    "(janetls/constant_equals str1 str2)\n\n"
+    "Compares two strings or buffers in constant time."
+    },
+  {NULL, NULL, NULL}
+};
+
+void submod_util(JanetTable *env)
+{
+  janet_cfuns(env, "janetls", cfuns);
+}
