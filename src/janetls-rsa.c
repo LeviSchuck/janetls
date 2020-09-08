@@ -316,6 +316,7 @@ Janet rsa_verify(int32_t argc, Janet * argv)
     );
 
 
+  janet_eprintf("Ret is %x\n", -ret);
   // Don't indicate why it failed.
   // Also simplifies verify checks, no need to try catch.
   return janet_wrap_boolean(ret == 0);
