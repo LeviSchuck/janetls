@@ -65,7 +65,7 @@ static JanetMethod rsa_methods[] = {
   {"private?", rsa_is_private},
   {"public?", rsa_is_public},
   {"version", rsa_get_version},
-  {"mgf", rsa_get_mgf},
+  {"mask", rsa_get_mgf},
   {"digest", rsa_get_digest},
   {"encrypt", rsa_encrypt},
   {"decrypt", rsa_decrypt},
@@ -147,21 +147,121 @@ int rsa_set_pkcs_v21(rsa_object * rsa, janetls_md_algorithm md)
 
 static const JanetReg cfuns[] =
 {
-  {"rsa/private?", rsa_is_private, ""},
-  {"rsa/public?", rsa_is_public, ""},
-  {"rsa/sign", rsa_sign, ""},
-  {"rsa/verify", rsa_verify, ""},
-  {"rsa/encrypt", rsa_encrypt, ""},
-  {"rsa/decrypt", rsa_decrypt, ""},
-  {"rsa/get-version", rsa_get_version, ""},
-  {"rsa/get-mgf", rsa_get_mgf, ""},
-  {"rsa/get-digest", rsa_get_digest, ""},
-  {"rsa/get-size-bits", rsa_get_sizebits, ""},
-  {"rsa/get-size-bytes", rsa_get_sizebytes, ""},
-  {"rsa/export-private", rsa_export_private, ""},
-  {"rsa/export-public", rsa_export_public, ""},
-  {"rsa/import", rsa_import, ""},
-  {"rsa/generate", rsa_generate, ""},
+  {"rsa/private?", rsa_is_private, "(janetls/rsa/private? rsa)\n\n"
+    "Returns true when the key is a private information class.\n"
+    "When true, it can perform both public and private operations."
+    },
+  {"rsa/public?", rsa_is_public, "(janetls/rsa/public? rsa)\n\n"
+    "Returns true when the key is a private information class.\n"
+    "When true, it can perform only public operations, "
+    "such as verify, and encrypt."
+    },
+  {"rsa/sign", rsa_sign, "(janetls/rsa/sign rsa data &opt alg)\n\n"
+    "A Private key operation, sign the input data with the given key.\n"
+    "When an algorithm is provided, it overrides the default algorithm on "
+    "this key for signatures. It's probably best to set the algorithm "
+    "on key import or generation instead.\n"
+    "A binary string is returned, this is the signature to provide to "
+    "a verifier."
+    },
+  {"rsa/verify", rsa_verify, "(janetls/rsa/verify rsa data sig &opt alg)\n\n"
+    "A Public key operation, verify the input data with the given key "
+    "with the binary signature.\n"
+    "When an algorithm is provided, it overrides the default algorithm on "
+    "this key for signatures. It's probably best to set the algorithm "
+    "on key import or generation instead.\n"
+    "Usually a false return when the data has been modified, or the signature "
+    "was made with another key (or is just noise).\n"
+    "A true or false is returned."
+    },
+  {"rsa/encrypt", rsa_encrypt, "(janetls/rsa/verify rsa data)\n\n"
+    "A Public key operation, encrypt the input plaintext with the given key.\n"
+    "This should only be used to encrypt small portions of data, such as "
+    "a symmetric key. (A common use case.)\n"
+    "If the data is too large, a panic will happen.\n"
+    "This function handles all padding, blinding, masking, etc. as part of "
+    "the given key.\n"
+    "The result is a binary string of the ciphertext."
+    },
+  {"rsa/decrypt", rsa_decrypt, "(janetls/rsa/verify rsa data)\n\n"
+    "A Private key operation, decrypt the ciphertext with the given key.\n"
+    "The result is a binary string of the decrypted content when successful.\n"
+    "Otherwise, nil will be returned."
+    },
+  {"rsa/get-version", rsa_get_version, "(janetls/rsa/get-version rsa)\n\n"
+    "Also accessible via (:version rsa)\n"
+    "Gets whether this is PKCS#1 v1.5 or v2.1, with the values as listed in "
+    "janetls/rsa/versions."
+    },
+  {"rsa/versions", janetls_search_rsa_pkcs1_version_set, "(janetls/rsa/versions)\n\n"
+    "Enumerates PKCS#1 versions supported.\n"
+    "pkcs1-v1.5 is used for most RSA signatures in the wild, it can be used "
+    "for encryption as well but is less advised due to many attacks"
+    "discovered.\n"
+    "pkcs1-v2.1 is most is used for PSS signatures and OAEP encryption."
+    },
+  {"rsa/get-mask", rsa_get_mgf, "(janetls/rsa/get-mask rsa)\n\n"
+    "Also accessible via (:mask rsa)\n"
+    "Gets the digest algorithm used for masking in PKCS#1 v2.1 signatures "
+    "and encryption.\n"
+    "Algorithms are as listed in janetls/md/algorithms."
+    },
+  {"rsa/get-digest", rsa_get_digest, "(janetls/rsa/get-digest rsa)\n\n"
+    "Also accessible via (:digest rsa)\n"
+    "Gets the digest algorithm used for hashing in signatures"
+    "Algorithms are as listed in janetls/md/algorithms."
+    },
+  {"rsa/get-size-bits", rsa_get_sizebits, "(janetls/rsa/get-size-bits rsa)\n\n"
+    "Also accessible via (:bits rsa)"
+    "Returns the bit count of the modulus in this key, for example: 2048 bit "
+    "keys return 2048 here."
+    },
+  {"rsa/get-size-bytes", rsa_get_sizebytes, "(janetls/rsa/get-size-bytes rsa)\n\n"
+    "Also accessible via (:bytes rsa)"
+    "Returns the bit count of the modulus in this key, for example: 2048 bit "
+    "keys return 256 here."
+    },
+  {"rsa/export-private", rsa_export_private, "(janetls/rsa/export-private rsa)\n\n"
+    "Also accessible via (:export-private rsa)\n"
+    "Returns a struct with all the options to import this private key, review "
+    "the documentation on janetls/rsa/import for full details."
+    "Will panic if a public key is provided.\n"
+    },
+  {"rsa/export-public", rsa_export_public, ""
+    "Also accessible via (:export-public rsa)\n"
+    "Returns a struct with all the options to import this key as a public key, "
+    " review the documentation on janetls/rsa/import for full details."
+    },
+  {"rsa/import", rsa_import, "(janetls/rsa/import opts)\n\n"
+    "Create an rsa object with the parameters in this opts struct or table.\n"
+    "The following options are involved: \n"
+    ":information-class - :public or :private, this will be deduced if "
+    "omitted by whether private components were provided.\n"
+    ":version - refer to janetls/rsa/versions for options\n"
+    ":digest - Which hash function to use for signatures, by default SHA-256\n"
+    ":mask - Which hash function to use for masking, by default SHA-256 in "
+    "PKCS#1 v2.1\n"
+    ":random - reuse a janetls/random object, best if you need to produce "
+    "many keys.\n"
+    ":n - The modulus as a bignum.\n"
+    ":e - The exponent, by default 65537.\n"
+    ":d - Private exponent, a private component.\n"
+    ":p - Prime1, a private component.\n"
+    ":q - Prime2 a private component.\n"
+    "Note that other parameters (dp, dq, qp) are not accepted, and are "
+    "derived. Other primes are not accepted.\n"
+    ":type - This will always be :rsa, for later generic key classification.\n"
+    },
+  {"rsa/generate", rsa_generate, "(janetls/rsa/generate opts)\n\n"
+    "A subset of the options used in janetls/rsa/import are used here, for "
+    "details, review the documentation on janetls/rsa/import.\n"
+    "The options supported are: :version, :random, :mask, :digest, :e.\n"
+    "Additional options not in janetls/rsa/import are: :bits and :bytes."
+    ":bits - By default 2048, should be even.\n"
+    ":bytes - Replaces :bits, multiplied by 8. "
+    "So :bytes 256 will be equivalent to :bits 2048.\n"
+    "The generated key will always be of the private information class."
+    },
   {NULL, NULL, NULL}
 };
 
@@ -461,6 +561,11 @@ Janet rsa_export_private(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+
+  if (rsa->information_class == janetls_pk_information_class_public)
+  {
+    janet_panic("Cannot export a private key from a public key");
+  }
 
   JanetTable * table = janet_table(7);
 

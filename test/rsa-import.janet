@@ -123,6 +123,11 @@ LUAoexWpmXOrMow7Z6c="))
 Ub50azLE/vUM3kNFJ+D6dNAROClmpQdM2prlSiFaXdXe1+hJLN5/uPYvTVj89Fuqd4YBjVU8+bgg
 cM42i5CWJyUPchegKgE="))
 
+(def junk (base64/decode
+"junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk
+junkjunkjunkjunkjun="))
+
 (defn import-keys [] (do
   (def asn1-private-key (asn1/decode rsa-key))
   (def asn1-public-key (asn1/decode rsa-pub-key))
@@ -183,6 +188,7 @@ cM42i5CWJyUPchegKgE="))
   (is (= data (:decrypt private-v1.5 enc2)))
   # OpenSSL test case
   (is (= data (:decrypt private-v1.5 openssl-enc-pkcs1-v15)))
+  (is (= nil (:decrypt private-v1.5 junk)))
 
   (def enc3 (:encrypt private-v2.1 data))
   (def enc4 (:encrypt public-v2.1 data))
@@ -191,6 +197,7 @@ cM42i5CWJyUPchegKgE="))
   (is (= data (:decrypt private-v2.1 enc4)))
   # OpenSSL test case
   (is (= data (:decrypt private-v2.1 openssl-enc-pkcs1-v21)))
+  (is (= nil (:decrypt private-v2.1 junk)))
 
   ))
 

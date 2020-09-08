@@ -23,7 +23,7 @@
 (deftest "Default key has uses sha-256" (is (= :sha256 (:digest key))))
 (deftest "Default key is private" (is (= true (:private? key))))
 (deftest "Default key is not public" (is (= false (:public? key))))
-(deftest "Default key has no mgf" (is (= :none (:mgf key))))
+(deftest "Default key has no mask" (is (= :none (:mask key))))
 
 (deftest "Default key can sign and verify" (do
   (def sig (:sign key data))
@@ -52,7 +52,7 @@
 (deftest "Custom key has uses sha-1" (is (= :sha1 (rsa/get-digest key2))))
 (deftest "Custom key is private" (is (= true (rsa/private? key2))))
 (deftest "Custom key is not public" (is (= false (rsa/public? key2))))
-(deftest "Custom key has sha1 mgf" (is (= :sha1 (rsa/get-mgf key2))))
+(deftest "Custom key has sha1 mask" (is (= :sha1 (rsa/get-mask key2))))
 
 (deftest "Custom key can sign and verify" (do
   (def sig (rsa/sign key2 data))
