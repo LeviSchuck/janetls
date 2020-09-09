@@ -32,28 +32,32 @@
   Janet janetls_search_ ## NAME ## _to_janet(TYPE type); \
   const char * janetls_search_ ## NAME ## _text(TYPE type);
 
-typedef enum janetls_rsa_pkcs1_version {
+typedef enum janetls_rsa_pkcs1_version
+{
   janetls_rsa_pkcs1_version_v15 = 0,
   janetls_rsa_pkcs1_version_v21 = 1,
 } janetls_rsa_pkcs1_version;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(rsa_pkcs1_version, janetls_rsa_pkcs1_version)
 
-typedef enum janetls_pk_information_class {
+typedef enum janetls_pk_information_class
+{
   janetls_pk_information_class_public = 0,
   janetls_pk_information_class_private
 } janetls_pk_information_class;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(pk_information_class, janetls_pk_information_class)
 
-typedef enum janetls_pk_key_type {
+typedef enum janetls_pk_key_type
+{
   janetls_pk_key_type_rsa,
   janetls_pk_key_type_ec,
 } janetls_pk_key_type;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(pk_key_type, janetls_pk_key_type)
 
-typedef enum janetls_md_algorithm {
+typedef enum janetls_md_algorithm
+{
   // These numbers are in sync with mbedtls_md_type_t
   janetls_md_algorithm_none = 0,
   janetls_md_algorithm_md5 = 3,
@@ -89,7 +93,8 @@ typedef enum janetls_encoding_base64_variant
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(encoding_base64_variant, janetls_encoding_base64_variant)
 
-typedef enum janetls_asn1_number_type {
+typedef enum janetls_asn1_number_type
+{
   janetls_asn1_number_type_bignum = 0,
   janetls_asn1_number_type_number,
   janetls_asn1_number_type_u64
@@ -164,5 +169,43 @@ typedef enum janetls_asn1_flags
 } janetls_asn1_flags;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(asn1_flags, janetls_asn1_flags)
+
+typedef enum janetls_ecp_curve_type
+{
+  janetls_ecp_curve_type_none = 0, // not one of these
+  janetls_ecp_curve_type_short_weierstrass, // y^2 = x^3 + a x + b
+  janetls_ecp_curve_type_montgomery, // y^2 = x^3 + a x^2 + x
+} janetls_ecp_curve_type;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(ecp_curve_type, janetls_ecp_curve_type)
+
+typedef enum janetls_ecp_compression
+{
+  janetls_ecp_compression_uncompressed = 0,
+  janetls_ecp_compression_compressed, // The y coordinate is just a sign-bit
+} janetls_ecp_compression;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(ecp_compression, janetls_ecp_compression)
+
+// This is in the same order as mbedtls
+typedef enum janetls_ecp_curve_group
+{
+  janetls_ecp_curve_group_none = 0, // not one of these
+  janetls_ecp_curve_group_secp192r1, // NIST 192
+  janetls_ecp_curve_group_secp224r1, // NIST 224
+  janetls_ecp_curve_group_secp256r1, // NIST 256
+  janetls_ecp_curve_group_secp384r1, // NIST 384
+  janetls_ecp_curve_group_secp521r1, // NIST 521 bit (not a typo)
+  janetls_ecp_curve_group_bp256r1, // Brainpool 256bit
+  janetls_ecp_curve_group_bp384r1, // Brainpool 384bit
+  janetls_ecp_curve_group_bp512r1, // Brainpool 512bit
+  janetls_ecp_curve_group_curve25519, // Curve25519
+  janetls_ecp_curve_group_secp192k1, // Koblitz
+  janetls_ecp_curve_group_secp224k1, // Koblitz
+  janetls_ecp_curve_group_secp256k1, // Koblitz
+  janetls_ecp_curve_group_curve448, // Curve448
+} janetls_ecp_curve_group;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(ecp_curve_group, janetls_ecp_curve_group)
 
 #endif

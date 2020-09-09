@@ -176,3 +176,39 @@ option_list_entry pk_key_type[] = {
   {janetls_pk_key_type_ec, "ec", 0},
 };
 JANETLS_SEARCH_OPTION_LIST(pk_key_type, janetls_pk_key_type)
+
+option_list_entry ecp_curve_type[] = {
+  {janetls_ecp_curve_type_none, "none", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_type_short_weierstrass, "short-weierstrass", 0},
+  {janetls_ecp_curve_type_montgomery, "montgomery", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(ecp_curve_type, janetls_ecp_curve_type)
+
+option_list_entry ecp_compression[] = {
+  {janetls_ecp_compression_uncompressed, "uncompressed", 0},
+  {janetls_ecp_compression_compressed, "compressed", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(ecp_compression, janetls_ecp_compression)
+
+option_list_entry ecp_curve_group[] = {
+  {janetls_ecp_curve_group_none, "none", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_secp192r1, "secp192r1", 0},
+  {janetls_ecp_curve_group_secp192r1, "p192", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_secp224r1, "secp224r1", 0},
+  {janetls_ecp_curve_group_secp224r1, "p224", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_secp256r1, "secp256r1", 0},
+  {janetls_ecp_curve_group_secp256r1, "p256", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_secp384r1, "secp384r1", 0},
+  {janetls_ecp_curve_group_secp384r1, "p384", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_secp521r1, "secp521r1", 0},
+  {janetls_ecp_curve_group_secp521r1, "p521", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_bp256r1, "bp256r1", 0},
+  {janetls_ecp_curve_group_bp384r1, "bp384r1", 0},
+  {janetls_ecp_curve_group_bp512r1, "bp512r1", 0},
+  {janetls_ecp_curve_group_curve25519, "cuve25519", 0},
+  {janetls_ecp_curve_group_secp192k1, "secp192k1", 0},
+  {janetls_ecp_curve_group_secp224k1, "secp224k1", 0},
+  {janetls_ecp_curve_group_secp256k1, "secp256k1", 0},
+  {janetls_ecp_curve_group_curve448, "cuve448", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(ecp_curve_group, janetls_ecp_curve_group)
