@@ -28,7 +28,9 @@
 #include "janetls-bignum.h"
 
 typedef struct janetls_ecp_group_object {
-  mbedtls_ecp_group group;
+  mbedtls_ecp_group ecp_group;
+  janetls_ecp_curve_type type;
+  janetls_ecp_curve_group group;
 } janetls_ecp_group_object;
 
 typedef struct janetls_ecp_point_object {

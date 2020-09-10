@@ -170,6 +170,9 @@ typedef enum janetls_asn1_flags
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(asn1_flags, janetls_asn1_flags)
 
+// Full list of possible curves..
+// For now it's only what mbedtls supports
+// https://www.hyperelliptic.org/EFD/
 typedef enum janetls_ecp_curve_type
 {
   janetls_ecp_curve_type_none = 0, // not one of these
