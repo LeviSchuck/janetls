@@ -40,6 +40,7 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_asn1(env);
   submod_asn1(env);
   submod_rsa(env);
+  submod_ecp(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)
