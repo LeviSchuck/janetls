@@ -169,7 +169,9 @@ static const JanetReg cfuns[] =
     "Exports the point or public point from a keypair to binary. "
     "The exact format depends on the curve in use.\n"
     "By default, compression will be :uncompressed, options are enumerated in "
-    "janetls/ecp/compression."
+    "janetls/ecp/compression.\n"
+    "Using compressed points is discouraged, they cannot be imported by this "
+    "library, and are deprecated in RFC 8422 for TLS"
     },
   {"ecp/import-point", ecp_point_import, "(janetls/ecp/import group binary)\n\n"
     "Imports binary exported coordinate within the group curve.\n"
@@ -337,7 +339,7 @@ static Janet ecp_group_from_key(int32_t argc, Janet * argv)
   janetls_ecp_group_object * group_object = janetls_new_ecp_group_object();
   group_object->group = group;
   check_result(mbedtls_ecp_group_load(&group_object->ecp_group, (mbedtls_ecp_group_id)group));
-  group_object->type = mbedtls_ecp_get_type(&group_object->ecp_group);
+  group_object->type = (janetls_ecp_curve_type)mbedtls_ecp_get_type(&group_object->ecp_group);
   return janet_wrap_abstract(group_object);
 }
 
