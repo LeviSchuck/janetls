@@ -26,11 +26,13 @@
 #include "mbedtls/ecp.h"
 #include "janetls-options.h"
 #include "janetls-bignum.h"
+#include "janetls-random.h"
 
 typedef struct janetls_ecp_group_object {
   mbedtls_ecp_group ecp_group;
   janetls_ecp_curve_type type;
   janetls_ecp_curve_group group;
+  random_object * random;
 } janetls_ecp_group_object;
 
 typedef struct janetls_ecp_point_object {
@@ -45,6 +47,7 @@ typedef struct janetls_ecp_keypair_object {
   janetls_ecp_group_object * group;
   bignum_object * secret;
   janetls_ecp_point_object * public_coordinate;
+  int flags;
 } janetls_ecp_keypair_object;
 
 janetls_ecp_group_object * janetls_new_ecp_group_object();
