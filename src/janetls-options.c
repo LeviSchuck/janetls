@@ -205,10 +205,12 @@ option_list_entry ecp_curve_group[] = {
   {janetls_ecp_curve_group_bp256r1, "bp256r1", 0},
   {janetls_ecp_curve_group_bp384r1, "bp384r1", 0},
   {janetls_ecp_curve_group_bp512r1, "bp512r1", 0},
-  {janetls_ecp_curve_group_curve25519, "cuve25519", 0},
+  {janetls_ecp_curve_group_curve25519, "curve25519", 0},
+  {janetls_ecp_curve_group_curve25519, "25519", OPTION_LIST_HIDDEN},
   {janetls_ecp_curve_group_secp192k1, "secp192k1", 0},
   {janetls_ecp_curve_group_secp224k1, "secp224k1", 0},
   {janetls_ecp_curve_group_secp256k1, "secp256k1", 0},
-  {janetls_ecp_curve_group_curve448, "cuve448", 0},
+  {janetls_ecp_curve_group_curve448, "curve448", 0},
+  {janetls_ecp_curve_group_curve448, "448", OPTION_LIST_HIDDEN},
 };
 JANETLS_SEARCH_OPTION_LIST(ecp_curve_group, janetls_ecp_curve_group)
