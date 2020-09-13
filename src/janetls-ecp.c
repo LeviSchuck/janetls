@@ -22,6 +22,7 @@
 
 #include "janetls.h"
 #include "janetls-ecp.h"
+#include <inttypes.h>
 
 #define ECP_KEYPAIR_HAS_PUBLIC 1
 
@@ -65,12 +66,31 @@ static int compare_group(Janet a, Janet b);
 static int compare_point(Janet a, Janet b);
 static int compare_keypair(Janet a, Janet b);
 
+
+static void ecp_group_to_string_untyped(void * group, JanetBuffer * buffer);
+static int ecp_group_compare_untyped(void * x, void * y);
+static int32_t ecp_group_hash(void * p, size_t len);
+
+static void ecp_point_to_string_untyped(void * group, JanetBuffer * buffer);
+static int ecp_point_compare_untyped(void * x, void * y);
+static int32_t ecp_point_hash(void * p, size_t len);
+
+static void ecp_keypair_to_string_untyped(void * group, JanetBuffer * buffer);
+static int ecp_keypair_compare_untyped(void * x, void * y);
+static int32_t ecp_keypair_hash(void * p, size_t len);
+
 JanetAbstractType janetls_ecp_group_object_type = {
   "janetls/ecp/group",
   ecp_group_gc_fn,
   ecp_group_gcmark,
   ecp_group_get_fn,
-  JANET_ATEND_GET
+  NULL,
+  NULL,
+  NULL,
+  ecp_group_to_string_untyped,
+  ecp_group_compare_untyped,
+  ecp_group_hash,
+  JANET_ATEND_HASH
 };
 
 JanetAbstractType janetls_ecp_point_object_type = {
@@ -78,7 +98,13 @@ JanetAbstractType janetls_ecp_point_object_type = {
   ecp_point_gc_fn,
   ecp_point_gcmark,
   ecp_point_get_fn,
-  JANET_ATEND_GET
+  NULL,
+  NULL,
+  NULL,
+  ecp_point_to_string_untyped,
+  ecp_point_compare_untyped,
+  ecp_point_hash,
+  JANET_ATEND_HASH
 };
 
 JanetAbstractType janetls_ecp_keypair_object_type = {
@@ -86,7 +112,13 @@ JanetAbstractType janetls_ecp_keypair_object_type = {
   ecp_keypair_gc_fn,
   ecp_keypair_gcmark,
   ecp_keypair_get_fn,
-  JANET_ATEND_GET
+  NULL,
+  NULL,
+  NULL,
+  ecp_keypair_to_string_untyped,
+  ecp_keypair_compare_untyped,
+  ecp_keypair_hash,
+  JANET_ATEND_HASH
 };
 
 static JanetMethod ecp_group_methods[] = {
@@ -149,7 +181,7 @@ static const JanetReg cfuns[] =
     "Get the X coordinate of the point or public point of a keypair, "
     "returns a bignum"
     },
-  {"ecp/y", ecp_point_get_x, "(janetls/ecp/y multple)\n\n"
+  {"ecp/y", ecp_point_get_y, "(janetls/ecp/y multple)\n\n"
     "Get the Y coordinate of the point or public point of a keypair, "
     "returns a bignum"
     },
@@ -185,12 +217,20 @@ static const JanetReg cfuns[] =
     "Imports the private component from a binary into a keypair.\n"
     "The public coordinate will be calculated during validation."
     },
+  {"ecp/generate", ecp_group_generate_keypair, "(janetls/ecp/generate group)\n\n"
+    "Generate a keypair within the group.\n"
+    "It generates a secret which is compatible with the group, and then "
+    "derives the public point for that secret against the group generator."
+    },
   {NULL, NULL, NULL}
 };
 
 void submod_ecp(JanetTable * env)
 {
   janet_cfuns(env, "janetls", cfuns);
+  janet_register_abstract_type(&janetls_ecp_group_object_type);
+  janet_register_abstract_type(&janetls_ecp_point_object_type);
+  janet_register_abstract_type(&janetls_ecp_keypair_object_type);
 }
 
 static int ecp_group_get_fn(void *data, Janet key, Janet * out)
@@ -215,7 +255,20 @@ static int ecp_group_gc_fn(void * data, size_t len)
 static int ecp_group_gcmark(void *data, size_t len)
 {
   (void)len;
-  (void)data;
+  janetls_ecp_group_object * group = (janetls_ecp_group_object *)data;
+  if (group->random != NULL)
+  {
+    janet_mark(janet_wrap_abstract(group->random));
+  }
+  if (group->zero != NULL)
+  {
+    janet_mark(janet_wrap_abstract(group->zero));
+  }
+
+  if (group->generator != NULL)
+  {
+    janet_mark(janet_wrap_abstract(group->generator));
+  }
 
   return 0;
 }
@@ -359,20 +412,32 @@ static Janet ecp_group_get_curve_group(int32_t argc, Janet * argv)
 static Janet ecp_group_get_generator(int32_t argc, Janet * argv)
 {
   janetls_ecp_group_object * group = group_from_janet(argv[0], 1);
-  janetls_ecp_point_object * point = janetls_new_ecp_point_object();
-  check_result(mbedtls_ecp_copy(&point->point, &group->ecp_group.G));
-  point->group = group;
-  return janet_wrap_abstract(point);
+
+  if (group->generator == NULL)
+  {
+    janetls_ecp_point_object * point = janetls_new_ecp_point_object();
+    check_result(mbedtls_ecp_copy(&point->point, &group->ecp_group.G));
+    point->group = group;
+    group->generator = point;
+  }
+
+  return janet_wrap_abstract(group->generator);
 }
 
 static Janet ecp_group_get_zero(int32_t argc, Janet * argv)
 {
   Janet curve = ecp_group_get_group(argc, argv);
   janetls_ecp_group_object * group = janet_unwrap_abstract(curve);
-  janetls_ecp_point_object * point = janetls_new_ecp_point_object();
-  check_result(mbedtls_ecp_set_zero(&point->point));
-  point->group = group;
-  return janet_wrap_abstract(point);
+
+  if (group->zero == NULL)
+  {
+    janetls_ecp_point_object * point = janetls_new_ecp_point_object();
+    check_result(mbedtls_ecp_set_zero(&point->point));
+    point->group = group;
+    group->zero = point;
+  }
+
+  return janet_wrap_abstract(group->zero);
 }
 
 static Janet ecp_group_generate_keypair(int32_t argc, Janet * argv)
@@ -862,4 +927,171 @@ static janetls_ecp_point_object * public_point_from_keypair(janetls_ecp_keypair_
     keypair->public_coordinate = point;
   }
   return keypair->public_coordinate;
+}
+
+static void ecp_group_to_string_untyped(void * data, JanetBuffer * buffer)
+{
+  janetls_ecp_group_object * group = data;
+  const char * text = janetls_search_ecp_curve_group_text(group->group);
+  if (text == NULL)
+  {
+    text = "unknown";
+  }
+  janet_buffer_push_cstring(buffer, text);
+  return;
+}
+
+static int ecp_group_compare_untyped(void * x, void * y)
+{
+  return compare_group(janet_wrap_abstract(x), janet_wrap_abstract(y));
+}
+
+static int32_t ecp_group_hash(void * data, size_t len)
+{
+  (void)len;
+  janetls_ecp_group_object * group = data;
+  if (group->hash != 0)
+  {
+    return group->hash;
+  }
+  // https://stackoverflow.com/a/12996028
+  // Hash an int
+  uint32_t hash = (uint32_t)(group->group);
+  hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
+  hash = ((hash >> 16) ^ hash) * 0x45d9f3b;
+  hash = (hash >> 16) ^ hash;
+  group->hash = (int32_t)hash;
+  return (int32_t)hash;
+}
+
+#define MAX_BIGINT_TO_STRING_SUPPORTED 256
+
+static void mbedtls_ecp_point_to_janet_buffer(mbedtls_ecp_point * point, JanetBuffer * buffer)
+{
+  // 256 bit is only like 77 characters long
+  // 255 (+1 for \0) characters should support (mathamatically 847 bits)
+  // There are no standard curves with such lengths, so this should be a
+  // safe stack-buffer size to use.
+  uint8_t buf[MAX_BIGINT_TO_STRING_SUPPORTED];
+  size_t length = 0;
+  int ret = mbedtls_mpi_write_string(&point->X, 10, (char *)buf, MAX_BIGINT_TO_STRING_SUPPORTED, &length);
+  if (ret == 0)
+  {
+    janet_buffer_push_bytes(buffer, buf, length);
+  }
+  else
+  {
+    janet_buffer_push_cstring(buffer, "ERROR-X");
+  }
+  janet_buffer_push_u8(buffer, ',');
+
+  ret = mbedtls_mpi_write_string(&point->Y, 10, (char *)buf, MAX_BIGINT_TO_STRING_SUPPORTED, &length);
+  if (ret == 0)
+  {
+    janet_buffer_push_bytes(buffer, buf, length);
+  }
+  else
+  {
+    janet_buffer_push_cstring(buffer, "ERROR-Y");
+  }
+}
+
+static void ecp_point_to_string_untyped(void * data, JanetBuffer * buffer)
+{
+  janetls_ecp_point_object * point = data;
+
+  ecp_group_to_string_untyped(point->group, buffer);
+  janet_buffer_push_u8(buffer, ':');
+  mbedtls_ecp_point_to_janet_buffer(&point->point, buffer);
+
+  return;
+}
+
+static int ecp_point_compare_untyped(void * x, void * y)
+{
+  return compare_point(janet_wrap_abstract(x), janet_wrap_abstract(y));
+}
+
+static int32_t ecp_point_hash(void * data, size_t len)
+{
+  (void)len;
+  janetls_ecp_point_object * point = data;
+  if (point->hash != 0)
+  {
+    return point->hash;
+  }
+
+  int32_t hash = 0;
+  uint8_t output[MBEDTLS_ECP_MAX_PT_LEN];
+  size_t length = 0;
+  int ret = mbedtls_ecp_point_write_binary(
+    &point->group->ecp_group,
+    &point->point,
+    janetls_ecp_compression_uncompressed,
+    &length,
+    output,
+    sizeof(output)
+    );
+  if (ret == 0)
+  {
+    hash = (int32_t)janetls_crc32(output, length);;
+  }
+  else
+  {
+    // This is unlikely..
+    // Just hash the raw point structure.
+    hash = (int32_t)janetls_crc32((const uint8_t *) &point->point, sizeof(mbedtls_ecp_point));
+  }
+
+  // But wait! We're not done yet!
+  // We need to also account for the group
+  hash = hash ^ ecp_group_hash(&point->group, 0);
+
+  point->hash = hash;
+
+  return hash;
+}
+
+static void ecp_keypair_to_string_untyped(void * data, JanetBuffer * buffer)
+{
+  janetls_ecp_keypair_object * keypair = data;
+  ecp_group_to_string_untyped(keypair->group, buffer);
+  janet_buffer_push_u8(buffer, ':');
+  mbedtls_ecp_point_to_janet_buffer(&keypair->keypair.Q, buffer);
+  janet_buffer_push_cstring(buffer, ":secret-");
+  // The secret is intentionally not revealed.. because it might be easy to
+  // accidentally toss this into a function displayed to an adversary.
+
+  uint32_t bits = (uint32_t)keypair->group->ecp_group.nbits;
+  // The bit size is bounded and should not exceed 31 base-10 digits
+  char bit_count[32];
+  bit_count[0] = 0; // in case something goes wrong
+  sprintf(bit_count, "%"PRIu32, bits);
+  janet_buffer_push_cstring(buffer, bit_count);
+  janet_buffer_push_cstring(buffer, "-bits");
+  return;
+}
+
+static int ecp_keypair_compare_untyped(void * x, void * y)
+{
+  return compare_keypair(janet_wrap_abstract(x), janet_wrap_abstract(y));;
+}
+
+static int32_t ecp_keypair_hash(void * data, size_t len)
+{
+  (void)len;
+  janetls_ecp_keypair_object * keypair = data;
+  int32_t hash = keypair->hash;
+  if (hash != 0)
+  {
+    return hash;
+  }
+
+  hash = (int32_t)janetls_bignum_hash_mpi(&keypair->keypair.d);
+  // But wait! We're not done yet!
+  // We need to also account for the group
+  hash = hash ^ ecp_group_hash(&keypair->group, 0);
+
+  keypair->hash = hash;
+  return hash;
 }

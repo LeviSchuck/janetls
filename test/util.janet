@@ -13,4 +13,9 @@
   (is (not (constant= "abcd" {:hi "hello"})))
   )
 
+(deftest "CRC32" (do
+  (is (= 0x414fa339 (crc32 "The quick brown fox jumps over the lazy dog")))
+  (is (= 0x8e72caf4 (crc32 "The sky is orange in California")))
+  ))
+
 (run-tests!)

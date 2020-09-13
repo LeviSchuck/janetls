@@ -123,7 +123,10 @@ static int bignum_gc_fn(void * data, size_t len)
   return 0;
 }
 
-static int32_t bignum_hash(void *data, size_t len)
+#define BASE_BIGNUM_HASH_BYTES 512
+
+
+static int32_t bignum_hash(void * data, size_t len)
 {
   bignum_object * bignum = (bignum_object *)data;
   (void)len;
@@ -140,11 +143,55 @@ static int32_t bignum_hash(void *data, size_t len)
   // Lazily create the hash..
   // Unfortunately the mbed TLS library does not provide a means to
   // introspect the data. So a binary must be hashed instead.
-  Janet argv[] = {janet_wrap_abstract(bignum)};
-  Janet bytes = bignum_to_bytes(1, argv);
-  int32_t hash = janet_string_hash(janet_unwrap_string(bytes));
+
+  int32_t hash = (int32_t)janetls_bignum_hash_mpi(&bignum->mpi);
   bignum->hash = hash;
+
   return hash;
+}
+
+uint32_t janetls_bignum_hash_mpi(mbedtls_mpi * mpi)
+{
+  uint32_t result = 0;
+  size_t length = mbedtls_mpi_size(mpi);
+  int ret = 0;
+  if (length <= BASE_BIGNUM_HASH_BYTES)
+  {
+    // No dynamic allocation
+    uint8_t bytes[BASE_BIGNUM_HASH_BYTES];
+    ret = mbedtls_mpi_write_binary(mpi, bytes, length);
+    if (ret == 0)
+    {
+      result = janetls_crc32(bytes, length);
+    }
+  }
+  else
+  {
+    // Dynamic allocation required
+    uint8_t * bytes = janet_smalloc(length);
+    if (bytes != NULL)
+    {
+      ret = mbedtls_mpi_write_binary(mpi, bytes, length);
+      if (ret == 0)
+      {
+        result = janetls_crc32(bytes, length);
+      }
+      janet_sfree(bytes);
+    }
+    else
+    {
+      ret = -1;
+    }
+  }
+
+  if (ret != 0)
+  {
+    // This is unlikely. And this function should generally not panic.
+    // Just hash the value in memory.
+    result = janetls_crc32((const uint8_t *) mpi, sizeof(mbedtls_mpi));
+  }
+
+  return result;
 }
 
 static const JanetReg cfuns[] =
@@ -421,7 +468,7 @@ static Janet bignum_to_string(int32_t argc, Janet * argv)
   {
     janet_panicf("Could not allocate memory");
   }
-  int ret  = mbedtls_mpi_write_string(&bignum->mpi, radix, value, bytes, &bytes);
+  int ret = mbedtls_mpi_write_string(&bignum->mpi, radix, value, bytes, &bytes);
   if (ret != 0)
   {
     // Free the intermediate value as it will not be used
