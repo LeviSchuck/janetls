@@ -63,6 +63,7 @@
     "src/janetls-byteslice.c"
     "src/janetls-asn1.c"
     "src/janetls-rsa.c"
+    "src/janetls-ecp.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
@@ -80,6 +81,9 @@
     "mbedtls/library/rsa.c"
     "mbedtls/library/rsa_internal.c"
     "mbedtls/library/oid.c"
+    # Elliptic Curve
+    "mbedtls/library/ecp.c"
+    "mbedtls/library/ecp_curves.c"
     # Everything in mbed tls requires error, platform, platform_util
     "mbedtls/library/error.c"
     "mbedtls/library/platform.c"

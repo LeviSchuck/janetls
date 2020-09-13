@@ -20,22 +20,45 @@
  * SOFTWARE.
  */
 
-#ifndef JANETLS_BIGNUM_H
-#define JANETLS_BIGNUM_H
-#include "mbedtls/bignum.h"
+#ifndef JANETLS_ECP_H
+#define JANETLS_ECP_H
+#include <janet.h>
+#include "mbedtls/ecp.h"
+#include "janetls-options.h"
+#include "janetls-bignum.h"
+#include "janetls-random.h"
 
-typedef struct bignum_object {
-  // Hint: MPI: Multi-Precision-Integer
-  mbedtls_mpi mpi;
-  uint8_t flags;
+typedef struct janetls_ecp_point_object janetls_ecp_point_object;
+
+typedef struct janetls_ecp_group_object {
+  mbedtls_ecp_group ecp_group;
+  janetls_ecp_curve_type type;
+  janetls_ecp_curve_group group;
+  random_object * random;
+  janetls_ecp_point_object * zero;
+  janetls_ecp_point_object * generator;
   int32_t hash;
-} bignum_object;
-extern JanetAbstractType bignum_object_type;
-bignum_object * new_bignum();
-Janet unknown_to_bignum(Janet value);
-Janet unknown_to_bignum_opt(Janet value, int panic, int radix);
-int janetls_unknown_to_bignum(Janet * destination, Janet value, int radix);
-int janetls_bignum_to_bytes(Janet * destination, Janet value);
-int janetls_bignum_to_digits(Janet * destination, Janet value);
-uint32_t janetls_bignum_hash_mpi(mbedtls_mpi * mpi);
+} janetls_ecp_group_object;
+
+typedef struct janetls_ecp_point_object {
+  mbedtls_ecp_point point;
+  janetls_ecp_group_object * group;
+  bignum_object * x;
+  bignum_object * y;
+  int32_t hash;
+} janetls_ecp_point_object;
+
+typedef struct janetls_ecp_keypair_object {
+  mbedtls_ecp_keypair keypair;
+  janetls_ecp_group_object * group;
+  bignum_object * secret;
+  janetls_ecp_point_object * public_coordinate;
+  int flags;
+  int32_t hash;
+} janetls_ecp_keypair_object;
+
+janetls_ecp_group_object * janetls_new_ecp_group_object();
+janetls_ecp_point_object * janetls_new_ecp_point_object();
+janetls_ecp_keypair_object * janetls_new_ecp_keypair_object();
+
 #endif

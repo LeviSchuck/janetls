@@ -1,10 +1,10 @@
 # JaneTLS - Security primitives
 
-This project wraps another TLS library, specifically Apache 2.0 Licensed 
-[mbed TLS](https://tls.mbed.org/)). 
+This project wraps another TLS library, specifically Apache 2.0 Licensed
+[mbed TLS](https://tls.mbed.org/)).
 It's description reads as follows:
 
-> Mbed TLS is a C library that implements cryptographic primitives, 
+> Mbed TLS is a C library that implements cryptographic primitives,
 > X.509 certificate manipulation and the SSL/TLS and DTLS protocols.
 > Its small code footprint makes it suitable for embedded systems.
 
@@ -16,19 +16,19 @@ active support.
 
 > mbed TLS is supported by ARM with a young dynamic team which aims to keep
 > customers happy with its straightforward and easygoing philosophy.
-> 
+>
 > mbed TLS offers an SSL library with an intuitive API and readable source code,
 > so you can actually understand what the code does.
 > Also the mbed TLS modules are as loosely coupled as possible and written in
-> the portable C language. 
+> the portable C language.
 > This allows you to use the parts you need, without having to include the total
-> library. 
+> library.
 
 ## mbed TLS version
 
 mbed TLS is added as a submodule to this repository.
-As of August 9th, 2020, the submodule points to the latest release v2.23.0
-Releases can be found on: https://github.com/ARMmbed/mbedtls/releases 
+As of August 31, 2020, the submodule points to the latest release v2.24.0
+Releases can be found on: https://github.com/ARMmbed/mbedtls/releases
 
 ## License - MIT
 

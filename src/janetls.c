@@ -28,6 +28,7 @@
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/md.h"
 #include "mbedtls/rsa.h"
+#include "mbedtls/ecp.h"
 
 JANET_MODULE_ENTRY(JanetTable *env)
 {
@@ -40,6 +41,7 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_asn1(env);
   submod_asn1(env);
   submod_rsa(env);
+  submod_ecp(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)
@@ -59,6 +61,7 @@ const char * result_error_message(int result, uint8_t * unhandled)
     case MBEDTLS_ERR_MD_ALLOC_FAILED:
     case MBEDTLS_ERR_MPI_ALLOC_FAILED:
     case JANETLS_ERR_ALLOCATION_FAILED:
+    case MBEDTLS_ERR_ECP_ALLOC_FAILED:
       return "Ran out of memory";
     case MBEDTLS_ERR_MD_BAD_INPUT_DATA:
     case MBEDTLS_ERR_MPI_BAD_INPUT_DATA:
@@ -96,6 +99,20 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "RSA: The output buffer for decryption is not large enough";
     case MBEDTLS_ERR_RSA_RNG_FAILED:
       return "RSA: The random generator used failed to generate non zero values";
+    case MBEDTLS_ERR_ECP_BAD_INPUT_DATA:
+      return "ECP: Input invalid";
+    case MBEDTLS_ERR_ECP_BUFFER_TOO_SMALL:
+      return "ECP: Internal error, buffer too small";
+    case MBEDTLS_ERR_ECP_FEATURE_UNAVAILABLE:
+      return "ECP: Feature unavailable, maybe that function doesn't work for this curve group";
+    case MBEDTLS_ERR_ECP_VERIFY_FAILED:
+      return "ECP: Verification failed, the signature is not valid";
+    case MBEDTLS_ERR_ECP_RANDOM_FAILED:
+      return "ECP: Random number generator appears to be failing";
+    case MBEDTLS_ERR_ECP_INVALID_KEY:
+      return "ECP: Invalid public or private key";
+    case MBEDTLS_ERR_ECP_SIG_LEN_MISMATCH:
+      return "ECP: The signature is the wrong length";
     // -------------- JANETLS ERRORS ------------------
     case JANETLS_ERR_ENCODING_INVALID_CHARACTER:
       return "Invalid character found during decoding";

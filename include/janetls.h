@@ -49,6 +49,7 @@ int flatten_array(Janet * output, JanetArray * array);
 int janet_byte_cstrcmp_insensitive(JanetByteView str, const char * other);
 int janet_byte_cstrcmp_sensitive(JanetByteView str, const char * other);
 int janetls_constant_compare(Janet x, Janet y);
+uint32_t janetls_crc32(const uint8_t * data, int32_t length);
 
 typedef enum string_type {
   STRING_IS_DIGITS,
@@ -72,6 +73,7 @@ void submod_random(JanetTable * env);
 void submod_byteslice(JanetTable * env);
 void submod_asn1(JanetTable * env);
 void submod_rsa(JanetTable * env);
+void submod_ecp(JanetTable * env);
 
 #define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
 

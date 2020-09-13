@@ -268,6 +268,7 @@ static const JanetReg cfuns[] =
 void submod_rsa(JanetTable * env)
 {
   janet_cfuns(env, "janetls", cfuns);
+  janet_register_abstract_type(&rsa_object_type);
 }
 
 

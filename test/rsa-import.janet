@@ -172,7 +172,6 @@ junkjunkjunkjunkjun="))
   (is (:verify public-v2.1 data sig3))
   (is (:verify private-v2.1 data sig4))
   (is (:verify public-v2.1 data sig4))
-  (print "About to try openssl sig")
   # Compatible with openssl signed data, will be different due to how PSS works
   (is (:verify public-v2.1 data openssl-sig-v21))
   ))
