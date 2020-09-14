@@ -3,14 +3,12 @@
 # https://github.com/pyrmont/testament/blob/master/api.md
 (import ../build/janetls :prefix "" :exit true)
 
-(def r (random/start))
-
 # Generate a default key, RSASSA-PKCS1-v1_5 using SHA-256
 (def key (rsa/generate))
 
 (def data "hello mike")
 (def other-data "goodbye joe")
-(def some-random-data (:get r 32))
+(def some-random-data (util/random 32))
 
 (def encrypted-data (:encrypt key data))
 (def encrypted-other-data (:encrypt key other-data))
@@ -42,7 +40,6 @@
   :version :pkcs1-v2.1
   :mgf1 :sha1
   :digest :sha1
-  :random r
   }))
 
 (deftest "Custom key is 1024 bits" (is (= 1024 (rsa/get-size-bits key2))))

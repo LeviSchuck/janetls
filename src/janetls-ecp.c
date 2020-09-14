@@ -906,7 +906,7 @@ static janetls_random_object * random_from_group(janetls_ecp_group_object * grou
 {
   if (group->random == NULL)
   {
-    group->random = janetls_new_random();
+    group->random = janetls_get_random();
   }
   return group->random;
 }

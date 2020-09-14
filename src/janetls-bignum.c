@@ -214,15 +214,11 @@ static const JanetReg cfuns[] =
     "format. Valid options are (for big endian): :big-endian or :big or :be, "
     "(for little endian): :little-endian or :little or :le."
     },
-  {"bignum/generate-prime", bignum_generate_prime, "(janetls/bignum/generate-prime bits &opt random quality)\n\n"
+  {"bignum/generate-prime", bignum_generate_prime, "(janetls/bignum/generate-prime bits &opt quality)\n\n"
     "Generates a bignumber, which is prime, which has a bit-length of the "
     "input: bits. Note that the bit count should be between 3 and 4096. It may "
     "be more on 64 bit platforms, but the higher the bit count, the longer it "
     "takes to generate a prime number.\n"
-    "The optional random value is to re-use a random source generator. This "
-    "can be obtained from janetls/random/start. If not provided, it will poll "
-    "for entropy from the system and allocate a new one. Ideally, reuse one if "
-    "you call this function repeatedly.\n"
     "The optional quality value may apply more conditions to the prime. "
     "Valid values are :low-err (lower error probability) or "
     ":dh ((X-1)/2 is prime too), or :low-err-dh (for both)."
@@ -296,13 +292,9 @@ static const JanetReg cfuns[] =
     "integer that divides for both X and Y. The result will be 1 (as a bignum) "
     "when there is no other candidate."
     },
-  {"bignum/prime?", bignum_is_prime, "(janetls/bignum/prime? bignum &opt random)\n\n"
+  {"bignum/prime?", bignum_is_prime, "(janetls/bignum/prime? bignum)\n\n"
     "Returns a boolean on if this bignum is a prime with a low probability, "
     "sufficient for key generation.\n"
-    "The optional random value is to re-use a random source generator. This "
-    "can be obtained from janetls/random/start. If not provided, it will poll "
-    "for entropy from the system and allocate a new one. Ideally, reuse one if "
-    "you call this function repeatedly.\n"
     },
   {"bignum/compare", bignum_compare_janet, "(janetls/bignum/compare x y)\n\n"
     "Returns the standard comparison (-1, 0, 1) between bignums and other "
@@ -381,7 +373,7 @@ static Janet bignum_generate_prime(int32_t argc, Janet * argv)
     janet_panicf("To generate a prime, you'll need to provide how many bits it'll be. Valid values are between 3 and %d", (long)(MBEDTLS_MPI_MAX_BITS));
   }
 
-  janetls_random_object * random = janetls_get_or_gen_random_object(argc, argv, 1);
+  janetls_random_object * random = janetls_get_random();
 
   if (argc > 2)
   {
@@ -668,7 +660,7 @@ static Janet bignum_is_prime(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 1, 2);
   janetls_bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  janetls_random_object * random = janetls_get_or_gen_random_object(argc, argv, 1);
+  janetls_random_object * random = janetls_get_random();
   // 50 rounds is sufficient for key generation
   return janet_wrap_boolean(mbedtls_mpi_is_prime_ext(&bignum->mpi, 50, janetls_random_rng, random) == 0);
 }
