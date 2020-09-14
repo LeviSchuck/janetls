@@ -28,7 +28,7 @@ static int random_get_fn(void * data, Janet key, Janet * out);
 static Janet random_start(int32_t argc, Janet * argv);
 static Janet random_get_bytes(int32_t argc, Janet * argv);
 
-JanetAbstractType random_object_type = {
+static JanetAbstractType random_object_type = {
   "janetls/random",
   random_gc_fn,
   NULL,
@@ -60,10 +60,15 @@ static int random_get_fn(void *data, Janet key, Janet * out)
 
 static int random_gc_fn(void * data, size_t len)
 {
-  random_object * random = (random_object *)data;
+  janetls_random_object * random = (janetls_random_object *)data;
   mbedtls_ctr_drbg_free(&random->drbg);
   mbedtls_entropy_free(&random->entropy);
   return 0;
+}
+
+JanetAbstractType * janetls_random_object_type()
+{
+  return &random_object_type;
 }
 
 static const JanetReg cfuns[] =
@@ -89,10 +94,10 @@ void submod_random(JanetTable *env)
   janet_register_abstract_type(&random_object_type);
 }
 
-random_object * janetls_new_random()
+janetls_random_object * janetls_new_random()
 {
-  random_object * random = janet_abstract(&random_object_type, sizeof(random_object));
-  memset(random, 0, sizeof(random_object));
+  janetls_random_object * random = janet_abstract(&random_object_type, sizeof(janetls_random_object));
+  memset(random, 0, sizeof(janetls_random_object));
   mbedtls_entropy_init(&random->entropy);
   mbedtls_ctr_drbg_init(&random->drbg);
   int ret = mbedtls_ctr_drbg_seed(&random->drbg, mbedtls_entropy_func, &random->entropy, NULL, 0);
@@ -112,7 +117,7 @@ static Janet random_start(int32_t argc, Janet * argv)
 static Janet random_get_bytes(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  random_object * random = janet_getabstract(argv, 0, &random_object_type);
+  janetls_random_object * random = janet_getabstract(argv, 0, &random_object_type);
   double num = janet_getnumber(argv, 1);
   size_t bytes = (size_t)num;
 
@@ -147,7 +152,7 @@ static Janet random_get_bytes(int32_t argc, Janet * argv)
 
 int janetls_random_rng(void * untyped_random, unsigned char * buffer, size_t size)
 {
-  random_object * random = (random_object *) untyped_random;
+  janetls_random_object * random = (janetls_random_object *) untyped_random;
   if (random == NULL)
   {
     // Not the best, but whatever.
@@ -156,7 +161,7 @@ int janetls_random_rng(void * untyped_random, unsigned char * buffer, size_t siz
   return mbedtls_ctr_drbg_random(&random->drbg, buffer, size);
 }
 
-random_object * get_or_gen_random_object(int argc, Janet * argv, int offset)
+janetls_random_object * janetls_get_or_gen_random_object(int argc, Janet * argv, int offset)
 {
   if (argc > offset)
   {

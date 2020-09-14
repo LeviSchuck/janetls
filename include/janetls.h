@@ -74,6 +74,7 @@ void submod_byteslice(JanetTable * env);
 void submod_asn1(JanetTable * env);
 void submod_rsa(JanetTable * env);
 void submod_ecp(JanetTable * env);
+void submod_ecdsa(JanetTable * env);
 
 #define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
 

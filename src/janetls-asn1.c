@@ -327,14 +327,14 @@ static Janet asn1_decode_127(int32_t argc, Janet * argv)
   return result;
 }
 
-// int decode_base127(const uint8_t * buffer, int buffer_length, bignum_object * destination, int * position)
+// int decode_base127(const uint8_t * buffer, int buffer_length, janetls_bignum_object * destination, int * position)
 #define MAX_BITS (sizeof(uint64_t) * 8)
 int decode_base127(JanetByteView bytes, Janet * wrapped_destination, int * position, janetls_asn1_number_type type)
 {
   int ret = 0;
   if (type == janetls_asn1_number_type_bignum)
   {
-    bignum_object * destination = new_bignum();
+    janetls_bignum_object * destination = janetls_new_bignum();
     mbedtls_mpi * num = &destination->mpi;
     mbedtls_mpi copy;
     mbedtls_mpi_init(&copy);
@@ -457,7 +457,7 @@ int decode_base127_as_u64(asn1_parser * parser, uint64_t * external_result)
 int encode_base127(Janet wrapped_source, JanetBuffer * buffer)
 {
   // For now this only supports bignumbers.
-  bignum_object * source = janet_unwrap_abstract(unknown_to_bignum_opt(wrapped_source, 0, 10));
+  janetls_bignum_object * source = janet_unwrap_abstract(unknown_to_bignum_opt(wrapped_source, 0, 10));
   int ret = 0;
   if (mbedtls_mpi_cmp_int(&source->mpi, 0) == 0)
   {
@@ -743,7 +743,7 @@ int decode_asn1(asn1_parser * parser, Janet * output)
     }
     case janetls_asn1_universal_type_integer:
     {
-      bignum_object * bignum = new_bignum();
+      janetls_bignum_object * bignum = janetls_new_bignum();
       if (tag.value_length == 0)
       {
         // I guess it's 0?
@@ -1318,7 +1318,7 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
   int ret = 0;
   int32_t size = 0;
   JanetBuffer * buffer = NULL;
-  bignum_object * bignum  = NULL;
+  janetls_bignum_object * bignum  = NULL;
   #ifdef PRINT_TRACE_EVERYTHING
   janet_eprintf("Push tag-length-value of %p\n", value);
   #endif
@@ -1343,7 +1343,7 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
     else if (string_type == STRING_IS_DIGITS)
     {
       // Turn into bignumber, output in little endian.
-      bignum = new_bignum();
+      bignum = janetls_new_bignum();
       // Read in the digit string into mbedtls bignum
       retcheck(mbedtls_mpi_read_string(&bignum->mpi, 10, (const char *)bytes.bytes));
       goto push_bignum;
@@ -1439,7 +1439,7 @@ int push_asn1_tag_length_value(JanetArray * array, Janet value)
   {
     void * abstract_value = janet_unwrap_abstract(value);
     JanetAbstractHead * head = janet_abstract_head(abstract_value);
-    if (head->type == &bignum_object_type)
+    if (head->type == janetls_bignum_object_type())
     {
       bignum = abstract_value;
 push_bignum:
@@ -1979,7 +1979,7 @@ int determine_type_by_value(janetls_asn1_universal_type * universal_type, int * 
   {
     void * abstract_value = janet_unwrap_abstract(dict_value);
     JanetAbstractHead * head = janet_abstract_head(abstract_value);
-    if (head->type == &bignum_object_type)
+    if (head->type == janetls_bignum_object_type())
     {
       *universal_type = janetls_asn1_universal_type_integer;
     }

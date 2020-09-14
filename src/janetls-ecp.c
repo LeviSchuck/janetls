@@ -59,7 +59,7 @@ static Janet ecp_keypair_compare(int32_t argc, Janet * argv);
 
 static janetls_ecp_point_object * point_from_janet(Janet value, int panic);
 static janetls_ecp_group_object * group_from_janet(Janet value, int panic);
-static random_object * random_from_group(janetls_ecp_group_object * group);
+static janetls_random_object * random_from_group(janetls_ecp_group_object * group);
 static janetls_ecp_point_object * public_point_from_keypair(janetls_ecp_keypair_object * keypair);
 
 static int compare_group(Janet a, Janet b);
@@ -79,7 +79,7 @@ static void ecp_keypair_to_string_untyped(void * group, JanetBuffer * buffer);
 static int ecp_keypair_compare_untyped(void * x, void * y);
 static int32_t ecp_keypair_hash(void * p, size_t len);
 
-JanetAbstractType janetls_ecp_group_object_type = {
+static JanetAbstractType ecp_group_object_type = {
   "janetls/ecp/group",
   ecp_group_gc_fn,
   ecp_group_gcmark,
@@ -93,7 +93,7 @@ JanetAbstractType janetls_ecp_group_object_type = {
   JANET_ATEND_HASH
 };
 
-JanetAbstractType janetls_ecp_point_object_type = {
+static JanetAbstractType ecp_point_object_type = {
   "janetls/ecp/point",
   ecp_point_gc_fn,
   ecp_point_gcmark,
@@ -107,7 +107,7 @@ JanetAbstractType janetls_ecp_point_object_type = {
   JANET_ATEND_HASH
 };
 
-JanetAbstractType janetls_ecp_keypair_object_type = {
+static JanetAbstractType ecp_keypair_object_type = {
   "janetls/ecp/keypair",
   ecp_keypair_gc_fn,
   ecp_keypair_gcmark,
@@ -228,9 +228,24 @@ static const JanetReg cfuns[] =
 void submod_ecp(JanetTable * env)
 {
   janet_cfuns(env, "janetls", cfuns);
-  janet_register_abstract_type(&janetls_ecp_group_object_type);
-  janet_register_abstract_type(&janetls_ecp_point_object_type);
-  janet_register_abstract_type(&janetls_ecp_keypair_object_type);
+  janet_register_abstract_type(&ecp_group_object_type);
+  janet_register_abstract_type(&ecp_point_object_type);
+  janet_register_abstract_type(&ecp_keypair_object_type);
+}
+
+JanetAbstractType * janetls_ecp_group_object_type()
+{
+  return &ecp_group_object_type;
+}
+
+JanetAbstractType * janetls_ecp_point_object_type()
+{
+  return &ecp_point_object_type;
+}
+
+JanetAbstractType * janetls_ecp_keypair_object_type()
+{
+  return &ecp_keypair_object_type;
 }
 
 static int ecp_group_get_fn(void *data, Janet key, Janet * out)
@@ -359,7 +374,7 @@ static int ecp_keypair_gcmark(void *data, size_t len)
 
 janetls_ecp_group_object * janetls_new_ecp_group_object()
 {
-  janetls_ecp_group_object * group = janet_abstract(&janetls_ecp_group_object_type, sizeof(janetls_ecp_group_object));
+  janetls_ecp_group_object * group = janet_abstract(&ecp_group_object_type, sizeof(janetls_ecp_group_object));
   memset(group, 0, sizeof(janetls_ecp_group_object));
   mbedtls_ecp_group_init(&group->ecp_group);
   return group;
@@ -367,7 +382,7 @@ janetls_ecp_group_object * janetls_new_ecp_group_object()
 
 janetls_ecp_point_object * janetls_new_ecp_point_object()
 {
-  janetls_ecp_point_object * point = janet_abstract(&janetls_ecp_point_object_type, sizeof(janetls_ecp_point_object));
+  janetls_ecp_point_object * point = janet_abstract(&ecp_point_object_type, sizeof(janetls_ecp_point_object));
   memset(point, 0, sizeof(janetls_ecp_point_object));
   mbedtls_ecp_point_init(&point->point);
   return point;
@@ -375,7 +390,7 @@ janetls_ecp_point_object * janetls_new_ecp_point_object()
 
 janetls_ecp_keypair_object * janetls_new_ecp_keypair_object()
 {
-  janetls_ecp_keypair_object * keypair = janet_abstract(&janetls_ecp_keypair_object_type, sizeof(janetls_ecp_keypair_object));
+  janetls_ecp_keypair_object * keypair = janet_abstract(&ecp_keypair_object_type, sizeof(janetls_ecp_keypair_object));
   memset(keypair, 0, sizeof(janetls_ecp_keypair_object));
   mbedtls_ecp_keypair_init(&keypair->keypair);
   return keypair;
@@ -443,7 +458,7 @@ static Janet ecp_group_get_zero(int32_t argc, Janet * argv)
 static Janet ecp_group_generate_keypair(int32_t argc, Janet * argv)
 {
   janetls_ecp_group_object * group = group_from_janet(argv[0], 1);
-  random_object * random = random_from_group(group);
+  janetls_random_object * random = random_from_group(group);
   janetls_ecp_keypair_object * keypair = janetls_new_ecp_keypair_object();
   keypair->group = group;
 
@@ -470,7 +485,7 @@ static Janet ecp_point_get_x(int32_t argc, Janet * argv)
   if (point->x == NULL)
   {
     // Populate x
-    bignum_object * x = new_bignum();
+    janetls_bignum_object * x = janetls_new_bignum();
     check_result(mbedtls_mpi_copy(&x->mpi, &point->point.X));
     point->x = x;
   }
@@ -486,7 +501,7 @@ static Janet ecp_point_get_y(int32_t argc, Janet * argv)
   if (point->y == NULL)
   {
     // Populate y
-    bignum_object * y = new_bignum();
+    janetls_bignum_object * y = janetls_new_bignum();
     check_result(mbedtls_mpi_copy(&y->mpi, &point->point.Y));
     point->y = y;
   }
@@ -577,18 +592,18 @@ static Janet ecp_point_import(int32_t argc, Janet * argv)
 static Janet ecp_keypair_get_point(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  janetls_ecp_keypair_object * keypair = janet_getabstract(argv, 0, &janetls_ecp_keypair_object_type);
+  janetls_ecp_keypair_object * keypair = janet_getabstract(argv, 0, &ecp_keypair_object_type);
   return janet_wrap_abstract(public_point_from_keypair(keypair));
 }
 
 static Janet ecp_keypair_get_secret(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  janetls_ecp_keypair_object * keypair = janet_getabstract(argv, 0, &janetls_ecp_keypair_object_type);
+  janetls_ecp_keypair_object * keypair = janet_getabstract(argv, 0, &ecp_keypair_object_type);
   if (keypair->secret == NULL)
   {
     // time to copy from the inside
-    bignum_object * secret = new_bignum();
+    janetls_bignum_object * secret = janetls_new_bignum();
     check_result(mbedtls_mpi_copy(&secret->mpi, &keypair->keypair.d));
     keypair->secret = secret;
   }
@@ -598,7 +613,7 @@ static Janet ecp_keypair_get_secret(int32_t argc, Janet * argv)
 static Janet ecp_keypair_export(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  janetls_ecp_keypair_object * keypair = janet_getabstract(argv, 0, &janetls_ecp_keypair_object_type);
+  janetls_ecp_keypair_object * keypair = janet_getabstract(argv, 0, &ecp_keypair_object_type);
   uint8_t output[MBEDTLS_ECP_MAX_BYTES];
   // compute bits to bytes of the curve
   size_t length = (keypair->group->ecp_group.nbits + 7) / 8;
@@ -701,10 +716,10 @@ static Janet ecp_keypair_import(int32_t argc, Janet * argv)
 
 static janetls_ecp_point_object * point_from_janet(Janet value, int panic)
 {
-  janetls_ecp_point_object * point = janet_checkabstract(value, &janetls_ecp_point_object_type);
+  janetls_ecp_point_object * point = janet_checkabstract(value, &ecp_point_object_type);
   if (point == NULL)
   {
-    janetls_ecp_keypair_object * keypair = janet_checkabstract(value, &janetls_ecp_keypair_object_type);
+    janetls_ecp_keypair_object * keypair = janet_checkabstract(value, &ecp_keypair_object_type);
     if (keypair != NULL)
     {
       point = public_point_from_keypair(keypair);
@@ -719,19 +734,19 @@ static janetls_ecp_point_object * point_from_janet(Janet value, int panic)
 
 static janetls_ecp_group_object * group_from_janet(Janet value, int panic)
 {
-  janetls_ecp_group_object * group_object = janet_checkabstract(value, &janetls_ecp_group_object_type);
+  janetls_ecp_group_object * group_object = janet_checkabstract(value, &ecp_group_object_type);
   if (group_object != NULL)
   {
     return group_object;
   }
 
-  janetls_ecp_point_object * point_object = janet_checkabstract(value, &janetls_ecp_group_object_type);
+  janetls_ecp_point_object * point_object = janet_checkabstract(value, &ecp_group_object_type);
   if (point_object != NULL && point_object->group != NULL)
   {
     return point_object->group;
   }
 
-  janetls_ecp_keypair_object * keypair_object = janet_checkabstract(value, &janetls_ecp_group_object_type);
+  janetls_ecp_keypair_object * keypair_object = janet_checkabstract(value, &ecp_group_object_type);
   if (keypair_object != NULL && keypair_object->group != NULL)
   {
     return keypair_object->group;
@@ -809,8 +824,8 @@ static int compare_point(Janet a, Janet b)
 
 static int compare_keypair(Janet a, Janet b)
 {
-  janetls_ecp_keypair_object * keypair1 = janet_checkabstract(a, &janetls_ecp_keypair_object_type);
-  janetls_ecp_keypair_object * keypair2 = janet_checkabstract(b, &janetls_ecp_keypair_object_type);
+  janetls_ecp_keypair_object * keypair1 = janet_checkabstract(a, &ecp_keypair_object_type);
+  janetls_ecp_keypair_object * keypair2 = janet_checkabstract(b, &ecp_keypair_object_type);
 
   if (keypair1 == NULL)
   {
@@ -832,15 +847,15 @@ static Janet ecp_group_compare(int32_t argc, Janet * argv)
   int ret = compare_group(argv[0], argv[1]);
   // Ensure that ordering is only applied if both are actually groups
   if (ret == 0
-    && janet_checkabstract(argv[0], &janetls_ecp_group_object_type) != 0
-    && janet_checkabstract(argv[1], &janetls_ecp_group_object_type) == 0
+    && janet_checkabstract(argv[0], &ecp_group_object_type) != 0
+    && janet_checkabstract(argv[1], &ecp_group_object_type) == 0
     )
   {
     ret = -1;
   }
   else if (ret == 0
-    && janet_checkabstract(argv[0], &janetls_ecp_group_object_type) == 0
-    && janet_checkabstract(argv[1], &janetls_ecp_group_object_type) != 0
+    && janet_checkabstract(argv[0], &ecp_group_object_type) == 0
+    && janet_checkabstract(argv[1], &ecp_group_object_type) != 0
     )
   {
     ret = 1;
@@ -858,15 +873,15 @@ static Janet ecp_point_compare(int32_t argc, Janet * argv)
   }
   // Ensure that ordering is only applied if both are actually groups
   if (ret == 0
-    && janet_checkabstract(argv[0], &janetls_ecp_point_object_type) != 0
-    && janet_checkabstract(argv[1], &janetls_ecp_point_object_type) == 0
+    && janet_checkabstract(argv[0], &ecp_point_object_type) != 0
+    && janet_checkabstract(argv[1], &ecp_point_object_type) == 0
     )
   {
     ret = -1;
   }
   else if (ret == 0
-    && janet_checkabstract(argv[0], &janetls_ecp_point_object_type) == 0
-    && janet_checkabstract(argv[1], &janetls_ecp_point_object_type) != 0
+    && janet_checkabstract(argv[0], &ecp_point_object_type) == 0
+    && janet_checkabstract(argv[1], &ecp_point_object_type) != 0
     )
   {
     ret = 1;
@@ -887,7 +902,7 @@ static Janet ecp_keypair_compare(int32_t argc, Janet * argv)
   return janet_wrap_number(ret);
 }
 
-static random_object * random_from_group(janetls_ecp_group_object * group)
+static janetls_random_object * random_from_group(janetls_ecp_group_object * group)
 {
   if (group->random == NULL)
   {

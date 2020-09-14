@@ -50,19 +50,18 @@ static Janet bignum_shift_left(int32_t argc, Janet * argv);
 static Janet bignum_shift_right(int32_t argc, Janet * argv);
 static Janet bignum_to_number(int32_t argc, Janet * argv);
 static int bignum_compare_untyped(void * x, void * y);
-int bignum_compare(bignum_object * x, bignum_object * y);
 static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer);
 static void bignum_marshal(void * bignum, JanetMarshalContext * ctx);
 static void *bignum_unmarshal(JanetMarshalContext * ctx);
+int bignum_compare(janetls_bignum_object * x, janetls_bignum_object * y);
 int valid_digits(const uint8_t * bytes, int32_t size, int radix);
 
 static int32_t bignum_hash(void *p, size_t len);
-bignum_object * new_bignum();
 
 Janet unknown_to_bignum(Janet value);
 Janet unknown_to_bignum_opt(Janet value, int panic, int radix);
 
-JanetAbstractType bignum_object_type = {
+static JanetAbstractType bignum_object_type = {
   "janetls/bignum",
   bignum_gc_fn,
   NULL,
@@ -118,7 +117,7 @@ static int bignum_get_fn(void *data, Janet key, Janet * out)
 
 static int bignum_gc_fn(void * data, size_t len)
 {
-  bignum_object * bignum = (bignum_object *)data;
+  janetls_bignum_object * bignum = (janetls_bignum_object *)data;
   mbedtls_mpi_free(&bignum->mpi);
   return 0;
 }
@@ -128,7 +127,7 @@ static int bignum_gc_fn(void * data, size_t len)
 
 static int32_t bignum_hash(void * data, size_t len)
 {
-  bignum_object * bignum = (bignum_object *)data;
+  janetls_bignum_object * bignum = (janetls_bignum_object *)data;
   (void)len;
 
   // Hash exists, return it
@@ -327,6 +326,11 @@ void submod_bignum(JanetTable *env)
   janet_register_abstract_type(&bignum_object_type);
 }
 
+JanetAbstractType * janetls_bignum_object_type()
+{
+  return &bignum_object_type;
+}
+
 static Janet bignum_parse(int32_t argc, Janet * argv)
 {
   int radix = 10;
@@ -362,7 +366,7 @@ static Janet bignum_parse(int32_t argc, Janet * argv)
 static Janet bignum_generate_prime(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 1, 3);
-  bignum_object * bignum;
+  janetls_bignum_object * bignum;
   double bits = janet_getnumber(argv, 0);
   int flags = 0;
 
@@ -377,7 +381,7 @@ static Janet bignum_generate_prime(int32_t argc, Janet * argv)
     janet_panicf("To generate a prime, you'll need to provide how many bits it'll be. Valid values are between 3 and %d", (long)(MBEDTLS_MPI_MAX_BITS));
   }
 
-  random_object * random = get_or_gen_random_object(argc, argv, 1);
+  janetls_random_object * random = janetls_get_or_gen_random_object(argc, argv, 1);
 
   if (argc > 2)
   {
@@ -408,7 +412,7 @@ static Janet bignum_generate_prime(int32_t argc, Janet * argv)
     }
   }
 
-  bignum = new_bignum();
+  bignum = janetls_new_bignum();
   int ret = mbedtls_mpi_gen_prime(&bignum->mpi, gen_bits, flags, janetls_random_rng, random);
 
   if (ret != 0)
@@ -423,7 +427,7 @@ static Janet bignum_generate_prime(int32_t argc, Janet * argv)
 static Janet bignum_bit_length(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
   size_t bits = mbedtls_mpi_bitlen(&bignum->mpi);
   return janet_wrap_integer((int32_t) bits);
 }
@@ -431,7 +435,7 @@ static Janet bignum_bit_length(int32_t argc, Janet * argv)
 static Janet bignum_size(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
   size_t bytes = mbedtls_mpi_size(&bignum->mpi);
   return janet_wrap_integer((int32_t) bytes);
 }
@@ -439,7 +443,7 @@ static Janet bignum_size(int32_t argc, Janet * argv)
 static Janet bignum_to_string(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 1, 2);
-  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
   int radix = 10;
   if (argc > 1)
   {
@@ -486,10 +490,10 @@ static Janet bignum_compare_janet(int32_t argc, Janet * argv)
 {
   Janet first = unknown_to_bignum_opt(argv[0], 0, 10);
   Janet second = unknown_to_bignum_opt(argv[1], 0, 10);
-  bignum_object * x = janet_checktype(first, JANET_NIL)
+  janetls_bignum_object * x = janet_checktype(first, JANET_NIL)
     ? NULL
     : janet_unwrap_abstract(first);
-  bignum_object * y = janet_checktype(second, JANET_NIL)
+  janetls_bignum_object * y = janet_checktype(second, JANET_NIL)
     ? NULL
     : janet_unwrap_abstract(second);
   return janet_wrap_integer(bignum_compare(x, y));
@@ -497,10 +501,10 @@ static Janet bignum_compare_janet(int32_t argc, Janet * argv)
 
 static int bignum_compare_untyped(void * x, void * y)
 {
-  return bignum_compare((bignum_object *) x, (bignum_object *) y);
+  return bignum_compare((janetls_bignum_object *) x, (janetls_bignum_object *) y);
 }
 
-int bignum_compare(bignum_object * x, bignum_object * y)
+int bignum_compare(janetls_bignum_object * x, janetls_bignum_object * y)
 {
   if (x == NULL)
   {
@@ -516,9 +520,9 @@ int bignum_compare(bignum_object * x, bignum_object * y)
 static Janet bignum_add(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
-  bignum_object * result = new_bignum();
+  janetls_bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  janetls_bignum_object * result = janetls_new_bignum();
   check_result(mbedtls_mpi_add_mpi(&result->mpi, &x->mpi, &y->mpi));
   return janet_wrap_abstract(result);
 }
@@ -526,9 +530,9 @@ static Janet bignum_add(int32_t argc, Janet * argv)
 static Janet bignum_subtract(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
-  bignum_object * result = new_bignum();
+  janetls_bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  janetls_bignum_object * result = janetls_new_bignum();
   check_result(mbedtls_mpi_sub_mpi(&result->mpi, &x->mpi, &y->mpi));
   return janet_wrap_abstract(result);
 }
@@ -536,9 +540,9 @@ static Janet bignum_subtract(int32_t argc, Janet * argv)
 static Janet bignum_multiply(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
-  bignum_object * result = new_bignum();
+  janetls_bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  janetls_bignum_object * result = janetls_new_bignum();
   check_result(mbedtls_mpi_mul_mpi(&result->mpi, &x->mpi, &y->mpi));
   return janet_wrap_abstract(result);
 }
@@ -546,10 +550,10 @@ static Janet bignum_multiply(int32_t argc, Janet * argv)
 static Janet bignum_divide(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
-  bignum_object * result = new_bignum();
-  bignum_object * remainder = new_bignum();
+  janetls_bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  janetls_bignum_object * result = janetls_new_bignum();
+  janetls_bignum_object * remainder = janetls_new_bignum();
   check_result(mbedtls_mpi_div_mpi(&result->mpi, &remainder->mpi, &x->mpi, &y->mpi));
   // Remainder is a temporary vailue, it is returned as a result in divide_remainder
   return janet_wrap_abstract(result);
@@ -558,10 +562,10 @@ static Janet bignum_divide(int32_t argc, Janet * argv)
 static Janet bignum_divide_remainder(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
-  bignum_object * result = new_bignum();
-  bignum_object * remainder = new_bignum();
+  janetls_bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  janetls_bignum_object * result = janetls_new_bignum();
+  janetls_bignum_object * remainder = janetls_new_bignum();
   check_result(mbedtls_mpi_div_mpi(&result->mpi, &remainder->mpi, &x->mpi, &y->mpi));
   Janet return_result[2] = {janet_wrap_abstract(result), janet_wrap_abstract(remainder)};
   return janet_wrap_tuple(janet_tuple_n(return_result, 2));
@@ -570,9 +574,9 @@ static Janet bignum_divide_remainder(int32_t argc, Janet * argv)
 static Janet bignum_modulo(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
-  bignum_object * result = new_bignum();
+  janetls_bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  janetls_bignum_object * result = janetls_new_bignum();
   check_result(mbedtls_mpi_mod_mpi(&result->mpi, &x->mpi, &y->mpi));
   return janet_wrap_abstract(result);
 }
@@ -580,9 +584,9 @@ static Janet bignum_modulo(int32_t argc, Janet * argv)
 static Janet bignum_inverse_modulo(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
-  bignum_object * result = new_bignum();
+  janetls_bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  janetls_bignum_object * result = janetls_new_bignum();
 
   if (mbedtls_mpi_cmp_int(&y->mpi, 1) == 0)
   {
@@ -631,9 +635,9 @@ static Janet bignum_inverse_modulo(int32_t argc, Janet * argv)
 static Janet bignum_exponent_modulo(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 3);
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
-  bignum_object * z = janet_unwrap_abstract(unknown_to_bignum(argv[2]));
+  janetls_bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  janetls_bignum_object * z = janet_unwrap_abstract(unknown_to_bignum(argv[2]));
 
   if (mbedtls_mpi_cmp_int(&z->mpi, 0 ) <= 0)
   {
@@ -644,7 +648,7 @@ static Janet bignum_exponent_modulo(int32_t argc, Janet * argv)
     janet_panicf("The exponent %p must be odd for the underlying library to accept it", argv[2]);
   }
 
-  bignum_object * result = new_bignum();
+  janetls_bignum_object * result = janetls_new_bignum();
   // TODO thread local cache of the helper MPI value here in the last parameter.
   check_result(mbedtls_mpi_exp_mod(&result->mpi, &x->mpi, &y->mpi, &z->mpi, NULL));
   return janet_wrap_abstract(result);
@@ -653,9 +657,9 @@ static Janet bignum_exponent_modulo(int32_t argc, Janet * argv)
 static Janet bignum_greatest_common_denominator(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
-  bignum_object * result = new_bignum();
+  janetls_bignum_object * x = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * y = janet_unwrap_abstract(unknown_to_bignum(argv[1]));
+  janetls_bignum_object * result = janetls_new_bignum();
   check_result(mbedtls_mpi_gcd(&result->mpi, &x->mpi, &y->mpi));
   return janet_wrap_abstract(result);
 }
@@ -663,10 +667,9 @@ static Janet bignum_greatest_common_denominator(int32_t argc, Janet * argv)
 static Janet bignum_is_prime(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 1, 2);
-  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
-  random_object * random = get_or_gen_random_object(argc, argv, 1);
+  janetls_bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_random_object * random = janetls_get_or_gen_random_object(argc, argv, 1);
   // 50 rounds is sufficient for key generation
-  // Keeps crashing.. TODO
   return janet_wrap_boolean(mbedtls_mpi_is_prime_ext(&bignum->mpi, 50, janetls_random_rng, random) == 0);
 }
 
@@ -706,7 +709,7 @@ static Janet bignum_parse_bytes(int32_t argc, Janet * argv)
 
   int little_endian = check_little_endian(argc, argv, 1);
   JanetByteView bytes = janet_to_bytes(argv[0]);
-  bignum_object * bignum = new_bignum();
+  janetls_bignum_object * bignum = janetls_new_bignum();
   int ret = 0;
   if (bytes.len > 0)
   {
@@ -725,7 +728,7 @@ static Janet bignum_parse_bytes(int32_t argc, Janet * argv)
 static Janet bignum_to_bytes(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 1, 2);
-  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
   int little_endian = check_little_endian(argc, argv, 1);
   size_t size = mbedtls_mpi_size(&bignum->mpi);
   uint8_t * bytes = janet_smalloc(size);
@@ -748,7 +751,7 @@ static Janet bignum_to_bytes(int32_t argc, Janet * argv)
 static Janet bignum_to_number(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
   int64_t value = 0;
   uint8_t buffer[8];
   size_t size = mbedtls_mpi_size(&bignum->mpi);
@@ -780,9 +783,9 @@ static Janet bignum_to_number(int32_t argc, Janet * argv)
 static Janet bignum_shift_left(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
   int bits = janet_getinteger(argv, 1);
-  bignum_object * result = new_bignum();
+  janetls_bignum_object * result = janetls_new_bignum();
   // This is a mutating operation.
   // So we copy it before applying the operation.
   check_result(mbedtls_mpi_copy(&result->mpi, &bignum->mpi));
@@ -793,9 +796,9 @@ static Janet bignum_shift_left(int32_t argc, Janet * argv)
 static Janet bignum_shift_right(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
+  janetls_bignum_object * bignum = janet_unwrap_abstract(unknown_to_bignum(argv[0]));
   int bits = janet_getinteger(argv, 1);
-  bignum_object * result = new_bignum();
+  janetls_bignum_object * result = janetls_new_bignum();
   // This is a mutating operation.
   // So we copy it before applying the operation.
   check_result(mbedtls_mpi_copy(&result->mpi, &bignum->mpi));
@@ -812,7 +815,7 @@ static void bignum_to_string_untyped(void * bignum, JanetBuffer * buffer)
 
 static void bignum_marshal(void * bignum_untyped, JanetMarshalContext * ctx)
 {
-  bignum_object * bignum = (bignum_object *)bignum_untyped;
+  janetls_bignum_object * bignum = (janetls_bignum_object *)bignum_untyped;
   size_t size = mbedtls_mpi_size(&bignum->mpi);
   uint8_t * bytes = janet_smalloc(size);
   if (bytes == NULL)
@@ -832,7 +835,8 @@ static void bignum_marshal(void * bignum_untyped, JanetMarshalContext * ctx)
 
 static void * bignum_unmarshal(JanetMarshalContext * ctx)
 {
-  bignum_object * bignum = janet_unmarshal_abstract(ctx, sizeof(bignum_object));
+  janetls_bignum_object * bignum = janet_unmarshal_abstract(ctx, sizeof(janetls_bignum_object));
+  memset(bignum, 0, sizeof(janetls_bignum_object));
   mbedtls_mpi_init(&bignum->mpi);
   size_t size = janet_unmarshal_size(ctx);
   int ret = 0;
@@ -867,7 +871,7 @@ Janet unknown_to_bignum_opt(Janet value, int panic, int radix)
     mbedtls_mpi_sint integer = (mbedtls_mpi_sint)number;
     if ((double)integer == number)
     {
-      bignum_object * converted = new_bignum();
+      janetls_bignum_object * converted = janetls_new_bignum();
       int ret = mbedtls_mpi_lset(&converted->mpi, integer);
       if (ret != 0)
       {
@@ -897,7 +901,7 @@ Janet unknown_to_bignum_opt(Janet value, int panic, int radix)
     // Validate it first..
     if (valid_digits(bytes.bytes, bytes.len, radix))
     {
-      bignum_object * converted = new_bignum();
+      janetls_bignum_object * converted = janetls_new_bignum();
       int ret = mbedtls_mpi_read_string(&converted->mpi, radix, (const char *)bytes.bytes);
       if (ret != 0) {
         if (panic)
@@ -926,7 +930,7 @@ Janet unknown_to_bignum_opt(Janet value, int panic, int radix)
     if (sizeof(mbedtls_mpi_sint) == sizeof(int64_t) && strcmp(abstract_type->name, "core/s64") == 0)
     {
       int64_t * typed_value = (int64_t *) untyped_value;
-      bignum_object * converted = new_bignum();
+      janetls_bignum_object * converted = janetls_new_bignum();
       int ret = mbedtls_mpi_lset(&converted->mpi, *typed_value);
       if (ret != 0)
       {
@@ -950,7 +954,7 @@ Janet unknown_to_bignum_opt(Janet value, int panic, int radix)
       if (*typed_value <= 0x7FFFFFFFFFFFFFFF)
       {
         mbedtls_mpi_sint downcasted_value = (mbedtls_mpi_sint)(*typed_value);
-        bignum_object * converted = new_bignum();
+        janetls_bignum_object * converted = janetls_new_bignum();
         int ret = mbedtls_mpi_lset(&converted->mpi, downcasted_value);
         if (ret != 0)
         {
@@ -974,7 +978,7 @@ Janet unknown_to_bignum_opt(Janet value, int panic, int radix)
       // Validate it first..
       if (valid_digits(buffer->data, buffer->count, radix))
       {
-        bignum_object * converted = new_bignum();
+        janetls_bignum_object * converted = janetls_new_bignum();
         int ret = mbedtls_mpi_read_string(&converted->mpi, 10, (const char *)buffer->data);
         if (ret != 0) {
           if (panic)
@@ -1041,11 +1045,10 @@ int valid_digits(const uint8_t * data, int32_t size, int radix)
   return 1;
 }
 
-bignum_object * new_bignum()
+janetls_bignum_object * janetls_new_bignum()
 {
-  bignum_object * result = janet_abstract(&bignum_object_type, sizeof(bignum_object));
-  result->flags = 0;
-  result->hash = 0;
+  janetls_bignum_object * result = janet_abstract(&bignum_object_type, sizeof(janetls_bignum_object));
+  memset(result, 0, sizeof(janetls_bignum_object));
   mbedtls_mpi_init(&result->mpi);
   return result;
 }
@@ -1075,7 +1078,7 @@ int janetls_bignum_to_digits(Janet * destination, Janet value)
 
   retcheck(janetls_unknown_to_bignum(&bignum_value, value, 10));
 
-  bignum_object * bignum = janet_unwrap_abstract(bignum_value);
+  janetls_bignum_object * bignum = janet_unwrap_abstract(bignum_value);
   size_t bytes = 0;
   // Return value is intentionally ignored
   // This method call populates the bytes count so we can allocate only what
@@ -1107,7 +1110,7 @@ int janetls_bignum_to_bytes(Janet * destination, Janet value)
 
   retcheck(janetls_unknown_to_bignum(&bignum_value, value, 10));
 
-  bignum_object * bignum = janet_unwrap_abstract(bignum_value);
+  janetls_bignum_object * bignum = janet_unwrap_abstract(bignum_value);
   size_t bytes = mbedtls_mpi_size(&bignum->mpi);
   if (bytes == 0)
   {
