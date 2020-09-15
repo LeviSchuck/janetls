@@ -19,9 +19,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#include <threads.h>
 #include "janetls.h"
 #include "janetls-random.h"
+
+#ifndef thread_local
+# if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#  define thread_local _Thread_local
+# elif defined _WIN32 && ( \
+       defined _MSC_VER || \
+       defined __ICL || \
+       defined __DMC__ || \
+       defined __BORLANDC__ )
+#  define thread_local __declspec(thread)
+/* note that ICC (linux) and Clang are covered by __GNUC__ */
+# elif defined __GNUC__ || \
+       defined __SUNPRO_C || \
+       defined __xlC__
+#  define thread_local __thread
+# else
+#  warning "Cannot define thread_local"
+# endif
+#endif
+
 
 static int random_gc_fn(void * data, size_t len);
 static int random_get_fn(void * data, Janet key, Janet * out);
