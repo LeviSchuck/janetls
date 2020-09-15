@@ -30,7 +30,7 @@
 
 typedef struct janetls_ecdsa_object {
   janetls_ecp_group_object * group;
-  janetls_ecp_point_object * point;
+  janetls_ecp_point_object * public_coordinate;
   janetls_ecp_keypair_object * keypair;
   janetls_random_object * random;
   janetls_pk_information_class information_class;

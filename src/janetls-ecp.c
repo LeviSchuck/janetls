@@ -60,7 +60,6 @@ static Janet ecp_keypair_compare(int32_t argc, Janet * argv);
 static janetls_ecp_point_object * point_from_janet(Janet value, int panic);
 static janetls_ecp_group_object * group_from_janet(Janet value, int panic);
 static janetls_random_object * random_from_group(janetls_ecp_group_object * group);
-static janetls_ecp_point_object * public_point_from_keypair(janetls_ecp_keypair_object * keypair);
 
 static int compare_group(Janet a, Janet b);
 static int compare_point(Janet a, Janet b);
@@ -352,22 +351,19 @@ static int ecp_keypair_gc_fn(void * data, size_t len)
 static int ecp_keypair_gcmark(void *data, size_t len)
 {
   (void)len;
-  janetls_ecp_keypair_object * point = (janetls_ecp_keypair_object *)data;
+  janetls_ecp_keypair_object * keypair = (janetls_ecp_keypair_object *)data;
 
-  if (point->group != NULL)
+  if (keypair->group != NULL)
   {
-    janet_mark(janet_wrap_abstract(point->group));
+    janet_mark(janet_wrap_abstract(keypair->group));
   }
 
-  if (point->secret != NULL)
+  if (keypair->public_coordinate != NULL)
   {
-    janet_mark(janet_wrap_abstract(point->secret));
+    janet_mark(janet_wrap_abstract(keypair->public_coordinate));
   }
 
-  if (point->public_coordinate != NULL)
-  {
-    janet_mark(janet_wrap_abstract(point->public_coordinate));
-  }
+  janet_mark(keypair->secret);
 
   return 0;
 }
@@ -404,11 +400,7 @@ static Janet ecp_group_from_key(int32_t argc, Janet * argv)
   {
     janet_panicf("Could not find a group for %p, see (janetls/ecp/curve-groups) for options", argv[0]);
   }
-  janetls_ecp_group_object * group_object = janetls_new_ecp_group_object();
-  group_object->group = group;
-  check_result(mbedtls_ecp_group_load(&group_object->ecp_group, (mbedtls_ecp_group_id)group));
-  group_object->type = (janetls_ecp_curve_type)mbedtls_ecp_get_type(&group_object->ecp_group);
-  return janet_wrap_abstract(group_object);
+  return janet_wrap_abstract(janetls_ecp_load_curve_group(group));
 }
 
 static Janet ecp_group_get_group(int32_t argc, Janet * argv)
@@ -457,55 +449,23 @@ static Janet ecp_group_get_zero(int32_t argc, Janet * argv)
 
 static Janet ecp_group_generate_keypair(int32_t argc, Janet * argv)
 {
+  janet_fixarity(argc, 1);
   janetls_ecp_group_object * group = group_from_janet(argv[0], 1);
-  janetls_random_object * random = random_from_group(group);
-  janetls_ecp_keypair_object * keypair = janetls_new_ecp_keypair_object();
-  keypair->group = group;
-
-  // It also so happens that keypairs are also the "ctx" used in ecdsa,
-  // without any sort of wrapping.
-  // Keypairs maintain their own copy of the group.
-  check_result(mbedtls_ecp_group_copy(&keypair->keypair.grp, &group->ecp_group));
-  check_result(mbedtls_ecp_gen_keypair(
-    &group->ecp_group,
-    &keypair->keypair.d,
-    &keypair->keypair.Q,
-    janetls_random_rng,
-    random
-    ));
-  return janet_wrap_abstract(keypair);
+  return janet_wrap_abstract(janetls_ecp_generate_keypair_object(group));
 }
 
 static Janet ecp_point_get_x(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecp_point_object * point = point_from_janet(argv[0], 1);
-
-  // the x copy is lazily created in the janet gc context
-  if (point->x == NULL)
-  {
-    // Populate x
-    janetls_bignum_object * x = janetls_new_bignum();
-    check_result(mbedtls_mpi_copy(&x->mpi, &point->point.X));
-    point->x = x;
-  }
-  return janet_wrap_abstract(point->x);
+  return janet_wrap_abstract(janetls_ecp_point_get_x(point));
 }
 
 static Janet ecp_point_get_y(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecp_point_object * point = point_from_janet(argv[0], 1);
-
-  // the y copy is lazily created in the janet gc context
-  if (point->y == NULL)
-  {
-    // Populate y
-    janetls_bignum_object * y = janetls_new_bignum();
-    check_result(mbedtls_mpi_copy(&y->mpi, &point->point.Y));
-    point->y = y;
-  }
-  return janet_wrap_abstract(point->y);
+  return janet_wrap_abstract(janetls_ecp_point_get_y(point));
 }
 
 static Janet ecp_point_is_zero(int32_t argc, Janet * argv)
@@ -593,21 +553,14 @@ static Janet ecp_keypair_get_point(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecp_keypair_object * keypair = janet_getabstract(argv, 0, &ecp_keypair_object_type);
-  return janet_wrap_abstract(public_point_from_keypair(keypair));
+  return janet_wrap_abstract(janetls_ecp_keypair_get_public_coordinate(keypair));
 }
 
 static Janet ecp_keypair_get_secret(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecp_keypair_object * keypair = janet_getabstract(argv, 0, &ecp_keypair_object_type);
-  if (keypair->secret == NULL)
-  {
-    // time to copy from the inside
-    janetls_bignum_object * secret = janetls_new_bignum();
-    check_result(mbedtls_mpi_copy(&secret->mpi, &keypair->keypair.d));
-    keypair->secret = secret;
-  }
-  return janet_wrap_abstract(keypair->secret);
+  return keypair->secret;
 }
 
 static Janet ecp_keypair_export(int32_t argc, Janet * argv)
@@ -634,22 +587,27 @@ static Janet ecp_keypair_export(int32_t argc, Janet * argv)
 #define CURVE25519_KEY_BITS (CURVE25519_KEY_SIZE * 8)
 #define CURVE448_KEY_SIZE 56
 #define CURVE448_KEY_BITS (CURVE448_KEY_SIZE * 8)
-static Janet ecp_keypair_import(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 2);
-  janetls_ecp_group_object * group = group_from_janet(argv[0], 1);
-  if (!janet_is_byte_typed(argv[1]))
-  {
-    janet_panicf("Expected a string or buffer but got %p", argv[1]);
-  }
-  JanetByteView bytes = janet_to_bytes(argv[1]);
-  janetls_ecp_keypair_object * keypair = janetls_new_ecp_keypair_object();
-  keypair->group = group;
 
-  // It also so happens that keypairs are also the "ctx" used in ecdsa,
-  // without any sort of wrapping.
-  // Keypairs maintain their own copy of the group.
-  check_result(mbedtls_ecp_group_copy(&keypair->keypair.grp, &group->ecp_group));
+static void ecp_keypair_from_secret(
+  janetls_ecp_keypair_object * keypair,
+  janetls_ecp_group_object * group,
+  Janet secret)
+{
+  if (!janet_is_byte_typed(secret))
+  {
+    janet_panicf("Expected a string or buffer but got %p", secret);
+  }
+  JanetByteView bytes = janet_to_bytes(secret);
+
+  if (janet_checktype(secret, JANET_STRING))
+  {
+    keypair->secret = secret;
+  }
+  else
+  {
+    // Create an immutable copy
+    keypair->secret = janet_wrap_string(janet_string(bytes.bytes, bytes.len));
+  }
 
   // Unfortunately mbedtls does not expose just the right interface for this to
   // be convenient.
@@ -710,6 +668,21 @@ static Janet ecp_keypair_import(int32_t argc, Janet * argv)
     janet_panicf("Unfortunately the curve type %p is not supported",
       janetls_search_ecp_curve_group_to_janet(group->group));
   }
+}
+
+static Janet ecp_keypair_import(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 2);
+  janetls_ecp_group_object * group = group_from_janet(argv[0], 1);
+  janetls_ecp_keypair_object * keypair = janetls_new_ecp_keypair_object();
+  keypair->group = group;
+
+  // It also so happens that keypairs are also the "ctx" used in ecdsa,
+  // without any sort of wrapping.
+  // Keypairs maintain their own copy of the group.
+  check_result(mbedtls_ecp_group_copy(&keypair->keypair.grp, &group->ecp_group));
+
+  ecp_keypair_from_secret(keypair, group, argv[1]);
 
   return janet_wrap_abstract(keypair);
 }
@@ -722,7 +695,7 @@ static janetls_ecp_point_object * point_from_janet(Janet value, int panic)
     janetls_ecp_keypair_object * keypair = janet_checkabstract(value, &ecp_keypair_object_type);
     if (keypair != NULL)
     {
-      point = public_point_from_keypair(keypair);
+      point = janetls_ecp_keypair_get_public_coordinate(keypair);
     }
   }
   if (point == NULL && panic)
@@ -738,6 +711,15 @@ static janetls_ecp_group_object * group_from_janet(Janet value, int panic)
   if (group_object != NULL)
   {
     return group_object;
+  }
+
+  if (janet_is_byte_typed(value))
+  {
+    janetls_ecp_curve_group curve_group;
+    if (janetls_search_ecp_curve_group(value, &curve_group) == 0)
+    {
+      return janetls_ecp_load_curve_group(curve_group);
+    }
   }
 
   janetls_ecp_point_object * point_object = janet_checkabstract(value, &ecp_group_object_type);
@@ -911,39 +893,6 @@ static janetls_random_object * random_from_group(janetls_ecp_group_object * grou
   return group->random;
 }
 
-static janetls_ecp_point_object * public_point_from_keypair(janetls_ecp_keypair_object * keypair)
-{
-  if (keypair->public_coordinate == NULL)
-  {
-    // time to copy from the inside
-    janetls_ecp_point_object * point = janetls_new_ecp_point_object();
-    janetls_ecp_group_object * group = keypair->group;
-    point->group = group;
-
-    if ((keypair->flags & ECP_KEYPAIR_HAS_PUBLIC) == 0)
-    {
-      // We need to calculate the public component before we can copy from it!
-      // But before that.. we need a random generator.
-      // Rely on the group having one, or make it have one.
-
-      check_result(mbedtls_ecp_mul(
-        &group->ecp_group,
-        &keypair->keypair.Q,
-        &keypair->keypair.d,
-        &group->ecp_group.G,
-        janetls_random_rng,
-        random_from_group(group)
-        ));
-
-      keypair->flags |= ECP_KEYPAIR_HAS_PUBLIC;
-    }
-
-    check_result(mbedtls_ecp_copy(&point->point, &keypair->keypair.Q));
-    keypair->public_coordinate = point;
-  }
-  return keypair->public_coordinate;
-}
-
 static void ecp_group_to_string_untyped(void * data, JanetBuffer * buffer)
 {
   janetls_ecp_group_object * group = data;
@@ -1109,4 +1058,140 @@ static int32_t ecp_keypair_hash(void * data, size_t len)
 
   keypair->hash = hash;
   return hash;
+}
+
+janetls_bignum_object * janetls_ecp_point_get_x(janetls_ecp_point_object * point)
+{
+  // the x copy is lazily created in the janet gc context
+  if (point->x == NULL)
+  {
+    // Populate x
+    janetls_bignum_object * x = janetls_new_bignum();
+    check_result(mbedtls_mpi_copy(&x->mpi, &point->point.X));
+    point->x = x;
+  }
+  return point->x;
+}
+janetls_bignum_object * janetls_ecp_point_get_y(janetls_ecp_point_object * point)
+{
+  // the y copy is lazily created in the janet gc conteyt
+  if (point->y == NULL)
+  {
+    // Populate y
+    janetls_bignum_object * y = janetls_new_bignum();
+    check_result(mbedtls_mpi_copy(&y->mpi, &point->point.Y));
+    point->y = y;
+  }
+  return point->y;
+}
+
+Janet janetls_ecp_keypair_secret(janetls_ecp_keypair_object * keypair)
+{
+  return keypair->secret;
+}
+
+janetls_ecp_group_object * janetls_ecp_load_curve_group(janetls_ecp_curve_group curve_group)
+{
+  janetls_ecp_group_object * group = janetls_new_ecp_group_object();
+  group->group = curve_group;
+  check_result(mbedtls_ecp_group_load(&group->ecp_group, (mbedtls_ecp_group_id)curve_group));
+  group->type = (janetls_ecp_curve_type)mbedtls_ecp_get_type(&group->ecp_group);
+  return group;
+}
+
+janetls_ecp_keypair_object * janetls_ecp_generate_keypair_object(janetls_ecp_group_object * group)
+{
+  if (group == NULL || group->group == janetls_ecp_curve_group_none)
+  {
+    janet_panic("Cannot generate a keypair without a curve group");
+  }
+
+  janetls_random_object * random = random_from_group(group);
+  janetls_ecp_keypair_object * keypair = janetls_new_ecp_keypair_object();
+  keypair->group = group;
+
+  // It also so happens that keypairs are also the "ctx" used in ecdsa,
+  // without any sort of wrapping.
+  // Keypairs maintain their own copy of the group.
+  check_result(mbedtls_ecp_group_copy(&keypair->keypair.grp, &group->ecp_group));
+  check_result(mbedtls_ecp_gen_keypair(
+    &group->ecp_group,
+    &keypair->keypair.d,
+    &keypair->keypair.Q,
+    janetls_random_rng,
+    random
+    ));
+  uint8_t buf[MBEDTLS_ECP_MAX_BYTES];
+  size_t length = (keypair->group->ecp_group.nbits + 7) / 8;
+  if (length > MBEDTLS_ECP_MAX_BYTES)
+  {
+    janet_panicf("The given curve has a larger bit size than is "
+      "supported, the bit size appears to be %d", keypair->group->ecp_group.nbits);
+  }
+  check_result(mbedtls_ecp_write_key(&keypair->keypair, buf, length));
+  keypair->secret = janet_wrap_string(janet_string(buf, length));
+  return keypair;
+}
+
+janetls_ecp_keypair_object * janetls_ecp_load_keypair_object(janetls_ecp_group_object * group, Janet secret)
+{
+  if (group == NULL || group->group == janetls_ecp_curve_group_none)
+  {
+    janet_panic("Cannot generate a keypair without a curve group");
+  }
+
+  janetls_ecp_keypair_object * keypair = janetls_new_ecp_keypair_object();
+  keypair->group = group;
+
+  // It also so happens that keypairs are also the "ctx" used in ecdsa,
+  // without any sort of wrapping.
+  // Keypairs maintain their own copy of the group.
+  check_result(mbedtls_ecp_group_copy(&keypair->keypair.grp, &group->ecp_group));
+  ecp_keypair_from_secret(keypair, group, secret);
+
+  return keypair;
+}
+
+janetls_ecp_point_object * janetls_ecp_load_point_object(janetls_ecp_group_object * group, janetls_bignum_object * x, janetls_bignum_object * y)
+{
+  janetls_ecp_point_object * point = janetls_new_ecp_point_object();
+  point->group = group;
+  point->x = x;
+  point->y = y;
+  check_result(mbedtls_mpi_copy(&point->point.X, &x->mpi));
+  check_result(mbedtls_mpi_copy(&point->point.Y, &y->mpi));
+  return point;
+}
+
+janetls_ecp_point_object * janetls_ecp_keypair_get_public_coordinate(janetls_ecp_keypair_object * keypair)
+{
+  if (keypair->public_coordinate == NULL)
+  {
+    // time to copy from the inside
+    janetls_ecp_point_object * point = janetls_new_ecp_point_object();
+    janetls_ecp_group_object * group = keypair->group;
+    point->group = group;
+
+    if ((keypair->flags & ECP_KEYPAIR_HAS_PUBLIC) == 0)
+    {
+      // We need to calculate the public component before we can copy from it!
+      // But before that.. we need a random generator.
+      // Rely on the group having one, or make it have one.
+
+      check_result(mbedtls_ecp_mul(
+        &group->ecp_group,
+        &keypair->keypair.Q,
+        &keypair->keypair.d,
+        &group->ecp_group.G,
+        janetls_random_rng,
+        random_from_group(group)
+        ));
+
+      keypair->flags |= ECP_KEYPAIR_HAS_PUBLIC;
+    }
+
+    check_result(mbedtls_ecp_copy(&point->point, &keypair->keypair.Q));
+    keypair->public_coordinate = point;
+  }
+  return keypair->public_coordinate;
 }
