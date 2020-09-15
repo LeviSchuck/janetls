@@ -152,6 +152,7 @@ int janetls_random_rng(void * untyped_random, unsigned char * buffer, size_t siz
 
 janetls_random_object * janetls_get_random()
 {
+  #ifdef thread_local
   static thread_local janetls_random_object * thread_random = NULL;
   if (thread_random == NULL)
   {
@@ -160,5 +161,9 @@ janetls_random_object * janetls_get_random()
     janet_gcroot(janet_wrap_abstract(thread_random));
   }
   return thread_random;
+  #else
+  // This is terrible!
+  return janetls_new_random();
+  #endif
 }
 
