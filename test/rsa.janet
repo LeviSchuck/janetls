@@ -42,14 +42,14 @@
   :digest :sha1
   }))
 
-(deftest "Custom key is 1024 bits" (is (= 1024 (rsa/get-size-bits key2))))
-(deftest "Custom key is 128 bytes" (is (= 128 (rsa/get-size-bytes key2))))
+(deftest "Custom key is 1024 bits" (is (= 1024 (rsa/bits key2))))
+(deftest "Custom key is 128 bytes" (is (= 128 (rsa/bytes key2))))
 
-(deftest "Custom key is pkcs1-v2.1" (is (= :pkcs1-v2.1 (rsa/get-version key2))))
-(deftest "Custom key has uses sha-1" (is (= :sha1 (rsa/get-digest key2))))
+(deftest "Custom key is pkcs1-v2.1" (is (= :pkcs1-v2.1 (rsa/version key2))))
+(deftest "Custom key has uses sha-1" (is (= :sha1 (rsa/digest key2))))
 (deftest "Custom key is private" (is (= true (rsa/private? key2))))
 (deftest "Custom key is not public" (is (= false (rsa/public? key2))))
-(deftest "Custom key has sha1 mask" (is (= :sha1 (rsa/get-mask key2))))
+(deftest "Custom key has sha1 mask" (is (= :sha1 (rsa/mask key2))))
 
 (deftest "Custom key can sign and verify" (do
   (def sig (rsa/sign key2 data))

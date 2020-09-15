@@ -189,7 +189,7 @@ static const JanetReg cfuns[] =
     "The result is a binary string of the decrypted content when successful.\n"
     "Otherwise, nil will be returned."
     },
-  {"rsa/get-version", rsa_get_version, "(janetls/rsa/get-version rsa)\n\n"
+  {"rsa/version", rsa_get_version, "(janetls/rsa/version rsa)\n\n"
     "Also accessible via (:version rsa)\n"
     "Gets whether this is PKCS#1 v1.5 or v2.1, with the values as listed in "
     "janetls/rsa/versions."
@@ -201,35 +201,29 @@ static const JanetReg cfuns[] =
     "discovered.\n"
     "pkcs1-v2.1 is most is used for PSS signatures and OAEP encryption."
     },
-  {"rsa/get-mask", rsa_get_mgf, "(janetls/rsa/get-mask rsa)\n\n"
-    "Also accessible via (:mask rsa)\n"
+  {"rsa/mask", rsa_get_mgf, "(janetls/rsa/mask rsa)\n\n"
     "Gets the digest algorithm used for masking in PKCS#1 v2.1 signatures "
     "and encryption.\n"
     "Algorithms are as listed in janetls/md/algorithms."
     },
-  {"rsa/get-digest", rsa_get_digest, "(janetls/rsa/get-digest rsa)\n\n"
-    "Also accessible via (:digest rsa)\n"
+  {"rsa/digest", rsa_get_digest, "(janetls/rsa/digest rsa)\n\n"
     "Gets the digest algorithm used for hashing in signatures"
     "Algorithms are as listed in janetls/md/algorithms."
     },
-  {"rsa/get-size-bits", rsa_get_sizebits, "(janetls/rsa/get-size-bits rsa)\n\n"
-    "Also accessible via (:bits rsa)"
+  {"rsa/bits", rsa_get_sizebits, "(janetls/rsa/bits rsa)\n\n"
     "Returns the bit count of the modulus in this key, for example: 2048 bit "
     "keys return 2048 here."
     },
-  {"rsa/get-size-bytes", rsa_get_sizebytes, "(janetls/rsa/get-size-bytes rsa)\n\n"
-    "Also accessible via (:bytes rsa)"
+  {"rsa/bytes", rsa_get_sizebytes, "(janetls/rsa/bytes rsa)\n\n"
     "Returns the bit count of the modulus in this key, for example: 2048 bit "
     "keys return 256 here."
     },
   {"rsa/export-private", rsa_export_private, "(janetls/rsa/export-private rsa)\n\n"
-    "Also accessible via (:export-private rsa)\n"
     "Returns a struct with all the options to import this private key, review "
     "the documentation on janetls/rsa/import for full details."
     "Will panic if a public key is provided.\n"
     },
   {"rsa/export-public", rsa_export_public, ""
-    "Also accessible via (:export-public rsa)\n"
     "Returns a struct with all the options to import this key as a public key, "
     " review the documentation on janetls/rsa/import for full details."
     },
