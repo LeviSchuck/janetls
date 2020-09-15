@@ -1160,6 +1160,8 @@ janetls_ecp_point_object * janetls_ecp_load_point_object(janetls_ecp_group_objec
   point->y = y;
   check_result(mbedtls_mpi_copy(&point->point.X, &x->mpi));
   check_result(mbedtls_mpi_copy(&point->point.Y, &y->mpi));
+  // Don't forget to set this, it's a scaling factor used internally by mbedtls..
+  check_result(mbedtls_mpi_lset(&point->point.Z, 1));
   return point;
 }
 

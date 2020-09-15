@@ -22,6 +22,7 @@
 
 #include "janetls.h"
 #include "janetls-ecdsa.h"
+#include "janetls-md.h"
 
 
 static int ecdsa_gc_fn(void * data, size_t len);
@@ -43,6 +44,7 @@ static Janet ecdsa_generate(int32_t argc, Janet * argv);
 
 static janetls_ecp_curve_group janetls_ecdsa_default_digest(janetls_ecp_curve_group curve_group);
 static int ecdsa_supports_curve(janetls_ecp_curve_group curve_group);
+static JanetByteView signature_bytes(Janet data, janetls_md_algorithm alg);
 
 JanetAbstractType ecdsa_object_type = {
   "janetls/ecdsa",
@@ -177,12 +179,154 @@ static Janet ecdsa_is_public(int32_t argc, Janet * argv)
 
 static Janet ecdsa_sign(int32_t argc, Janet * argv)
 {
-  return janet_wrap_nil();
+  janet_arity(argc, 2, 3);
+  janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
+  if (ecdsa->information_class == janetls_pk_information_class_public)
+  {
+    janet_panicf("Public keys cannot :sign data, only :verify");
+  }
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
+  }
+  janetls_md_algorithm alg = ecdsa->digest;
+  if (argc > 2)
+  {
+    check_result(janetls_search_md_supported_algorithms(argv[2], &alg));
+  }
+  else if (alg == janetls_md_algorithm_none)
+  {
+    janet_panicf("This ecdsa object has no default digest, "
+        "see janetls/md/algorithms for an expected value");
+  }
+  JanetByteView bytes = signature_bytes(argv[1], alg);
+
+  mbedtls_mpi r;
+  mbedtls_mpi s;
+  mbedtls_mpi_init(&r);
+  mbedtls_mpi_init(&s);
+
+  int ret = mbedtls_ecdsa_sign(
+    &ecdsa->group->ecp_group,
+    &r,
+    &s,
+    &ecdsa->keypair->keypair.d,
+    bytes.bytes,
+    bytes.len,
+    janetls_random_rng,
+    ecdsa->random ? ecdsa->random : janetls_get_random()
+    );
+  if (ret != 0)
+  {
+    mbedtls_mpi_free(&r);
+    mbedtls_mpi_free(&s);
+    check_result(ret);
+  }
+
+  uint8_t signature[MBEDTLS_ECP_MAX_PT_LEN];
+  int32_t curve_bytes = ((int32_t)(ecdsa->group->ecp_group.nbits) + 7) / 8;
+  if (curve_bytes > MBEDTLS_ECP_MAX_PT_LEN)
+  {
+    mbedtls_mpi_free(&r);
+    mbedtls_mpi_free(&s);
+    janet_panic("Internal error, the curve has a byte count greater than what is supported");
+  }
+
+  ret = mbedtls_mpi_write_binary(&r, signature, curve_bytes);
+  if (ret != 0)
+  {
+    mbedtls_mpi_free(&r);
+    mbedtls_mpi_free(&s);
+    check_result(ret);
+  }
+  ret = mbedtls_mpi_write_binary(&s, signature + curve_bytes, curve_bytes);
+  if (ret != 0)
+  {
+    mbedtls_mpi_free(&r);
+    mbedtls_mpi_free(&s);
+    check_result(ret);
+  }
+
+  Janet result = janet_wrap_string(janet_string(signature, curve_bytes * 2));
+
+  // Now that the signature has been written, clear the intermediate bignums
+  mbedtls_mpi_free(&r);
+  mbedtls_mpi_free(&s);
+
+  return result;
 }
 
 static Janet ecdsa_verify(int32_t argc, Janet * argv)
 {
-  return janet_wrap_nil();
+  int ret = 0;
+  janet_arity(argc, 3, 4);
+  janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
+  }
+  if (!janet_is_byte_typed(argv[2]))
+  {
+    janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
+  }
+  janetls_md_algorithm alg = ecdsa->digest;
+  if (argc > 3)
+  {
+    check_result(janetls_search_md_supported_algorithms(argv[3], &alg));
+  }
+  else if (alg == janetls_md_algorithm_none)
+  {
+    janet_panicf("This ECDSA object has no default digest, "
+        "see janetls/md/algorithms for an expected value");
+  }
+
+  JanetByteView bytes = signature_bytes(argv[1], alg);
+
+  int32_t curve_bytes = ((int32_t)(ecdsa->group->ecp_group.nbits) + 7) / 8;
+  int32_t expected_length = curve_bytes * 2;
+
+  JanetByteView signature = janet_to_bytes(argv[2]);
+  if (signature.len != expected_length)
+  {
+    janet_panicf("The signature provided is not the same length as "
+      "this ecdsa key, this key expects %d bytes, but the signature is %d bytes.",
+      expected_length, signature.len);
+  }
+
+  mbedtls_mpi r;
+  mbedtls_mpi s;
+  mbedtls_mpi_init(&r);
+  mbedtls_mpi_init(&s);
+
+  retcheck(mbedtls_mpi_read_binary(&r, signature.bytes, curve_bytes));
+  retcheck(mbedtls_mpi_read_binary(&s, signature.bytes + curve_bytes, curve_bytes));
+
+  janetls_ecp_point_object * point = ecdsa->public_coordinate;
+  if (point == NULL)
+  {
+    if (ecdsa->keypair == NULL)
+    {
+      janet_panic("Internal error, the keypair appears to be null, and there is no public coordinate");
+    }
+    point = janetls_ecp_keypair_get_public_coordinate(ecdsa->keypair);
+  }
+
+  ret = mbedtls_ecdsa_verify(
+    &ecdsa->group->ecp_group,
+    bytes.bytes,
+    bytes.len,
+    &point->point,
+    &r,
+    &s
+    );
+end:
+  mbedtls_mpi_free(&r);
+  mbedtls_mpi_free(&s);
+
+  check_result(ret);
+  // Don't indicate why it failed.
+  // Also simplifies verify checks, no need to try catch.
+  return janet_wrap_boolean(ret == 0);
 }
 
 static Janet ecdsa_export_public(int32_t argc, Janet * argv)
@@ -206,7 +350,7 @@ static Janet ecdsa_export_public(int32_t argc, Janet * argv)
     point = janetls_ecp_keypair_get_public_coordinate(ecdsa->keypair);
     ecdsa->public_coordinate = point;
   }
-  
+
   // The ECC modulus: x
   janetls_bignum_object * x =  janetls_ecp_point_get_x(point);
   janet_table_put(table, janet_ckeywordv("x"), janet_wrap_abstract(x));
@@ -590,3 +734,24 @@ static Janet ecdsa_generate(int32_t argc, Janet * argv)
   return janet_wrap_abstract(ecdsa);
 }
 
+static JanetByteView signature_bytes(Janet data, janetls_md_algorithm alg)
+{
+  JanetByteView bytes;
+  if (alg == janetls_md_algorithm_none)
+  {
+    janet_smalloc(MBEDTLS_MD_MAX_SIZE);
+    bytes = janet_to_bytes(data);
+    if (bytes.len > MBEDTLS_MD_MAX_SIZE)
+    {
+      janet_panicf("When using :none which is not recommended, the size of "
+        "the hash (%d) must be <= to %d", bytes.len, MBEDTLS_MD_MAX_SIZE);
+    }
+  }
+  else
+  {
+    Janet result;
+    check_result(janetls_md_digest(&result, alg, data));
+    bytes = janet_to_bytes(result);
+  }
+  return bytes;
+}

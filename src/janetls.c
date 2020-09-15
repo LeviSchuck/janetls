@@ -29,6 +29,7 @@
 #include "mbedtls/md.h"
 #include "mbedtls/rsa.h"
 #include "mbedtls/ecp.h"
+#include "mbedtls/ecdsa.h"
 
 JANET_MODULE_ENTRY(JanetTable *env)
 {
@@ -202,7 +203,14 @@ void check_result(int result)
   const char * message = result_error_message(result, &unhandled);
   if (unhandled)
   {
-    janet_panicf("%s: %d", message, result);
+    if (result < 0)
+    {
+      janet_panicf("%s: -%x", message, -result);
+    }
+    else
+    {
+      janet_panicf("%s: %x", message, result);
+    }
   }
   else
   {
