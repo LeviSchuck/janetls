@@ -39,7 +39,7 @@ static Janet ecdsa_export_private(int32_t argc, Janet * argv);
 static Janet ecdsa_get_digest(int32_t argc, Janet * argv);
 static Janet ecdsa_get_sizebits(int32_t argc, Janet * argv);
 static Janet ecdsa_get_sizebytes(int32_t argc, Janet * argv);
-static Janet ecdsa_get_group(int32_t argc, Janet * argv);
+static Janet ecdsa_get_curve_group(int32_t argc, Janet * argv);
 static Janet ecdsa_import(int32_t argc, Janet * argv);
 static Janet ecdsa_generate(int32_t argc, Janet * argv);
 
@@ -58,7 +58,7 @@ JanetAbstractType ecdsa_object_type = {
 static JanetMethod ecdsa_methods[] = {
   {"private?", ecdsa_is_private},
   {"public?", ecdsa_is_public},
-  {"group", ecdsa_get_group},
+  {"curve-group", ecdsa_get_curve_group},
   {"digest", ecdsa_get_digest},
   {"verify", ecdsa_verify},
   {"sign", ecdsa_sign},
@@ -72,7 +72,7 @@ static JanetMethod ecdsa_methods[] = {
 static const JanetReg cfuns[] =
 {
   {"ecdsa/sign", ecdsa_sign, "(janetls/ecdsa/sign ecdsa data &opt alg)\n\n"
-    "A Private key operation, sign the input data with the given key.\n"
+    "A private key operation, sign the input data with the given key.\n"
     "When an algorithm is provided, it overrides the default algorithm on "
     "this key for signatures. It's probably best to set the algorithm "
     "on key import or generation instead.\n"
@@ -81,23 +81,70 @@ static const JanetReg cfuns[] =
     "two X coordinates in the curve group's prime field."
     },
   {"ecdsa/verify", ecdsa_verify, "(janetls/ecdsa/verify ecdsa alg data &opt sig)\n\n"
-    "A Public key operation, verify the input data with the given public point "
+    "A public key operation, verify the input data with the given public point "
     "with the binary signature.\n"
     "The algorithm must be a value in janetls/md/algorithms.\n"
     "Usually a false return when the data has been modified, or the signature "
     "was made with another key (or is just noise).\n"
     "A true or false is returned."
     },
-  {"ecdsa/generate", ecdsa_generate, ""},
-  {"ecdsa/import", ecdsa_import, ""},
-  {"ecdsa/private?", ecdsa_is_private, ""},
-  {"ecdsa/public?", ecdsa_is_public, ""},
-  {"ecdsa/group", ecdsa_get_group, ""},
-  {"ecdsa/digest", ecdsa_get_digest, ""},
-  {"ecdsa/bits", ecdsa_get_sizebits, ""},
-  {"ecdsa/bytes", ecdsa_get_sizebytes, ""},
-  {"ecdsa/export-public", ecdsa_export_public, ""},
-  {"ecdsa/export-private", ecdsa_export_private, ""},
+  {"ecdsa/generate", ecdsa_generate, "(janetls/ecdsa/generate &opt curve-group)\n\n"
+    "The optional curve-group can be an instantiated ecp/group or a keyword "
+    "from janetls/ecp/curve-groups."
+    "A digest will be assigned from the curve group, and cannot be configured "
+    "at this time. If you'd like this feature, please submit an issue."
+    },
+  {"ecdsa/import", ecdsa_import, "(janetls/ecdsa/import options)\n\n"
+    "Import a set of parameters into an ECDSA key. The same parameters will be "
+    "present on a call to janetls/export-private/public.\n"
+    ":information-class can be :public or :private, if not provided it will "
+    "be guessed.\n"
+    ":curve-group is a keyword from janetls/ecp/curve-groups\n"
+    ":digest is a keyword from janetls/md/algorithms, if not provided then a "
+    "default will be assigned based on the :curve-group\n"
+    ":x is a bignum of the public x coordinate\n"
+    ":y is a bignum of the public y coordinate\n"
+    ":p is an octet encoded form of the public coordinate, it replaces "
+    ":x and :y\n"
+    ":d is an octet encoded form of the private secret\n"
+    ":type if provided should be :ec"
+    },
+  {"ecdsa/private?", ecdsa_is_private, "(janetls/ecdsa/private? ecdsa)\n\n"
+    "Returns true if this key is a private key and can perform private and "
+    "public operations."
+    },
+  {"ecdsa/public?", ecdsa_is_public, "(janetls/ecdsa/private? ecdsa)\n\n"
+    "Returns true if this key is a public key and can only perform public "
+    "operations."
+    },
+  {"ecdsa/curve-group", ecdsa_get_curve_group, "(janetls/ecdsa/curve-group ecdsa)\n\n"
+    "Returns a keyword found in janetls/ecp/curve-groups."
+    },
+  {"ecdsa/digest", ecdsa_get_digest, "(janetls/ecdsa/group ecdsa)\n\n"
+    "Returns an keyword from janetls/md/algorithms for the digest used in "
+    "signing data."
+    },
+  {"ecdsa/bits", ecdsa_get_sizebits, "(janetls/ecdsa/group bits)\n\n"
+    "Returns the count of bits used for curve group this key operates within."
+    "For example, 256 bits."
+    },
+  {"ecdsa/bytes", ecdsa_get_sizebytes, "(janetls/ecdsa/bytes ecdsa)\n\n"
+    "Returns the count of bits used for curve group this key operates within."
+    "For example, 32 bytes."
+    },
+  {"ecdsa/export-public", ecdsa_export_public, "(janetls/ecdsa/export-public ecdsa)\n\n"
+    "Returns a struct of all public parameters, which are explained in the "
+    "documentation for janetls/ecdsa/import."
+    "Both :x, :y, and an encoded point :p are given for the public components."
+    },
+  {"ecdsa/export-private", ecdsa_export_private, "(janetls/ecdsa/export-public ecdsa)\n\n"
+    "Returns a struct of all private and public parameters, which are "
+    "explained in the documentation for janetls/ecdsa/import."
+    "Both :x, :y, and an encoded point :p are given for the public "
+    "components.\n"
+    "The private component :d will be octet encoded, even though it can be "
+    "interpreted as a bignum."
+    },
   {NULL, NULL, NULL}
 };
 
@@ -480,11 +527,11 @@ static Janet ecdsa_get_sizebytes(int32_t argc, Janet * argv)
   return janet_wrap_number(bytes);
 }
 
-static Janet ecdsa_get_group(int32_t argc, Janet * argv)
+static Janet ecdsa_get_curve_group(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
-  return janet_wrap_abstract(ecdsa->group);
+  return janetls_search_ecp_curve_group_to_janet(ecdsa->group->group);
 }
 
 static janetls_bignum_object * bignum_from_kv(const JanetKV * kv)
