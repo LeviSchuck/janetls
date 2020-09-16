@@ -43,7 +43,7 @@ static Janet ecdsa_get_curve_group(int32_t argc, Janet * argv);
 static Janet ecdsa_import(int32_t argc, Janet * argv);
 static Janet ecdsa_generate(int32_t argc, Janet * argv);
 
-static janetls_ecp_curve_group janetls_ecdsa_default_digest(janetls_ecp_curve_group curve_group);
+static janetls_md_algorithm janetls_ecdsa_default_digest(janetls_ecp_curve_group curve_group);
 static int ecdsa_supports_curve(janetls_ecp_curve_group curve_group);
 static JanetByteView signature_bytes(Janet data, janetls_md_algorithm alg);
 
@@ -764,7 +764,7 @@ final_check:
   return janet_wrap_abstract(ecdsa);
 }
 
-static janetls_ecp_curve_group janetls_ecdsa_default_digest(janetls_ecp_curve_group curve_group)
+static janetls_md_algorithm janetls_ecdsa_default_digest(janetls_ecp_curve_group curve_group)
 {
   switch (curve_group)
   {

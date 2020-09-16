@@ -28,15 +28,13 @@
 #include "janetls-bignum.h"
 #include "janetls-random.h"
 
-typedef struct janetls_ecp_point_object janetls_ecp_point_object;
-
 typedef struct janetls_ecp_group_object {
   mbedtls_ecp_group ecp_group;
   janetls_ecp_curve_type type;
   janetls_ecp_curve_group group;
   janetls_random_object * random;
-  janetls_ecp_point_object * zero;
-  janetls_ecp_point_object * generator;
+  struct janetls_ecp_point_object * zero;
+  struct janetls_ecp_point_object * generator;
   int32_t hash;
 } janetls_ecp_group_object;
 

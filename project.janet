@@ -30,6 +30,9 @@
   )
 
 (def is-win (= :windows (os/which)))
+(def debug-flags [])
+# (def debug-flags ["-g" "-Og" "-Wall" "-Wpedantic"])
+
 
 (declare-native
   :name "janetls"
@@ -37,16 +40,14 @@
     ;default-cflags
     "-Imbedtls/include/"
     "-Iinclude/"
-    # "-g"
-    # "-Og"
+    ;debug-flags
     ;(if is-win [] ["-Wno-unused-parameter"])
     ]
   :lflags [
     ;default-lflags
     # Advapi32 provides windows security primitives, available since server 2003
     ;(if is-win ["Advapi32.lib"] [])
-    # "-g"
-    # "-Og"
+    ;debug-flags
     ]
   :defines {
     "MBEDTLS_CONFIG_FILE" "\"janetls-config.h\""
