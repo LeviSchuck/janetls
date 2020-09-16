@@ -56,12 +56,12 @@ JanetAbstractType ecdsa_object_type = {
 };
 
 static JanetMethod ecdsa_methods[] = {
+  {"verify", ecdsa_verify},
+  {"sign", ecdsa_sign},
   {"private?", ecdsa_is_private},
   {"public?", ecdsa_is_public},
   {"curve-group", ecdsa_get_curve_group},
   {"digest", ecdsa_get_digest},
-  {"verify", ecdsa_verify},
-  {"sign", ecdsa_sign},
   {"bits", ecdsa_get_sizebits},
   {"bytes", ecdsa_get_sizebytes},
   {"export-public", ecdsa_export_public},
@@ -96,7 +96,8 @@ static const JanetReg cfuns[] =
     },
   {"ecdsa/import", ecdsa_import, "(janetls/ecdsa/import options)\n\n"
     "Import a set of parameters into an ECDSA key. The same parameters will be "
-    "present on a call to janetls/export-private/public.\n"
+    "present on a call to janetls/ecdsa/export-private and "
+    "janetls/ecdsa/export-public.\n"
     ":information-class can be :public or :private, if not provided it will "
     "be guessed.\n"
     ":curve-group is a keyword from janetls/ecp/curve-groups\n"
