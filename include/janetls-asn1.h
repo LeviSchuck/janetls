@@ -50,4 +50,7 @@ typedef struct asn1_parsed_tag {
   size_t value_length;
 } asn1_parsed_tag;
 
+int janetls_asn1_decode(Janet * result, Janet data, uint64_t flags, janetls_encoding_base64_variant base64_variant);
+int janetls_asn1_encode(Janet * result, Janet data);
+
 #endif

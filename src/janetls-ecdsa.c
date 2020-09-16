@@ -23,6 +23,7 @@
 #include "janetls.h"
 #include "janetls-ecdsa.h"
 #include "janetls-md.h"
+#include "janetls-asn1.h"
 
 
 static int ecdsa_gc_fn(void * data, size_t len);
@@ -93,8 +94,6 @@ static const JanetReg cfuns[] =
   {"ecdsa/public?", ecdsa_is_public, ""},
   {"ecdsa/group", ecdsa_get_group, ""},
   {"ecdsa/digest", ecdsa_get_digest, ""},
-  {"ecdsa/verify", ecdsa_verify, ""},
-  {"ecdsa/sign", ecdsa_sign, ""},
   {"ecdsa/bits", ecdsa_get_sizebits, ""},
   {"ecdsa/bytes", ecdsa_get_sizebytes, ""},
   {"ecdsa/export-public", ecdsa_export_public, ""},
@@ -286,20 +285,77 @@ static Janet ecdsa_verify(int32_t argc, Janet * argv)
   int32_t expected_length = curve_bytes * 2;
 
   JanetByteView signature = janet_to_bytes(argv[2]);
-  if (signature.len != expected_length)
-  {
-    janet_panicf("The signature provided is not the same length as "
-      "this ecdsa key, this key expects %d bytes, but the signature is %d bytes.",
-      expected_length, signature.len);
-  }
-
   mbedtls_mpi r;
   mbedtls_mpi s;
   mbedtls_mpi_init(&r);
   mbedtls_mpi_init(&s);
 
-  retcheck(mbedtls_mpi_read_binary(&r, signature.bytes, curve_bytes));
-  retcheck(mbedtls_mpi_read_binary(&s, signature.bytes + curve_bytes, curve_bytes));
+  if (signature.len == expected_length)
+  {
+    retcheck(mbedtls_mpi_read_binary(&r, signature.bytes, curve_bytes));
+    retcheck(mbedtls_mpi_read_binary(&s, signature.bytes + curve_bytes, curve_bytes));
+  }
+  else if (signature.len > expected_length)
+  {
+    // This may be an ASN.1 signature, if it came from openssl.
+    // There's no way to not do ASN.1 signatures from the command line.
+    Janet decoded = janet_wrap_nil();
+    int ret = janetls_asn1_decode(
+      &decoded,
+      argv[2],
+      ASN1_FLAG_COLLAPSE_GUESSABLE_VALUES,
+      janetls_encoding_base64_variant_standard
+      );
+    if (ret != 0) {
+      janet_panicf("The signature provided is not the same length as "
+        "this ecdsa key, this key expects %d bytes, but the signature is %d "
+        "bytes. It can be more if it is an ASN.1 encoded sequence of R,S.",
+        expected_length, signature.len);
+    }
+    int32_t tuple_length = 0;
+    const Janet * tuple_values = NULL;
+    int error = 0;
+    if (janet_checktype(decoded, JANET_TUPLE))
+    {
+      tuple_values = janet_unwrap_tuple(decoded);
+      tuple_length = janet_tuple_length(tuple_values);
+    }
+    if (tuple_length == 2)
+    {
+      janetls_bignum_object * r_object = janet_checkabstract(tuple_values[0], janetls_bignum_object_type());
+      janetls_bignum_object * s_object = janet_checkabstract(tuple_values[1], janetls_bignum_object_type());
+      if (r_object == NULL || s_object == NULL)
+      {
+        error = 1;
+      }
+      else
+      {
+        ret = mbedtls_mpi_copy(&r, &r_object->mpi);
+        if (ret != 0)
+        {
+          error = 1;
+        }
+        ret = mbedtls_mpi_copy(&s, &s_object->mpi);
+        if (ret != 0)
+        {
+          error = 1;
+        }
+      }
+    }
+    if (tuple_length != 2 || error)
+    {
+      janet_panicf("The signature provided is not the same length as "
+        "this ecdsa key, it was recognized as an ASN.1 document but it did "
+        "not have the expected format of SEQUENCE [R, S].");
+    }
+  }
+  else
+  {
+    janet_panicf("The signature provided is not the same length as "
+        "this ecdsa key, this key expects %d bytes, but the signature is %d "
+        "bytes. It can be more if it is an ASN.1 encoded sequence of R,S.",
+        expected_length, signature.len);
+  }
 
   janetls_ecp_point_object * point = ecdsa->public_coordinate;
   if (point == NULL)
@@ -323,7 +379,6 @@ end:
   mbedtls_mpi_free(&r);
   mbedtls_mpi_free(&s);
 
-  check_result(ret);
   // Don't indicate why it failed.
   // Also simplifies verify checks, no need to try catch.
   return janet_wrap_boolean(ret == 0);
@@ -333,7 +388,7 @@ static Janet ecdsa_export_public(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
-  JanetTable * table = janet_table(6);
+  JanetTable * table = janet_table(7);
 
   janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ec));
   janet_table_put(table, janet_ckeywordv("information-class"), janetls_search_pk_information_class_to_janet(janetls_pk_information_class_public));
@@ -359,6 +414,9 @@ static Janet ecdsa_export_public(int32_t argc, Janet * argv)
   janetls_bignum_object * y =  janetls_ecp_point_get_y(point);
   janet_table_put(table, janet_ckeywordv("y"), janet_wrap_abstract(y));
 
+  // The public point encoded
+  janet_table_put(table, janet_ckeywordv("p"), janetls_ecp_point_get_encoded(point, janetls_ecp_compression_uncompressed));
+
   return janet_wrap_struct(janet_table_to_struct(table));
 }
 
@@ -366,7 +424,7 @@ static Janet ecdsa_export_private(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
-  JanetTable * table = janet_table(7);
+  JanetTable * table = janet_table(8);
 
   janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ec));
   janet_table_put(table, janet_ckeywordv("information-class"), janetls_search_pk_information_class_to_janet(janetls_pk_information_class_private));
@@ -393,6 +451,9 @@ static Janet ecdsa_export_private(int32_t argc, Janet * argv)
 
   // The ECC secret: d
   janet_table_put(table, janet_ckeywordv("d"), ecdsa->keypair->secret);
+
+  // The public point encoded
+  janet_table_put(table, janet_ckeywordv("p"), janetls_ecp_point_get_encoded(point, janetls_ecp_compression_uncompressed));
 
   return janet_wrap_struct(janet_table_to_struct(table));
 }
@@ -474,6 +535,7 @@ static Janet ecdsa_import(int32_t argc, Janet * argv)
     janetls_bignum_object * y = NULL;
     Janet d = janet_wrap_nil();
     janetls_ecp_group_object * group = NULL;
+    Janet p = janet_wrap_nil();
     int explicit_digest = 0;
 
     const JanetKV * kv = NULL;
@@ -524,6 +586,12 @@ static Janet ecdsa_import(int32_t argc, Janet * argv)
         else if (janet_byte_cstrcmp_insensitive(key, "y") == 0)
         {
           y = bignum_from_kv(kv);
+        }
+        else if (janet_byte_cstrcmp_insensitive(key, "p") == 0
+          || janet_byte_cstrcmp_insensitive(key, "point") == 0)
+        {
+          // validation comes later.
+          p = kv->value;
         }
         else if (janet_byte_cstrcmp_insensitive(key, "d") == 0
           || janet_byte_cstrcmp_insensitive(key, "secret") == 0)
@@ -580,10 +648,26 @@ static Janet ecdsa_import(int32_t argc, Janet * argv)
         "this is specified in the :curve-group field");
     }
     int no_secret = janet_checktype(d, JANET_NIL);
-    if (no_secret && (x == NULL || y == NULL))
+    int has_p = !janet_checktype(p, JANET_NIL);
+    if (no_secret && (x == NULL || y == NULL) && !has_p)
     {
-      janet_panic("When importing a public EC key, both :x and :y must be present");
+      janet_panic("When importing a public EC key, both :x and :y must be present, or a :p for a point");
     }
+
+    janetls_ecp_point_object * point = NULL;
+    if (has_p)
+    {
+      point = janet_checkabstract(p, janetls_ecp_point_object_type());
+      if (point == NULL && janet_is_byte_typed(p))
+      {
+        point = janetls_ecp_load_point_binary(group, p);
+      }
+      else
+      {
+        janet_panicf("The point :p is not an ecp/point object or a string or buffer, received %p", p);
+      }
+    }
+
     // Finally create the ecdsa stuff
     ecdsa->group = group;
     ecdsa->random = group->random;
@@ -599,10 +683,19 @@ static Janet ecdsa_import(int32_t argc, Janet * argv)
       ecdsa->public_coordinate = janetls_ecp_keypair_get_public_coordinate(ecdsa->keypair);
       ecdsa->information_class = janetls_pk_information_class_private;
     }
-    else
+    else if (has_p && point)
+    {
+      ecdsa->public_coordinate = point;
+      ecdsa->information_class = janetls_pk_information_class_public;
+    }
+    else if (x != NULL && y != NULL)
     {
       ecdsa->public_coordinate = janetls_ecp_load_point_object(group, x, y);
       ecdsa->information_class = janetls_pk_information_class_public;
+    }
+    else
+    {
+      janet_panic("Internal error: Validation failed for public coordinate");
     }
   }
   else

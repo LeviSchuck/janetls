@@ -22,26 +22,6 @@
 #include "janetls.h"
 #include "janetls-random.h"
 
-#ifndef thread_local
-# if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
-#  define thread_local _Thread_local
-# elif defined _WIN32 && ( \
-       defined _MSC_VER || \
-       defined __ICL || \
-       defined __DMC__ || \
-       defined __BORLANDC__ )
-#  define thread_local __declspec(thread)
-/* note that ICC (linux) and Clang are covered by __GNUC__ */
-# elif defined __GNUC__ || \
-       defined __SUNPRO_C || \
-       defined __xlC__
-#  define thread_local __thread
-# else
-#  warning "Cannot define thread_local"
-# endif
-#endif
-
-
 static int random_gc_fn(void * data, size_t len);
 static int random_get_fn(void * data, Janet key, Janet * out);
 static Janet random_get_bytes(int32_t argc, Janet * argv);
@@ -171,8 +151,7 @@ int janetls_random_rng(void * untyped_random, unsigned char * buffer, size_t siz
 
 janetls_random_object * janetls_get_random()
 {
-  #ifdef thread_local
-  static thread_local janetls_random_object * thread_random = NULL;
+  static JANET_THREAD_LOCAL janetls_random_object * thread_random = NULL;
   if (thread_random == NULL)
   {
     thread_random = janetls_new_random();
@@ -180,9 +159,5 @@ janetls_random_object * janetls_get_random()
     janet_gcroot(janet_wrap_abstract(thread_random));
   }
   return thread_random;
-  #else
-  // This is terrible!
-  return janetls_new_random();
-  #endif
 }
 

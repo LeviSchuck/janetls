@@ -67,13 +67,14 @@ JanetAbstractType * janetls_ecp_keypair_object_type();
 
 janetls_bignum_object * janetls_ecp_point_get_x(janetls_ecp_point_object * point);
 janetls_bignum_object * janetls_ecp_point_get_y(janetls_ecp_point_object * point);
+Janet janetls_ecp_point_get_encoded(janetls_ecp_point_object * point, janetls_ecp_compression compression);
 janetls_ecp_point_object * janetls_ecp_keypair_get_public_coordinate(janetls_ecp_keypair_object * keypair);
 Janet janetls_ecp_keypair_secret(janetls_ecp_keypair_object * keypair);
 
 janetls_ecp_group_object * janetls_ecp_load_curve_group(janetls_ecp_curve_group curve_group);
 janetls_ecp_keypair_object * janetls_ecp_generate_keypair_object(janetls_ecp_group_object * group);
 janetls_ecp_keypair_object * janetls_ecp_load_keypair_object(janetls_ecp_group_object * group, Janet secret);
+janetls_ecp_point_object * janetls_ecp_load_point_binary(janetls_ecp_group_object * group, Janet coordinate);
 janetls_ecp_point_object * janetls_ecp_load_point_object(janetls_ecp_group_object * group, janetls_bignum_object * x, janetls_bignum_object * y);
-
 
 #endif

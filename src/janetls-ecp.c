@@ -121,6 +121,7 @@ static JanetAbstractType ecp_keypair_object_type = {
 };
 
 static JanetMethod ecp_group_methods[] = {
+  {"curve-group", ecp_group_get_curve_group},
   {"group", ecp_group_get_group},
   {"generator", ecp_group_get_generator},
   {"zero", ecp_group_get_zero},
@@ -484,69 +485,14 @@ static Janet ecp_point_export(int32_t argc, Janet * argv)
   {
     check_result(janetls_search_ecp_compression(argv[1], &compression));
   }
-  uint8_t output[MBEDTLS_ECP_MAX_PT_LEN];
-  size_t length = 0;
-  check_result(mbedtls_ecp_point_write_binary(
-    &point->group->ecp_group,
-    &point->point,
-    compression,
-    &length,
-    output,
-    sizeof(output)
-    ));
-  return janet_wrap_string(janet_string(output, length));
+  return janetls_ecp_point_get_encoded(point, compression);
 }
 
 static Janet ecp_point_import(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
   janetls_ecp_group_object * group = group_from_janet(argv[0], 1);
-  if (!janet_is_byte_typed(argv[1]))
-  {
-    janet_panicf("Expected a string or buffer but got %p", argv[1]);
-  }
-  JanetByteView bytes = janet_to_bytes(argv[1]);
-  janetls_ecp_point_object * point = janetls_new_ecp_point_object();
-  point->group = group;
-  int ret = mbedtls_ecp_point_read_binary(
-    &group->ecp_group,
-    &point->point,
-    bytes.bytes,
-    bytes.len
-    );
-  if (ret == MBEDTLS_ERR_ECP_FEATURE_UNAVAILABLE
-    && bytes.len > 0
-    && (bytes.bytes[0] == 0x02 || bytes.bytes[0] == 0x03)
-    )
-  {
-    // For some reason mbedtls supports writing compressed points but
-    // does not support reading compressed points.
-    // A future enhancement can resolve this by lifting the reading
-    // into this function, detecting a compressed point, and
-    // decoding it properly.
-    // https://www.secg.org/sec1-v2.pdf
-    // 02 and 03 as the first byte describe if the Y is positive or negative
-    // mbedTLS will never support decompression, as it is not mandated
-    // in the TLS specification.
-    // Support for compressed format has been deprecated by RFC 8422 in the
-    // context of TLS, which reflects a more general sentiment in the ECC
-    // community to prefer uncompressed format. Also, implementing it correctly
-    // for all supported curves would require substantial code, impacting our
-    // footprint - and the present PR would require non-trivial rework (values
-    // of P not congruent to 3 mod 4, unit tests) before if would be ready
-    // for merge.
-    // I could possibly detect this and use the following
-    // https://github.com/mwarning/mbedtls_ecp_compression
-    // (CC-Zero 1.0 licensed)
-    // but it'd only work for some groups, not all, and that'd have to be
-    // detected too.
-
-    janet_panicf("The input is likely a compressed point, which is not "
-      "supported at this time.");
-  }
-  check_result(ret);
-  check_result(mbedtls_ecp_check_pubkey(&group->ecp_group, &point->point));
-  return janet_wrap_abstract(point);
+  return janet_wrap_abstract(janetls_ecp_load_point_binary(group, argv[1]));
 }
 
 static Janet ecp_keypair_get_point(int32_t argc, Janet * argv)
@@ -1196,4 +1142,69 @@ janetls_ecp_point_object * janetls_ecp_keypair_get_public_coordinate(janetls_ecp
     keypair->public_coordinate = point;
   }
   return keypair->public_coordinate;
+}
+
+janetls_ecp_point_object * janetls_ecp_load_point_binary(janetls_ecp_group_object * group, Janet coordinate)
+{
+  if (!janet_is_byte_typed(coordinate))
+  {
+    janet_panicf("Expected a string or buffer but got %p", coordinate);
+  }
+  JanetByteView bytes = janet_to_bytes(coordinate);
+  janetls_ecp_point_object * point = janetls_new_ecp_point_object();
+  point->group = group;
+  int ret = mbedtls_ecp_point_read_binary(
+    &group->ecp_group,
+    &point->point,
+    bytes.bytes,
+    bytes.len
+    );
+  if (ret == MBEDTLS_ERR_ECP_FEATURE_UNAVAILABLE
+    && bytes.len > 0
+    && (bytes.bytes[0] == 0x02 || bytes.bytes[0] == 0x03)
+    )
+  {
+    // For some reason mbedtls supports writing compressed points but
+    // does not support reading compressed points.
+    // A future enhancement can resolve this by lifting the reading
+    // into this function, detecting a compressed point, and
+    // decoding it properly.
+    // https://www.secg.org/sec1-v2.pdf
+    // 02 and 03 as the first byte describe if the Y is positive or negative
+    // mbedTLS will never support decompression, as it is not mandated
+    // in the TLS specification.
+    // Support for compressed format has been deprecated by RFC 8422 in the
+    // context of TLS, which reflects a more general sentiment in the ECC
+    // community to prefer uncompressed format. Also, implementing it correctly
+    // for all supported curves would require substantial code, impacting our
+    // footprint - and the present PR would require non-trivial rework (values
+    // of P not congruent to 3 mod 4, unit tests) before if would be ready
+    // for merge.
+    // I could possibly detect this and use the following
+    // https://github.com/mwarning/mbedtls_ecp_compression
+    // (CC-Zero 1.0 licensed)
+    // but it'd only work for some groups, not all, and that'd have to be
+    // detected too.
+
+    janet_panicf("The input is likely a compressed point, which is not "
+      "supported at this time.");
+  }
+  check_result(ret);
+  check_result(mbedtls_ecp_check_pubkey(&group->ecp_group, &point->point));
+  return point;
+}
+
+Janet janetls_ecp_point_get_encoded(janetls_ecp_point_object * point, janetls_ecp_compression compression)
+{
+  uint8_t output[MBEDTLS_ECP_MAX_PT_LEN];
+  size_t length = 0;
+  check_result(mbedtls_ecp_point_write_binary(
+    &point->group->ecp_group,
+    &point->point,
+    compression,
+    &length,
+    output,
+    sizeof(output)
+    ));
+  return janet_wrap_string(janet_string(output, length));
 }
