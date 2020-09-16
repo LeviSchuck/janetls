@@ -170,6 +170,14 @@ typedef enum janetls_asn1_flags
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(asn1_flags, janetls_asn1_flags)
 
+#define ASN1_FLAG_BIGNUM_AS_STRING (1 << janetls_asn1_flags_bignum_as_string)
+#define ASN1_FLAG_EAGER_PARSE (1 << janetls_asn1_flags_eager_parse)
+#define ASN1_FLAG_BASE64_NON_ASCII (1 << janetls_asn1_flags_base64_non_ascii)
+#define ASN1_FLAG_BASE64_USE_URL (1 << janetls_asn1_flags_base64_use_url)
+#define ASN1_FLAG_COLLAPSE_SINGLE_CONSTRUCTIONS (1 << janetls_asn1_flags_collapse_single_constructions)
+#define ASN1_FLAG_COLLAPSE_GUESSABLE_VALUES (1 << janetls_asn1_flags_collapse_guessable_values)
+#define ASN1_FLAG_STRING_OID (1 << janetls_asn1_flags_string_oid)
+
 // Full list of possible curves..
 // For now it's only what mbedtls supports
 // https://www.hyperelliptic.org/EFD/

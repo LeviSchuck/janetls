@@ -24,18 +24,18 @@
 #define JANETLS_BIGNUM_H
 #include "mbedtls/bignum.h"
 
-typedef struct bignum_object {
+typedef struct janetls_bignum_object {
   // Hint: MPI: Multi-Precision-Integer
   mbedtls_mpi mpi;
   uint8_t flags;
   int32_t hash;
-} bignum_object;
-extern JanetAbstractType bignum_object_type;
-bignum_object * new_bignum();
+} janetls_bignum_object;
+janetls_bignum_object * janetls_new_bignum();
 Janet unknown_to_bignum(Janet value);
 Janet unknown_to_bignum_opt(Janet value, int panic, int radix);
 int janetls_unknown_to_bignum(Janet * destination, Janet value, int radix);
 int janetls_bignum_to_bytes(Janet * destination, Janet value);
 int janetls_bignum_to_digits(Janet * destination, Janet value);
 uint32_t janetls_bignum_hash_mpi(mbedtls_mpi * mpi);
+JanetAbstractType * janetls_bignum_object_type();
 #endif

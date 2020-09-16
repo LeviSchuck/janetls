@@ -30,6 +30,9 @@
   )
 
 (def is-win (= :windows (os/which)))
+(def debug-flags [])
+# (def debug-flags ["-g" "-Og" "-Wall" "-Wpedantic"])
+
 
 (declare-native
   :name "janetls"
@@ -37,16 +40,14 @@
     ;default-cflags
     "-Imbedtls/include/"
     "-Iinclude/"
-    # "-g"
-    # "-O0"
+    ;debug-flags
     ;(if is-win [] ["-Wno-unused-parameter"])
     ]
   :lflags [
     ;default-lflags
     # Advapi32 provides windows security primitives, available since server 2003
     ;(if is-win ["Advapi32.lib"] [])
-    # "-g"
-    # "-O0"
+    ;debug-flags
     ]
   :defines {
     "MBEDTLS_CONFIG_FILE" "\"janetls-config.h\""
@@ -64,6 +65,7 @@
     "src/janetls-asn1.c"
     "src/janetls-rsa.c"
     "src/janetls-ecp.c"
+    "src/janetls-ecdsa.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
@@ -84,6 +86,10 @@
     # Elliptic Curve
     "mbedtls/library/ecp.c"
     "mbedtls/library/ecp_curves.c"
+    "mbedtls/library/ecdsa.c"
+    # ECDSA requires ASN.1
+    "mbedtls/library/asn1parse.c"
+    "mbedtls/library/asn1write.c"
     # Everything in mbed tls requires error, platform, platform_util
     "mbedtls/library/error.c"
     "mbedtls/library/platform.c"

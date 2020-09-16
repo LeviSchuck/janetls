@@ -92,6 +92,12 @@
 #define MBEDTLS_ECP_DP_CURVE25519_ENABLED
 #define MBEDTLS_ECP_DP_CURVE448_ENABLED
 #define MBEDTLS_ECP_NIST_OPTIM
+// ECC - ECDSA
+#define MBEDTLS_ECDSA_C
+
+// ASN1, although I don't use it directly
+#define MBEDTLS_ASN1_PARSE_C
+#define MBEDTLS_ASN1_WRITE_C
 
 #include "mbedtls/check_config.h"
 

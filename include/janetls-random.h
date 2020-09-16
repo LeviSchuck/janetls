@@ -25,18 +25,17 @@
 #include <janet.h>
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
-extern JanetAbstractType random_object_type;
-typedef struct random_object {
+typedef struct janetls_random_object {
   // Access to the outside world, like /dev/random or via syscall
   mbedtls_entropy_context entropy;
   // Hint: DRBG: Deterministic Random Bit Generator
   mbedtls_ctr_drbg_context drbg;
   uint8_t flags;
-} random_object;
+} janetls_random_object;
 
-// This will wrap around random_object for use elsewhere
+// This will wrap around janetls_random_object for use elsewhere
 int janetls_random_rng(void *, unsigned char *, size_t);
-random_object * get_or_gen_random_object(int argc, Janet * argv, int offset);
-random_object * janetls_new_random();
+janetls_random_object * janetls_get_random();
+JanetAbstractType * janetls_random_object_type();
 
 #endif

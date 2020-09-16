@@ -20,24 +20,25 @@
  * SOFTWARE.
  */
 
-#ifndef JANETLS_RSA_H
-#define JANETLS_RSA_H
+#ifndef JANETLS_ECDSA_H
+#define JANETLS_ECDSA_H
 #include <janet.h>
+#include "mbedtls/ecdsa.h"
 #include "janetls-options.h"
-#include "mbedtls/rsa.h"
-#include "mbedtls/md.h"
 #include "janetls-random.h"
+#include "janetls-ecp.h"
 
-typedef struct janetls_rsa_object {
-  mbedtls_rsa_context ctx;
+typedef struct janetls_ecdsa_object {
+  janetls_ecp_group_object * group;
+  janetls_ecp_point_object * public_coordinate;
+  janetls_ecp_keypair_object * keypair;
   janetls_random_object * random;
-  janetls_rsa_pkcs1_version version;
   janetls_pk_information_class information_class;
   janetls_md_algorithm digest;
-  janetls_md_algorithm mgf1;
-} janetls_rsa_object;
+} janetls_ecdsa_object;
 
-janetls_rsa_object * janetls_new_rsa();
-JanetAbstractType * janetls_rsa_object_type();
+janetls_ecdsa_object * janetls_new_ecdsa();
+
+JanetAbstractType * janetls_ecdsa_object_type();
 
 #endif

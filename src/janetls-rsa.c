@@ -30,30 +30,30 @@
 static int rsa_gc_fn(void * data, size_t len);
 static int rsa_gcmark(void * data, size_t len);
 static int rsa_get_fn(void * data, Janet key, Janet * out);
-Janet rsa_is_private(int32_t argc, Janet * argv);
-Janet rsa_is_public(int32_t argc, Janet * argv);
-Janet rsa_sign(int32_t argc, Janet * argv);
-Janet rsa_verify(int32_t argc, Janet * argv);
-Janet rsa_encrypt(int32_t argc, Janet * argv);
-Janet rsa_decrypt(int32_t argc, Janet * argv);
-Janet rsa_get_version(int32_t argc, Janet * argv);
-Janet rsa_get_mgf(int32_t argc, Janet * argv);
-Janet rsa_get_digest(int32_t argc, Janet * argv);
-Janet rsa_get_sizebits(int32_t argc, Janet * argv);
-Janet rsa_get_sizebytes(int32_t argc, Janet * argv);
-Janet rsa_export_public(int32_t argc, Janet * argv);
-Janet rsa_export_private(int32_t argc, Janet * argv);
-Janet rsa_import(int32_t argc, Janet * argv);
-Janet rsa_generate(int32_t argc, Janet * argv);
+static Janet rsa_is_private(int32_t argc, Janet * argv);
+static Janet rsa_is_public(int32_t argc, Janet * argv);
+static Janet rsa_sign(int32_t argc, Janet * argv);
+static Janet rsa_verify(int32_t argc, Janet * argv);
+static Janet rsa_encrypt(int32_t argc, Janet * argv);
+static Janet rsa_decrypt(int32_t argc, Janet * argv);
+static Janet rsa_get_version(int32_t argc, Janet * argv);
+static Janet rsa_get_mgf(int32_t argc, Janet * argv);
+static Janet rsa_get_digest(int32_t argc, Janet * argv);
+static Janet rsa_get_sizebits(int32_t argc, Janet * argv);
+static Janet rsa_get_sizebytes(int32_t argc, Janet * argv);
+static Janet rsa_export_public(int32_t argc, Janet * argv);
+static Janet rsa_export_private(int32_t argc, Janet * argv);
+static Janet rsa_import(int32_t argc, Janet * argv);
+static Janet rsa_generate(int32_t argc, Janet * argv);
 
-static int rsa_set_pkcs_v15(rsa_object * rsa);
-static int rsa_set_pkcs_v21(rsa_object * rsa, janetls_md_algorithm md);
+static int rsa_set_pkcs_v15(janetls_rsa_object * rsa);
+static int rsa_set_pkcs_v21(janetls_rsa_object * rsa, janetls_md_algorithm md);
 static int read_integer(Janet key, Janet value);
-static void assert_verify_sign_size(rsa_object * rsa, janetls_md_algorithm alg, JanetByteView bytes);
-static bignum_object * bignum_from_kv(const JanetKV * kv);
+static void assert_verify_sign_size(janetls_rsa_object * rsa, janetls_md_algorithm alg, JanetByteView bytes);
+static janetls_bignum_object * bignum_from_kv(const JanetKV * kv);
 static JanetByteView signature_bytes(Janet data, janetls_md_algorithm alg);
 
-JanetAbstractType rsa_object_type = {
+static JanetAbstractType rsa_object_type = {
   "janetls/rsa",
   rsa_gc_fn,
   rsa_gcmark,
@@ -78,7 +78,7 @@ static JanetMethod rsa_methods[] = {
   {NULL, NULL}
 };
 
-static int rsa_get_fn(void *data, Janet key, Janet * out)
+static int rsa_get_fn(void * data, Janet key, Janet * out)
 {
   (void)data;
 
@@ -92,7 +92,7 @@ static int rsa_get_fn(void *data, Janet key, Janet * out)
 
 static int rsa_gc_fn(void * data, size_t len)
 {
-  rsa_object * rsa = (rsa_object *)data;
+  janetls_rsa_object * rsa = (janetls_rsa_object *)data;
   mbedtls_rsa_free(&rsa->ctx);
   return 0;
 }
@@ -100,7 +100,7 @@ static int rsa_gc_fn(void * data, size_t len)
 static int rsa_gcmark(void *data, size_t len)
 {
   (void)len;
-  rsa_object * rsa = (rsa_object *)data;
+  janetls_rsa_object * rsa = (janetls_rsa_object *)data;
 
   if (rsa->random != NULL)
   {
@@ -110,23 +110,24 @@ static int rsa_gcmark(void *data, size_t len)
   return 0;
 }
 
-rsa_object * new_rsa()
+janetls_rsa_object * new_rsa()
 {
-  rsa_object * rsa = janet_abstract(&rsa_object_type, sizeof(rsa_object));
+  janetls_rsa_object * rsa = janet_abstract(&rsa_object_type, sizeof(janetls_rsa_object));
+  memset(rsa, 0, sizeof(janetls_rsa_object));
   // By default PKCS#1 v1.5 encoded
   // The last parameter is the hash algorithm used for v2.1.
   // Since we are initializing to v1.5, that parameter is not used.
   mbedtls_rsa_init(&rsa->ctx, MBEDTLS_RSA_PKCS_V15, MBEDTLS_MD_NONE);
-  // Lazy random
-  rsa->random = NULL;
-  rsa->information_class = janetls_pk_information_class_private;
   rsa->version = janetls_rsa_pkcs1_version_v15;
-  rsa->digest = janetls_md_algorithm_none;
-  rsa->mgf1 = janetls_md_algorithm_none;
   return rsa;
 }
 
-int rsa_set_pkcs_v15(rsa_object * rsa)
+JanetAbstractType * janetls_rsa_object_type()
+{
+  return &rsa_object_type;
+}
+
+int rsa_set_pkcs_v15(janetls_rsa_object * rsa)
 {
   mbedtls_rsa_set_padding(&rsa->ctx, MBEDTLS_RSA_PKCS_V15, MBEDTLS_MD_NONE);
   rsa->version = janetls_rsa_pkcs1_version_v15;
@@ -135,7 +136,7 @@ int rsa_set_pkcs_v15(rsa_object * rsa)
   return 0;
 }
 
-int rsa_set_pkcs_v21(rsa_object * rsa, janetls_md_algorithm md)
+int rsa_set_pkcs_v21(janetls_rsa_object * rsa, janetls_md_algorithm md)
 {
   mbedtls_rsa_set_padding(&rsa->ctx, MBEDTLS_RSA_PKCS_V21, (mbedtls_md_type_t)md);
   rsa->version = janetls_rsa_pkcs1_version_v21;
@@ -188,7 +189,7 @@ static const JanetReg cfuns[] =
     "The result is a binary string of the decrypted content when successful.\n"
     "Otherwise, nil will be returned."
     },
-  {"rsa/get-version", rsa_get_version, "(janetls/rsa/get-version rsa)\n\n"
+  {"rsa/version", rsa_get_version, "(janetls/rsa/version rsa)\n\n"
     "Also accessible via (:version rsa)\n"
     "Gets whether this is PKCS#1 v1.5 or v2.1, with the values as listed in "
     "janetls/rsa/versions."
@@ -200,35 +201,29 @@ static const JanetReg cfuns[] =
     "discovered.\n"
     "pkcs1-v2.1 is most is used for PSS signatures and OAEP encryption."
     },
-  {"rsa/get-mask", rsa_get_mgf, "(janetls/rsa/get-mask rsa)\n\n"
-    "Also accessible via (:mask rsa)\n"
+  {"rsa/mask", rsa_get_mgf, "(janetls/rsa/mask rsa)\n\n"
     "Gets the digest algorithm used for masking in PKCS#1 v2.1 signatures "
     "and encryption.\n"
     "Algorithms are as listed in janetls/md/algorithms."
     },
-  {"rsa/get-digest", rsa_get_digest, "(janetls/rsa/get-digest rsa)\n\n"
-    "Also accessible via (:digest rsa)\n"
+  {"rsa/digest", rsa_get_digest, "(janetls/rsa/digest rsa)\n\n"
     "Gets the digest algorithm used for hashing in signatures"
     "Algorithms are as listed in janetls/md/algorithms."
     },
-  {"rsa/get-size-bits", rsa_get_sizebits, "(janetls/rsa/get-size-bits rsa)\n\n"
-    "Also accessible via (:bits rsa)"
+  {"rsa/bits", rsa_get_sizebits, "(janetls/rsa/bits rsa)\n\n"
     "Returns the bit count of the modulus in this key, for example: 2048 bit "
     "keys return 2048 here."
     },
-  {"rsa/get-size-bytes", rsa_get_sizebytes, "(janetls/rsa/get-size-bytes rsa)\n\n"
-    "Also accessible via (:bytes rsa)"
+  {"rsa/bytes", rsa_get_sizebytes, "(janetls/rsa/bytes rsa)\n\n"
     "Returns the bit count of the modulus in this key, for example: 2048 bit "
     "keys return 256 here."
     },
   {"rsa/export-private", rsa_export_private, "(janetls/rsa/export-private rsa)\n\n"
-    "Also accessible via (:export-private rsa)\n"
     "Returns a struct with all the options to import this private key, review "
     "the documentation on janetls/rsa/import for full details."
     "Will panic if a public key is provided.\n"
     },
   {"rsa/export-public", rsa_export_public, ""
-    "Also accessible via (:export-public rsa)\n"
     "Returns a struct with all the options to import this key as a public key, "
     " review the documentation on janetls/rsa/import for full details."
     },
@@ -241,8 +236,6 @@ static const JanetReg cfuns[] =
     ":digest - Which hash function to use for signatures, by default SHA-256\n"
     ":mask - Which hash function to use for masking, by default SHA-256 in "
     "PKCS#1 v2.1\n"
-    ":random - reuse a janetls/random object, best if you need to produce "
-    "many keys.\n"
     ":n - The modulus as a bignum.\n"
     ":e - The exponent, by default 65537.\n"
     ":d - Private exponent, a private component.\n"
@@ -255,7 +248,7 @@ static const JanetReg cfuns[] =
   {"rsa/generate", rsa_generate, "(janetls/rsa/generate opts)\n\n"
     "A subset of the options used in janetls/rsa/import are used here, for "
     "details, review the documentation on janetls/rsa/import.\n"
-    "The options supported are: :version, :random, :mask, :digest, :e.\n"
+    "The options supported are: :version, :mask, :digest, :e.\n"
     "Additional options not in janetls/rsa/import are: :bits and :bytes."
     ":bits - By default 2048, should be even.\n"
     ":bytes - Replaces :bits, multiplied by 8. "
@@ -272,24 +265,24 @@ void submod_rsa(JanetTable * env)
 }
 
 
-Janet rsa_is_private(int32_t argc, Janet * argv)
+static Janet rsa_is_private(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   return janet_wrap_boolean(rsa->information_class == janetls_pk_information_class_private);
 }
 
-Janet rsa_is_public(int32_t argc, Janet * argv)
+static Janet rsa_is_public(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   return janet_wrap_boolean(rsa->information_class == janetls_pk_information_class_public);
 }
 
-Janet rsa_sign(int32_t argc, Janet * argv)
+static Janet rsa_sign(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 2, 3);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   if (rsa->information_class == janetls_pk_information_class_public)
   {
     janet_panicf("Public keys cannot :sign data, only :verify");
@@ -336,11 +329,11 @@ Janet rsa_sign(int32_t argc, Janet * argv)
   return result;
 }
 
-Janet rsa_verify(int32_t argc, Janet * argv)
+static Janet rsa_verify(int32_t argc, Janet * argv)
 {
   int ret = 0;
   janet_arity(argc, 3, 4);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   if (!janet_is_byte_typed(argv[1]))
   {
     janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
@@ -375,7 +368,7 @@ Janet rsa_verify(int32_t argc, Janet * argv)
 
   ret = mbedtls_rsa_pkcs1_verify(
     &rsa->ctx,
-    janetls_random_rng,
+    rsa->random ? janetls_random_rng : NULL,
     rsa->random,
     MBEDTLS_RSA_PUBLIC,
     (mbedtls_md_type_t)alg,
@@ -389,12 +382,12 @@ Janet rsa_verify(int32_t argc, Janet * argv)
   return janet_wrap_boolean(ret == 0);
 }
 
-Janet rsa_encrypt(int32_t argc, Janet * argv)
+static Janet rsa_encrypt(int32_t argc, Janet * argv)
 {
   // refer to https://www.foo.be/docs/opensst/ref/pkcs/pkcs-1/pkcs-1v2-1d1.pdf
   // for sizes
   janet_fixarity(argc, 2);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   if (!janet_is_byte_typed(argv[1]))
   {
     janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
@@ -446,10 +439,10 @@ Janet rsa_encrypt(int32_t argc, Janet * argv)
   return result;
 }
 
-Janet rsa_decrypt(int32_t argc, Janet * argv)
+static Janet rsa_decrypt(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 2);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   if (!janet_is_byte_typed(argv[1]))
   {
     janet_panicf("Expected a string or buffer to sign, but got %p", argv[1]);
@@ -487,45 +480,45 @@ Janet rsa_decrypt(int32_t argc, Janet * argv)
   return result;
 }
 
-Janet rsa_get_version(int32_t argc, Janet * argv)
+static Janet rsa_get_version(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   return janetls_search_rsa_pkcs1_version_to_janet(rsa->version);
 }
 
-Janet rsa_get_mgf(int32_t argc, Janet * argv)
+static Janet rsa_get_mgf(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   return janetls_search_md_supported_algorithms_to_janet(rsa->mgf1);
 }
 
-Janet rsa_get_digest(int32_t argc, Janet * argv)
+static Janet rsa_get_digest(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   return janetls_search_md_supported_algorithms_to_janet(rsa->digest);
 }
 
-Janet rsa_get_sizebits(int32_t argc, Janet * argv)
+static Janet rsa_get_sizebits(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   return janet_wrap_number(rsa->ctx.len * 8);
 }
 
-Janet rsa_get_sizebytes(int32_t argc, Janet * argv)
+static Janet rsa_get_sizebytes(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   return janet_wrap_number(rsa->ctx.len);
 }
 
-Janet rsa_export_public(int32_t argc, Janet * argv)
+static Janet rsa_export_public(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
 
   JanetTable * table = janet_table(11);
 
@@ -534,11 +527,6 @@ Janet rsa_export_public(int32_t argc, Janet * argv)
   janet_table_put(table, janet_ckeywordv("version"), janetls_search_rsa_pkcs1_version_to_janet(rsa->version));
   janet_table_put(table, janet_ckeywordv("digest"), janetls_search_md_supported_algorithms_to_janet(rsa->digest));
 
-  if (rsa->random != NULL)
-  {
-    janet_table_put(table, janet_ckeywordv("random"), janet_wrap_abstract(rsa->random));
-  }
-
   if (rsa->version == janetls_rsa_pkcs1_version_v21)
   {
     // the mask generation function is only relevant in PKCS#1 v2.1
@@ -546,22 +534,22 @@ Janet rsa_export_public(int32_t argc, Janet * argv)
   }
 
   // The RSA modulus: n
-  bignum_object * n = new_bignum();
+  janetls_bignum_object * n = janetls_new_bignum();
   check_result(mbedtls_mpi_copy(&n->mpi, &rsa->ctx.N));
   janet_table_put(table, janet_ckeywordv("n"), janet_wrap_abstract(n));
 
   // The RSA exponent: e
-  bignum_object * e = new_bignum();
+  janetls_bignum_object * e = janetls_new_bignum();
   check_result(mbedtls_mpi_copy(&e->mpi, &rsa->ctx.E));
   janet_table_put(table, janet_ckeywordv("e"), janet_wrap_abstract(e));
 
   return janet_wrap_struct(janet_table_to_struct(table));
 }
 
-Janet rsa_export_private(int32_t argc, Janet * argv)
+static Janet rsa_export_private(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
 
   if (rsa->information_class == janetls_pk_information_class_public)
   {
@@ -575,11 +563,6 @@ Janet rsa_export_private(int32_t argc, Janet * argv)
   janet_table_put(table, janet_ckeywordv("version"), janetls_search_rsa_pkcs1_version_to_janet(rsa->version));
   janet_table_put(table, janet_ckeywordv("digest"), janetls_search_md_supported_algorithms_to_janet(rsa->digest));
 
-  if (rsa->random != NULL)
-  {
-    janet_table_put(table, janet_ckeywordv("random"), janet_wrap_abstract(rsa->random));
-  }
-
   if (rsa->version == janetls_rsa_pkcs1_version_v21)
   {
     // the mask generation function is only relevant in PKCS#1 v2.1
@@ -588,35 +571,35 @@ Janet rsa_export_private(int32_t argc, Janet * argv)
 
   // Public components
   // The RSA modulus: n
-  bignum_object * n = new_bignum();
+  janetls_bignum_object * n = janetls_new_bignum();
   check_result(mbedtls_mpi_copy(&n->mpi, &rsa->ctx.N));
   janet_table_put(table, janet_ckeywordv("n"), janet_wrap_abstract(n));
 
   // The RSA exponent: e
-  bignum_object * e = new_bignum();
+  janetls_bignum_object * e = janetls_new_bignum();
   check_result(mbedtls_mpi_copy(&e->mpi, &rsa->ctx.E));
   janet_table_put(table, janet_ckeywordv("e"), janet_wrap_abstract(e));
 
   // Private components
   // The RSA exponent: p
-  bignum_object * p = new_bignum();
+  janetls_bignum_object * p = janetls_new_bignum();
   check_result(mbedtls_mpi_copy(&p->mpi, &rsa->ctx.P));
   janet_table_put(table, janet_ckeywordv("p"), janet_wrap_abstract(p));
 
   // The RSA exponent: q
-  bignum_object * q = new_bignum();
+  janetls_bignum_object * q = janetls_new_bignum();
   check_result(mbedtls_mpi_copy(&q->mpi, &rsa->ctx.Q));
   janet_table_put(table, janet_ckeywordv("q"), janet_wrap_abstract(q));
 
   // The RSA exponent: d
-  bignum_object * d = new_bignum();
+  janetls_bignum_object * d = janetls_new_bignum();
   check_result(mbedtls_mpi_copy(&d->mpi, &rsa->ctx.D));
   janet_table_put(table, janet_ckeywordv("d"), janet_wrap_abstract(d));
 
   return janet_wrap_struct(janet_table_to_struct(table));
 }
 
-Janet rsa_import(int32_t argc, Janet * argv)
+static Janet rsa_import(int32_t argc, Janet * argv)
 {
   // Maybe take one table/struct
   // for the RSA params
@@ -636,7 +619,6 @@ Janet rsa_import(int32_t argc, Janet * argv)
   // version from pkcs1_versions
   // mask generation function from md supported_algorithms
   // default hash function from md supported_algorithms
-  // randomness source
   janet_fixarity(argc, 1);
 
   if (!janet_checktype(argv[0], JANET_TABLE)
@@ -645,9 +627,12 @@ Janet rsa_import(int32_t argc, Janet * argv)
     janet_panic("Expected a struct or table");
   }
 
-  rsa_object * rsa = new_rsa();
+  janetls_rsa_object * rsa = new_rsa();
 
   int no_private_components = 1;
+  uint8_t imported_p = 0;
+  uint8_t imported_q = 0;
+  uint8_t imported_d = 0;
   int explicit_information_class = 0;
   int explicit_mgf1 = 0;
   const JanetKV * kv = NULL;
@@ -690,16 +675,6 @@ Janet rsa_import(int32_t argc, Janet * argv)
         }
         rsa->version = version;
       }
-      else if (janet_byte_cstrcmp_insensitive(key, "rng") == 0
-        || janet_byte_cstrcmp_insensitive(key, "random") == 0)
-      {
-        random_object * random = janet_checkabstract(kv->value, &random_object_type);
-        if (random == NULL)
-        {
-          janet_panicf("Expected a janetls/random object but got %p", kv->value);
-        }
-        rsa->random = random;
-      }
       else if (janet_byte_cstrcmp_insensitive(key, "mgf") == 0
         || janet_byte_cstrcmp_insensitive(key, "mgf1") == 0
         || janet_byte_cstrcmp_insensitive(key, "mask-generation-function") == 0
@@ -729,31 +704,34 @@ Janet rsa_import(int32_t argc, Janet * argv)
       }
       else if (janet_byte_cstrcmp_insensitive(key, "n") == 0)
       {
-        bignum_object * num = bignum_from_kv(kv);
+        janetls_bignum_object * num = bignum_from_kv(kv);
         check_result(mbedtls_rsa_import(&rsa->ctx, &num->mpi, NULL, NULL, NULL, NULL));
       }
       else if (janet_byte_cstrcmp_insensitive(key, "e") == 0)
       {
-        bignum_object * num = bignum_from_kv(kv);
+        janetls_bignum_object * num = bignum_from_kv(kv);
         check_result(mbedtls_rsa_import(&rsa->ctx, NULL, NULL, NULL, NULL, &num->mpi));
       }
       else if (janet_byte_cstrcmp_insensitive(key, "p") == 0)
       {
-        bignum_object * num = bignum_from_kv(kv);
+        janetls_bignum_object * num = bignum_from_kv(kv);
         check_result(mbedtls_rsa_import(&rsa->ctx, NULL, &num->mpi, NULL, NULL, NULL));
         no_private_components = 0;
+        imported_p = 1;
       }
       else if (janet_byte_cstrcmp_insensitive(key, "q") == 0)
       {
-        bignum_object * num = bignum_from_kv(kv);
+        janetls_bignum_object * num = bignum_from_kv(kv);
         check_result(mbedtls_rsa_import(&rsa->ctx, NULL, NULL, &num->mpi, NULL, NULL));
         no_private_components = 0;
+        imported_q = 1;
       }
       else if (janet_byte_cstrcmp_insensitive(key, "d") == 0)
       {
-        bignum_object * num = bignum_from_kv(kv);
+        janetls_bignum_object * num = bignum_from_kv(kv);
         check_result(mbedtls_rsa_import(&rsa->ctx, NULL, NULL, NULL, &num->mpi, NULL));
         no_private_components = 0;
+        imported_d = 1;
       }
       // other parameters dq, dp, qp are not importable in mbedtls
       // These are derived in the rsa complete function
@@ -800,19 +778,35 @@ Janet rsa_import(int32_t argc, Janet * argv)
       rsa->information_class = janetls_pk_information_class_public;
     }
   }
+  else if (rsa->information_class != janetls_pk_information_class_private
+    && !no_private_components)
+  {
+    if (explicit_information_class)
+    {
+      janet_panic("The imported key was specified as :public but included "
+        "rsa private components, it should have the :information-class as "
+        ":private");
+    }
+    if (imported_p && imported_q && imported_d)
+    {
+      rsa->information_class = janetls_pk_information_class_private;
+    }
+    else
+    {
+      janet_panic("The imported key does not include a full set of rsa "
+        "private components, it should have :p, :q, and :d set.");
+    }
+  }
 
   // Validate the key
   check_result(mbedtls_rsa_complete(&rsa->ctx));
 
-  if (rsa->random == NULL)
-  {
-    rsa->random = janetls_new_random();
-  }
+  rsa->random = janetls_get_random();
 
   return janet_wrap_abstract(rsa);
 }
 
-Janet rsa_generate(int32_t argc, Janet * argv)
+static Janet rsa_generate(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 0, 1);
 
@@ -824,8 +818,8 @@ Janet rsa_generate(int32_t argc, Janet * argv)
       janet_panic("Expected a struct or table");
     }
   }
-  rsa_object * rsa = new_rsa();
-  random_object * random = NULL;
+  janetls_rsa_object * rsa = new_rsa();
+  janetls_random_object * random = NULL;
   // The type will always be private
   janetls_rsa_pkcs1_version version = janetls_rsa_pkcs1_version_v15;
   janetls_md_algorithm mgf1 = janetls_md_algorithm_sha256;
@@ -856,18 +850,6 @@ Janet rsa_generate(int32_t argc, Janet * argv)
         {
           janet_panicf("Expected :pkcs1-v1.5 or :pkcs1-v2.1 for :version, but got %p", kv->value);
         }
-      }
-      else if (janet_byte_cstrcmp_insensitive(key, "rng") == 0
-        || janet_byte_cstrcmp_insensitive(key, "random") == 0)
-      {
-        // verify it is random, copy reference to rsa->random
-        void * value_random = janet_checkabstract(kv->value, &random_object_type);
-        if (value_random == NULL)
-        {
-          janet_panicf("Expected a janetls/random but got %p", kv->value);
-        }
-        random = (random_object *) value_random;
-        rsa->random = value_random;
       }
       else if (janet_byte_cstrcmp_insensitive(key, "mgf") == 0
         || janet_byte_cstrcmp_insensitive(key, "mgf1") == 0
@@ -928,13 +910,11 @@ Janet rsa_generate(int32_t argc, Janet * argv)
     janet_panicf(":e needs to be > 1 and be odd");
   }
 
-  if (random == NULL)
-  {
-    random = janetls_new_random();
-    // Random will assist the concept of "blinding" in v1.5
-    // It is necessary in v2.1
-    rsa->random = random;
-  }
+
+  random = janetls_get_random();
+  // Random will assist the concept of "blinding" in v1.5
+  // It is necessary in v2.1
+  rsa->random = random;
 
   rsa->digest = digest;
   // This is a new key made on this machine
@@ -984,7 +964,7 @@ int read_integer(Janet key, Janet value)
   return -1;
 }
 
-static void assert_verify_sign_size(rsa_object * rsa, janetls_md_algorithm alg, JanetByteView bytes)
+static void assert_verify_sign_size(janetls_rsa_object * rsa, janetls_md_algorithm alg, JanetByteView bytes)
 {
   // None has been passed explicitly by this point.
   // refer to https://www.foo.be/docs/opensst/ref/pkcs/pkcs-1/pkcs-1v2-1d1.pdf
@@ -1016,7 +996,7 @@ static void assert_verify_sign_size(rsa_object * rsa, janetls_md_algorithm alg, 
   }
 }
 
-static bignum_object * bignum_from_kv(const JanetKV * kv)
+static janetls_bignum_object * bignum_from_kv(const JanetKV * kv)
 {
   Janet bignum = unknown_to_bignum_opt(kv->value, 0, 10);
   if (janet_checktype(bignum, JANET_NIL))

@@ -19,16 +19,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 #include "janetls.h"
 #include "janetls-random.h"
 
 static int random_gc_fn(void * data, size_t len);
 static int random_get_fn(void * data, Janet key, Janet * out);
-static Janet random_start(int32_t argc, Janet * argv);
 static Janet random_get_bytes(int32_t argc, Janet * argv);
 
-JanetAbstractType random_object_type = {
+static JanetAbstractType random_object_type = {
   "janetls/random",
   random_gc_fn,
   NULL,
@@ -60,20 +58,21 @@ static int random_get_fn(void *data, Janet key, Janet * out)
 
 static int random_gc_fn(void * data, size_t len)
 {
-  random_object * random = (random_object *)data;
+  janetls_random_object * random = (janetls_random_object *)data;
   mbedtls_ctr_drbg_free(&random->drbg);
   mbedtls_entropy_free(&random->entropy);
   return 0;
 }
 
+JanetAbstractType * janetls_random_object_type()
+{
+  return &random_object_type;
+}
+
 static const JanetReg cfuns[] =
 {
-  {"random/start", random_start, "(janetls/random/start)\n\n"
-    "Returns a new random number generator, pre-seeded with entropy from "
-    "the system. It can be reused in other cryptography applications safely."
-    },
-  {"random/get", random_get_bytes, "(janetls/random/get random bytes)\n\n"
-    "Returns a string of length bytes using the random number generator."
+  {"util/random", random_get_bytes, "(janetls/util/random length)\n\n"
+    "Returns a binary string of length using the random number generator."
     "The internal mechanism uses a deterministic random bit generator, "
     "which means that additional entropy from the system is not used. "
     "However for infrequent cases outside of the janetls library, "
@@ -89,10 +88,10 @@ void submod_random(JanetTable *env)
   janet_register_abstract_type(&random_object_type);
 }
 
-random_object * janetls_new_random()
+static janetls_random_object * janetls_new_random()
 {
-  random_object * random = janet_abstract(&random_object_type, sizeof(random_object));
-  memset(random, 0, sizeof(random_object));
+  janetls_random_object * random = janet_abstract(&random_object_type, sizeof(janetls_random_object));
+  memset(random, 0, sizeof(janetls_random_object));
   mbedtls_entropy_init(&random->entropy);
   mbedtls_ctr_drbg_init(&random->drbg);
   int ret = mbedtls_ctr_drbg_seed(&random->drbg, mbedtls_entropy_func, &random->entropy, NULL, 0);
@@ -103,17 +102,12 @@ random_object * janetls_new_random()
   return random;
 }
 
-static Janet random_start(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 0);
-  return janet_wrap_abstract(janetls_new_random());
-}
 
 static Janet random_get_bytes(int32_t argc, Janet * argv)
 {
-  janet_fixarity(argc, 2);
-  random_object * random = janet_getabstract(argv, 0, &random_object_type);
-  double num = janet_getnumber(argv, 1);
+  janet_fixarity(argc, 1);
+  janetls_random_object * random = janetls_get_random();
+  double num = janet_getnumber(argv, 0);
   size_t bytes = (size_t)num;
 
   if (num != (double)bytes)
@@ -147,24 +141,23 @@ static Janet random_get_bytes(int32_t argc, Janet * argv)
 
 int janetls_random_rng(void * untyped_random, unsigned char * buffer, size_t size)
 {
-  random_object * random = (random_object *) untyped_random;
+  janetls_random_object * random = (janetls_random_object *) untyped_random;
   if (random == NULL)
   {
-    // Not the best, but whatever.
-    return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
+    random = janetls_get_random();
   }
   return mbedtls_ctr_drbg_random(&random->drbg, buffer, size);
 }
 
-random_object * get_or_gen_random_object(int argc, Janet * argv, int offset)
+janetls_random_object * janetls_get_random()
 {
-  if (argc > offset)
+  static JANET_THREAD_LOCAL janetls_random_object * thread_random = NULL;
+  if (thread_random == NULL)
   {
-    return janet_getabstract(argv, offset, &random_object_type);
+    thread_random = janetls_new_random();
+    // make sure it doesn't get evicted.
+    janet_gcroot(janet_wrap_abstract(thread_random));
   }
-  else
-  {
-    return janetls_new_random();
-  }
+  return thread_random;
 }
 
