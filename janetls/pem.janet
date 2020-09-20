@@ -24,14 +24,48 @@
 
 (defn- pem/base64-parse [pem] (merge pem {:body (base64/decode (get pem :body))}))
 
-(defn pem/parse
-  ``Decode a PEM body into an array of pem tables, with the following content:
-  :name - the pem block's name, such as 'EC PUBLIC KEY'
-  :body - binary value of the pem block, what is inside is not guaranteed to be valid binary, asn.1, etc.
+(defn pem/decode
+  ``Decode a PEM body into an array of PEM tables, with the following content:
+  :name - the PEM block's name, such as "EC PUBLIC KEY"
+  :body - binary value of the PEM block, what is inside is not guaranteed to be valid binary, asn.1, etc.
   :headers - optional table of headers found in the PEM body
   :checksum - included checksum if present in PGP ascii-armor blocks, which are near identical to PEM.``
-  [str] (do
+  [str]
   (def result (peg/match pem-grammar str))
   (def pems (if (= nil result) @[] [;result]))
   (map pem/base64-parse pems)
-  ))
+  )
+
+(defn- pem/encode-header [[k v]] (buffer k ": " v))
+
+(defn util/chunk "nope" [x s]
+  (def result (array))
+  (def len (length x))
+
+  (for i 0 (/ (+ len (- s 1)) s)
+    (def position (min len (* i s)))
+    (def end (min len (+ position s)))
+    (if (not= position end)
+      (array/push result (slice x position end)))
+    )
+  result
+  )
+
+
+(defn pem/encode
+``Encode a PEM to a string, the input is a struct or table with the following fields
+  :name - the PEM block's name, such as "EC PUBLIC KEY", required
+  :body - binary value of the PEM block, it will be base64 encoded in the output
+  :headers - optional table (string to string) of informational headers in a PEM block
+  :checksum - optional string (a base64 like string starting with a =) for PGP
+
+  The output is a buffer.
+  ``
+  [{:name name :body body :headers headers :checksum checksum}]
+  (if (= nil name) (error ":name cannot be nil"))
+  (if (= nil body) (error ":body cannot be nil"))
+  (def pem-header (if headers (buffer (string/join (map pem/encode-header (pairs headers)) "\n") "\n\n")))
+  (def ascii-armor-checksum (if checksum (buffer "\n" checksum)))
+  (def pem-body (string/join (util/chunk (base64/encode body) 64) "\n"))
+  (buffer "-----BEGIN " name "-----\n" pem-header pem-body ascii-armor-checksum "\n-----END " name "-----")
+  )

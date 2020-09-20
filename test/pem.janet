@@ -21,6 +21,17 @@ oCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k\n
 -----END PGP SIGNATURE-----
 ")
 
+(def pgp-example2 "
+-----BEGIN PGP SIGNATURE-----\n
+Comment: For info see http://www.gnupg.org\n
+Version: GnuPG v0.9.7 (GNU/Linux)\n
+\n
+iEYEARECAAYFAjdYCQoACgkQJ9S6ULt1dqz6IwCfQ7wP6i/i8HhbcOSKF4ELyQB1\n
+oCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k\n
+=y6kj\n
+-----END PGP SIGNATURE-----
+")
+
 (def combined (string
   "Comments outside\n"
   ec-key
@@ -46,9 +57,17 @@ oCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k\n
   })
 
 (deftest "Examples parse as expected" (do
-  (is (deep= @[expected-ec-key] (pem/parse ec-key)))
-  (is (deep= @[expected-pgp-example] (pem/parse pgp-example)))
-  (is (deep= @[expected-ec-key expected-pgp-example] (pem/parse combined)))
+  (is (deep= @[expected-ec-key] (pem/decode ec-key)))
+  (is (deep= @[expected-pgp-example] (pem/decode pgp-example)))
+  (is (deep= @[expected-ec-key expected-pgp-example] (pem/decode combined)))
+  ))
+
+(deftest "Examples encode as expected" (do
+  (is (deep= (buffer ec-key) (pem/encode expected-ec-key)))
+  (is (or
+    (deep= (buffer pgp-example) (pem/encode expected-pgp-example))
+    (deep= (buffer pgp-example2) (pem/encode expected-pgp-example))
+    ))
   ))
 
 (run-tests!)
