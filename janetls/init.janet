@@ -16,10 +16,14 @@
   :pem-header-pair (* :pem-header-label ":" :s* :pem-header-value)
   :pem-headers (? (* (constant :headers) (cmt (some (* :pem-header-pair "\n")) ,struct) "\n"))
   :pem-body (* :pem-headers :base64-body :s* :checksum)
-  :main (cmt (* :pem-header :s* :pem-body :s* :pem-footer) ,struct)
+  :single-pem (cmt (* :pem-header :s* :pem-body :s* :pem-footer) ,struct)
+  :comment (* (some (if-not "\n" 1)) (? "\n"))
+  :single-pem-or-comment (choice :single-pem :comment)
+  :main (any :single-pem-or-comment)
   }))
 
-(defn pem-parse [str] (do
-  (def [result] (peg/match pem-grammar str))
-  result
-  ))
+  (defn pem/parse [str] (do
+    (def result (peg/match pem-grammar str))
+    (if (= nil result) [] [;result])
+    ))
+

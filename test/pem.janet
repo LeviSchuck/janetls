@@ -21,6 +21,14 @@ oCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k\n
 -----END PGP SIGNATURE-----
 ")
 
+(def combined (string
+  "Comments outside\n"
+  ec-key
+  "Comments in between\nMore comments\n"
+  pgp-example
+  "\nComments after\n\n\n"
+  ))
+
 (def expected-ec-key {
   :name "PUBLIC KEY"
   :body "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0\nwEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ=="
@@ -38,8 +46,9 @@ oCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k\n
   })
 
 (deftest "Examples parse as expected" (do
-  (is (= expected-ec-key (pem-parse ec-key)))
-  (is (= expected-pgp-example (pem-parse pgp-example)))
+  (is (= [expected-ec-key] (pem/parse ec-key)))
+  (is (= [expected-pgp-example] (pem/parse pgp-example)))
+  (is (= [expected-ec-key expected-pgp-example] (pem/parse combined)))
   ))
 
 (run-tests!)
