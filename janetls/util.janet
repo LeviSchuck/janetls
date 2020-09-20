@@ -19,5 +19,17 @@
 # SOFTWARE.
 #
 
-(import ../build/janetls_native :prefix "" :export true)
-(import ./pem :prefix "" :export true)
+(defn util/chunk
+  "Chunk a string into an array where each string is at most size length long"
+  [str size]
+  (def result (array))
+  (def len (length str))
+
+  (for i 0 (/ (+ len (- size 1)) size)
+    (def position (min len (* i size)))
+    (def end (min len (+ position size)))
+    (if (not= position end)
+      (array/push result (slice str position end)))
+    )
+  result
+  )
