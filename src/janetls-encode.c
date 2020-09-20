@@ -231,10 +231,11 @@ void panic_base64_slice(const uint8_t * data, unsigned int length, unsigned int 
   uint8_t chunk[5] = {0, 0, 0, 0, 0};
   unsigned int position = (index / 4) * 4;
   unsigned int count = length - position;
+  uint8_t value = data[index];
   memcpy(chunk, data + position, (count > 4) ? 4 : count);
 
   janet_panicf("base64 invalid character discovered within chunk "
-    "starting at position %d, within chunk: %s", index, chunk);
+    "starting at position %d with value 0x%02x, within chunk: %s", index, value, chunk);
 }
 
 Janet base64_decode(const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant)
@@ -391,7 +392,8 @@ int janetls_base64_decode_internal(Janet * result, const uint8_t * data, unsigne
       case '\t':
         // Whitespace is ignored.. in some variants.
         // TODO.
-        break;
+        index++;
+        continue;
       case '=':
         end = index;
         // This also breaks the switch.

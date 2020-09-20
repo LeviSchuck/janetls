@@ -29,26 +29,26 @@ oCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k\n
   "\nComments after\n\n\n"
   ))
 
-(def expected-ec-key {
+(def expected-ec-key @{
   :name "PUBLIC KEY"
-  :body "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0\nwEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ=="
+  :body (base64/decode "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0\nwEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==")
   })
 
 
-(def expected-pgp-example {
+(def expected-pgp-example @{
   :name "PGP SIGNATURE"
   :headers {
     "Version" "GnuPG v0.9.7 (GNU/Linux)"
     "Comment" "For info see http://www.gnupg.org"
     }
-  :body "iEYEARECAAYFAjdYCQoACgkQJ9S6ULt1dqz6IwCfQ7wP6i/i8HhbcOSKF4ELyQB1\noCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k"
+  :body (base64/decode "iEYEARECAAYFAjdYCQoACgkQJ9S6ULt1dqz6IwCfQ7wP6i/i8HhbcOSKF4ELyQB1\noCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k")
   :checksum "=y6kj"
   })
 
 (deftest "Examples parse as expected" (do
-  (is (= [expected-ec-key] (pem/parse ec-key)))
-  (is (= [expected-pgp-example] (pem/parse pgp-example)))
-  (is (= [expected-ec-key expected-pgp-example] (pem/parse combined)))
+  (is (deep= @[expected-ec-key] (pem/parse ec-key)))
+  (is (deep= @[expected-pgp-example] (pem/parse pgp-example)))
+  (is (deep= @[expected-ec-key expected-pgp-example] (pem/parse combined)))
   ))
 
 (run-tests!)

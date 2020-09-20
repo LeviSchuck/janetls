@@ -56,4 +56,10 @@
 (deftest "Decoding fails on invalid input, illegal character"
   (assert-thrown (janetls/base64/decode "a$oo")))
 
+(deftest "Decode doesn't throw on new line breaking chunks" (do
+  (is (not= nil (janetls/base64/decode "a\nb")))
+  (is (not= nil (janetls/base64/decode "a\nb\nc")))
+  (is (not= nil (janetls/base64/decode "a\nb\nc\nd")))
+  ))
+
 (run-tests!)
