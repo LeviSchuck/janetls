@@ -1,7 +1,7 @@
 (import testament :prefix "" :exit true)
 # Testament framework documentation
 # https://github.com/pyrmont/testament/blob/master/api.md
-(import ../build/janetls :prefix "" :exit true)
+(import ../janetls :prefix "" :exit true)
 
 # Generate a default key, RSASSA-PKCS1-v1_5 using SHA-256
 (def key (rsa/generate))

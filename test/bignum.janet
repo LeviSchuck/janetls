@@ -1,7 +1,7 @@
 (import testament :prefix "" :exit true)
 # Testament framework documentation
 # https://github.com/pyrmont/testament/blob/master/api.md
-(import ../build/janetls :prefix "" :exit true)
+(import ../janetls :prefix "" :exit true)
 
 (deftest "Parses a number" (is (= "10" (:to-string (bignum/parse 10)))))
 

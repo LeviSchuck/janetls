@@ -1,7 +1,7 @@
 (import testament :prefix "" :exit true)
 # Testament framework documentation
 # https://github.com/pyrmont/testament/blob/master/api.md
-(import ../build/janetls :exit true)
+(import ../janetls :exit true)
 
 
 (deftest "MD5 \"\" meets expectations"

@@ -2,7 +2,7 @@
 # Testament framework documentation
 # https://github.com/pyrmont/testament/blob/master/api.md
 
-(import ../build/janetls :exit true)
+(import ../janetls :exit true)
 
 (def examples
   ["H" "He" "Hel" "Hell" "Hello"

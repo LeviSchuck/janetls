@@ -1,7 +1,7 @@
 (import testament :prefix "" :exit true)
 # Testament framework documentation
 # https://github.com/pyrmont/testament/blob/master/api.md
-(import ../build/janetls :exit true :prefix "")
+(import ../janetls :exit true :prefix "")
 
 (def sample "1234567890abcdefghijklmnopqrstuvwxyz")
 

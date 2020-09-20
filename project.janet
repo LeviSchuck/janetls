@@ -33,9 +33,8 @@
 (def debug-flags [])
 # (def debug-flags ["-g" "-Og" "-Wall" "-Wpedantic"])
 
-
 (declare-native
-  :name "janetls"
+  :name "janetls_native"
   :cflags [
     ;default-cflags
     "-Imbedtls/include/"
@@ -95,3 +94,8 @@
     "mbedtls/library/platform.c"
     "mbedtls/library/platform_util.c"
     ])
+
+(declare-source
+  :name "janetls"
+  :source ["janetls/janetls.janet"]
+  )
