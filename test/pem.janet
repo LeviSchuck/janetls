@@ -37,7 +37,7 @@ oCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k\n
 
 (def expected-pgp-example @{
   :name "PGP SIGNATURE"
-  :headers {
+  :headers @{
     "Version" "GnuPG v0.9.7 (GNU/Linux)"
     "Comment" "For info see http://www.gnupg.org"
     }
