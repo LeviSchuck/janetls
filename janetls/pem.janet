@@ -19,7 +19,7 @@
 # SOFTWARE.
 #
 
-(import ../build/janetls_native :prefix "")
+(import ./native :prefix "")
 (import ./util :prefix "")
 
 (def- pem-grammar (peg/compile ~{

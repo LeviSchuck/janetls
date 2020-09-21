@@ -34,7 +34,7 @@
 # (def debug-flags ["-g" "-Og" "-Wall" "-Wpedantic"])
 
 (declare-native
-  :name "janetls_native"
+  :name "_janetls"
   :cflags [
     ;default-cflags
     "-Imbedtls/include/"

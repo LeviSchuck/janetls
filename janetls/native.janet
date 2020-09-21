@@ -19,5 +19,9 @@
 # SOFTWARE.
 #
 
-(import ./native :prefix "" :export true)
-(import ./pem :prefix "" :export true)
+(try
+  (import _janetls :prefix "" :export true)
+  ([_] (import ../build/_janetls :prefix "" :export true))
+  )
+
+
