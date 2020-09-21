@@ -2,7 +2,7 @@
 # Testament framework documentation
 # https://github.com/pyrmont/testament/blob/master/api.md
 
-(import ../build/janetls :exit true)
+(import ../janetls :exit true)
 
 (def examples
   ["H" "He" "Hel" "Hell" "Hello"
@@ -55,5 +55,11 @@
   (assert-thrown (janetls/base64/decode "aaaaa")))
 (deftest "Decoding fails on invalid input, illegal character"
   (assert-thrown (janetls/base64/decode "a$oo")))
+
+(deftest "Decode doesn't throw on new line breaking chunks" (do
+  (is (not= nil (janetls/base64/decode "a\nb")))
+  (is (not= nil (janetls/base64/decode "a\nb\nc")))
+  (is (not= nil (janetls/base64/decode "a\nb\nc\nd")))
+  ))
 
 (run-tests!)

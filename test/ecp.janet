@@ -1,7 +1,7 @@
 (import testament :prefix "" :exit true)
 # Testament framework documentation
 # https://github.com/pyrmont/testament/blob/master/api.md
-(import ../build/janetls :exit true :prefix "")
+(import ../janetls :exit true :prefix "")
 
 (def secret (hex/decode "89002409a65f3cf3aa05597f54e7b71133fae49e60229af87764e8c7390fda64"))
 # Notice that the point is uncompressed, it starts with 04 in hex.
