@@ -97,5 +97,5 @@
 
 (declare-source
   :name "janetls"
-  :source ["janetls/janetls.janet"]
+  :source ["janetls/"]
   )

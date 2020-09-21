@@ -19,9 +19,12 @@
 # SOFTWARE.
 #
 
+# The first case handles tests and developing in this repo
+# The second should handle all other cases
+# (installed on the system as a dependency)
 (try
-  (import _janetls :prefix "" :export true)
-  ([_] (import ../build/_janetls :prefix "" :export true))
+  (import ../build/_janetls :prefix "" :export true)
+  ([_] (import _janetls :prefix "" :export true))
   )
 
 
