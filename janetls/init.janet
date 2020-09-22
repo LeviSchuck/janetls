@@ -21,3 +21,5 @@
 
 (import ./native :prefix "" :export true)
 (import ./pem :prefix "" :export true)
+(import ./util :prefix "" :export true)
+(import ./pk :prefix "" :export true)
