@@ -108,7 +108,7 @@ static const JanetReg cfuns[] =
     ":p is an octet encoded form of the public coordinate, it replaces "
     ":x and :y\n"
     ":d is an octet encoded form of the private secret\n"
-    ":type if provided should be :ec"
+    ":type if provided should be :ecdsa"
     },
   {"ecdsa/private?", ecdsa_is_private, "(janetls/ecdsa/private? ecdsa)\n\n"
     "Returns true if this key is a private key and can perform private and "
@@ -438,7 +438,7 @@ static Janet ecdsa_export_public(int32_t argc, Janet * argv)
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
   JanetTable * table = janet_table(7);
 
-  janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ec));
+  janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ecdsa));
   janet_table_put(table, janet_ckeywordv("information-class"), janetls_search_pk_information_class_to_janet(janetls_pk_information_class_public));
   janet_table_put(table, janet_ckeywordv("digest"), janetls_search_md_supported_algorithms_to_janet(ecdsa->digest));
   janet_table_put(table, janet_ckeywordv("curve-group"), janetls_search_ecp_curve_group_to_janet(ecdsa->group->group));
@@ -474,7 +474,7 @@ static Janet ecdsa_export_private(int32_t argc, Janet * argv)
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
   JanetTable * table = janet_table(8);
 
-  janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ec));
+  janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ecdsa));
   janet_table_put(table, janet_ckeywordv("information-class"), janetls_search_pk_information_class_to_janet(janetls_pk_information_class_private));
   janet_table_put(table, janet_ckeywordv("digest"), janetls_search_md_supported_algorithms_to_janet(ecdsa->digest));
   janet_table_put(table, janet_ckeywordv("curve-group"), janetls_search_ecp_curve_group_to_janet(ecdsa->group->group));
@@ -601,11 +601,11 @@ static Janet ecdsa_import(int32_t argc, Janet * argv)
           janetls_pk_key_type type;
           if (janetls_search_pk_key_type(kv->value, &type) != 0)
           {
-            janet_panicf("Expected :ec for :type, but got %p", kv->value);
+            janet_panicf("Expected :ecdsa for :type, but got %p", kv->value);
           }
-          if (type != janetls_pk_key_type_ec)
+          if (type != janetls_pk_key_type_ecdsa)
           {
-            janet_panicf("Expected :ec for :type, but got %p", kv->value);
+            janet_panicf("Expected :ecdsa for :type, but got %p", kv->value);
           }
         }
         else if (janet_byte_cstrcmp_insensitive(key, "information-class") == 0)

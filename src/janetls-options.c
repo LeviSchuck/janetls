@@ -173,7 +173,7 @@ JANETLS_SEARCH_OPTION_LIST(pk_information_class, janetls_pk_information_class)
 
 option_list_entry pk_key_type[] = {
   {janetls_pk_key_type_rsa, "rsa", 0},
-  {janetls_pk_key_type_ec, "ec", 0},
+  {janetls_pk_key_type_ecdsa, "ecdsa", 0},
 };
 JANETLS_SEARCH_OPTION_LIST(pk_key_type, janetls_pk_key_type)
 

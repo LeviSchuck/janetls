@@ -51,7 +51,7 @@ JANETLS_SEARCH_OPTION_FORWARD_DECLARE(pk_information_class, janetls_pk_informati
 typedef enum janetls_pk_key_type
 {
   janetls_pk_key_type_rsa,
-  janetls_pk_key_type_ec,
+  janetls_pk_key_type_ecdsa,
 } janetls_pk_key_type;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(pk_key_type, janetls_pk_key_type)

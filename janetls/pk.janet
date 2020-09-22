@@ -41,8 +41,24 @@
   (def signature (encoding/decode signature (options :encoding ;(semi (options :encoding-variant)))))
   (:verify key data signature ;(semi (options :digest)))
   )
-(defn pk/encrypt [] nil)
-(defn pk/decrypt [] nil)
+(defn- only-type [expected actual reason]
+  (if (not= expected actual) (errorf "Only %p keys can %S, this key is of type %p" expected reason actual)))
+
+
+(defn pk/encrypt [{:key key :type kind} plaintext &opt options]
+  (only-type :rsa kind "can encrypt and decrypt")
+  (def options (pk/options options))
+  (def ciphertext (:encrypt key plaintext))
+  (def ciphertext (encoding/encode ciphertext (options :encoding ;(semi (options :encoding-variant)))))
+  ciphertext
+  )
+(defn pk/decrypt [{:key key :type kind} ciphertext &opt options]
+  (only-type :rsa kind "can encrypt and decrypt")
+  (def options (pk/options options))
+  (def ciphertext (encoding/decode ciphertext (options :encoding ;(semi (options :encoding-variant)))))
+  (def plaintext (:decrypt key ciphertext))
+  plaintext
+  )
 (defn pk/export-public [] nil)
 (defn pk/export-private [] nil)
 
@@ -61,8 +77,8 @@
   (def kind (key :type))
   (def key (cond
     (= :rsa kind) (rsa/import key)
-    (= :ec kind) (ecdsa/import key)
-    (errorf "Could not determine type, should be :rsa or :ec but got %p" kind)
+    (= :ecdsa kind) (ecdsa/import key)
+    (errorf "Could not determine type, should be :rsa or :ecdsa but got %p" kind)
   ))
   (table/setproto @{:key key :type kind} PK-Prototype)
   )
