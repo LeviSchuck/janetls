@@ -225,7 +225,7 @@ static Janet asn1_decode(int32_t argc, Janet * argv)
     }
     else
     {
-      janet_panicf("Unexpected flag %p", keyword);
+      janet_panicf("Unexpected flag %p", argv[i]);
     }
   }
 

@@ -556,7 +556,7 @@ static Janet rsa_export_private(int32_t argc, Janet * argv)
     janet_panic("Cannot export a private key from a public key");
   }
 
-  JanetTable * table = janet_table(7);
+  JanetTable * table = janet_table(10);
 
   janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_rsa));
   janet_table_put(table, janet_ckeywordv("information-class"), janetls_search_pk_information_class_to_janet(janetls_pk_information_class_private));
@@ -595,6 +595,20 @@ static Janet rsa_export_private(int32_t argc, Janet * argv)
   janetls_bignum_object * d = janetls_new_bignum();
   check_result(mbedtls_mpi_copy(&d->mpi, &rsa->ctx.D));
   janet_table_put(table, janet_ckeywordv("d"), janet_wrap_abstract(d));
+
+  // These aren't imported back, but they are part of the standard.
+  // The RSA exponent: dp = d mod (p-1)
+  janetls_bignum_object * dp = janetls_new_bignum();
+  check_result(mbedtls_mpi_copy(&dp->mpi, &rsa->ctx.DP));
+  janet_table_put(table, janet_ckeywordv("dp"), janet_wrap_abstract(dp));
+
+  janetls_bignum_object * dq = janetls_new_bignum();
+  check_result(mbedtls_mpi_copy(&dq->mpi, &rsa->ctx.DQ));
+  janet_table_put(table, janet_ckeywordv("dq"), janet_wrap_abstract(dq));
+
+  janetls_bignum_object * qp = janetls_new_bignum();
+  check_result(mbedtls_mpi_copy(&qp->mpi, &rsa->ctx.QP));
+  janet_table_put(table, janet_ckeywordv("qp"), janet_wrap_abstract(qp));
 
   return janet_wrap_struct(janet_table_to_struct(table));
 }
