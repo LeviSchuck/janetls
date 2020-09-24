@@ -28,7 +28,7 @@
 #include <ctype.h>
 #include <inttypes.h>
 
-// #define PRINT_TRACE_EVERYTHING
+//#define PRINT_TRACE_EVERYTHING
 
 static int parse_length(asn1_parser * parser, uint64_t * length);
 static int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed);
@@ -1464,8 +1464,16 @@ push_bignum:
       goto end;
     }
   }
+  else if (janet_checktype(value, JANET_NIL))
+  {
+    retcheck(push_asn1_tag_universal(array, janetls_asn1_universal_type_null));
+    retcheck(push_asn1_length(array, 0));
+  }
   else
   {
+    #ifdef PRINT_TRACE_EVERYTHING
+    janet_eprintf("Cannot encode %p\n", value);
+    #endif
     ret = JANETLS_ERR_ASN1_UNSUPPORTED_TYPE;
     goto end;
   }
@@ -1968,12 +1976,22 @@ static int determine_type_by_value(janetls_asn1_universal_type * universal_type,
     }
     else
     {
+      #ifdef PRINT_TRACE_EVERYTHING
+      janet_eprintf("Cannot encode %p\n", dict_value);
+      #endif
       ret = JANETLS_ERR_ASN1_UNSUPPORTED_TYPE;
       goto end;
     }
   }
+  else if (janet_checktype(dict_value, JANET_NIL))
+  {
+    *universal_type = janetls_asn1_universal_type_null;
+  }
   else
   {
+    #ifdef PRINT_TRACE_EVERYTHING
+    janet_eprintf("Cannot encode %p\n", dict_value);
+    #endif
     ret = JANETLS_ERR_ASN1_UNSUPPORTED_TYPE;
     goto end;
   }

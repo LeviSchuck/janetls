@@ -58,10 +58,32 @@ BEx5UsGrslr6Xdw7XTuYM5Ep0uRBh8vjWZGADgfYGoSGrPY91urDC548Rsw3MbbU
 3qKa3KXaKtNxurS/fwQkCQHeoIAy2aRltkFsaOfeghvX4kTQFAh7uLm+JV4xGrUU
 sjtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ="))
 
+(def rsa-priv-pkcs8 (base64/decode
+"MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAOQIZHAEbWP9Y+MM
+76eRB8rGFANySS0yOr1AFLtFRD5jl8WJ2muTO2ILxj8lYYQoLpnkC7/1yFmvHQN5
+KiV6Iq11UVBS+O+uCtWxqbO1Nucfl+QVmhfiVz9LQWBPer23KzaT+fBjSNi9Q7YR
+oFjYKdH92t0VL6LD6XRojL3LERCZAgMBAAECgYB8mkVfnFu17oj9UV1HIA209KWM
++I8Z3j+QmAp8Bi5zNPKC43/xlmM1gR+T87Ykg9xrBNySyRfwQarF8hhgoCt/uvO+
+URC9eIVs3/Ocg5+AAvwm0HluLls7k9dRqqmJoBvk1Chn7c75Pd62fEc5GukLuyhx
+lG1khv21BPZotsegMQJBAPOCHfIFfSj33wOXVpaLbySBk6GlICrDpnJa/CAL6rPr
+3D1BeRP8TUbGZ/L257H3PYMNH+cxNzWe31CQ23OubiUCQQDvuwr4ORQTxqf6Vk0V
+bwPlz8ex6ZUTE4IXtWtl/Wi1MA/4l70sAcFdXpW8JDIauRHohuQDEtZEm84gvr5/
+KGxlAkEA0QgHMLTphfuRo4GMQNsc41egJYicHlmpTk0wVUolhaGYg7TqfO9+Xpz+
+qqCssCau1Qq1Mj8bR5pD1OMknx9DSQJAGsETHlSwauyWvpd3DtdO5gzkSnS5EGHy
++NZkYAOB9gahIas9j3W6sMLnjxGzDcxttTeoprcpdoq03G6tL9/BCQJAd6ggDLZp
+GW2QWxo596CG9fiRNAUCHu4ub4lXjEatRSyO0l+x5gbjgROTz6bcCPA2rmOaSGJ/
+xgZ4UELzDQp15A=="))
+
 (def rsa-pub-key (base64/decode
 "MIGJAoGBAOQIZHAEbWP9Y+MM76eRB8rGFANySS0yOr1AFLtFRD5jl8WJ2muTO2IL
 xj8lYYQoLpnkC7/1yFmvHQN5KiV6Iq11UVBS+O+uCtWxqbO1Nucfl+QVmhfiVz9L
 QWBPer23KzaT+fBjSNi9Q7YRoFjYKdH92t0VL6LD6XRojL3LERCZAgMBAAE="))
+
+(def rsa-pub-pkcs8 (base64/decode
+"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDkCGRwBG1j/WPjDO+nkQfKxhQD
+ckktMjq9QBS7RUQ+Y5fFidprkztiC8Y/JWGEKC6Z5Au/9chZrx0DeSoleiKtdVFQ
+UvjvrgrVsamztTbnH5fkFZoX4lc/S0FgT3q9tys2k/nwY0jYvUO2EaBY2CnR/drd
+FS+iw+l0aIy9yxEQmQIDAQAB"))
 
 
 (deftest "rsa public export is identical"
@@ -71,6 +93,9 @@ QWBPer23KzaT+fBjSNi9Q7YRoFjYKdH92t0VL6LD6XRojL3LERCZAgMBAAE="))
   (def exported (pk/export-public pub {:export-standard :pkcs1 :export-format :encoded :export-encoding :der}))
   (def {:der der} exported)
   (is (= der rsa-pub-key))
+
+  (def {:der der} (pk/export-public pub {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der rsa-pub-pkcs8))
   )
 
 (deftest "rsa private export is identical"
@@ -80,6 +105,9 @@ QWBPer23KzaT+fBjSNi9Q7YRoFjYKdH92t0VL6LD6XRojL3LERCZAgMBAAE="))
   (def exported (pk/export-private priv {:export-standard :pkcs1 :export-format :encoded :export-encoding :der}))
   (def {:der der} exported)
   (is (= der rsa-priv-key))
+
+  (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der rsa-priv-pkcs8))
   )
 
 (run-tests!)

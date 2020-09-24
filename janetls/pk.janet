@@ -26,7 +26,7 @@
 
 (def pk/formats [:components :encoded])
 (def pk/encoding [:der :pem])
-(def pk/standard [:pkcs8 :pkcs1])
+(def pk/standard [:pkcs8 :pkcs1 :sec1])
 
 
 (defn- pk/options [&opt options]
@@ -110,13 +110,19 @@
 (defn- pk/rsa-to-pkcs8-private [key] [
   0
   ["1.2.840.113549.1.1.1" nil]
-  {:type :octet-string :value (pk/rsa-to-pkcs1-private key)}
+  {:type :octet-string :value {:type :sequence :value (pk/rsa-to-pkcs1-private key)}}
   ])
 
 (defn- pk/rsa-to-pkcs8-public [key] [
   ["1.2.840.113549.1.1.1" nil]
-  {:type :bit-string :value (pk/rsa-to-pkcs1-public key)}
+  {:type :bit-string :value {:type :sequence :value (pk/rsa-to-pkcs1-public key)}}
   ])
+
+# NOTE: SEC1 EC keys have EC in the PEM name,
+# unlike rsa, PKCS8 is not a plain wrapper
+# around SEC1
+# RFC 5915
+# RFC 5208
 
 (defn- pk/to-asn1 [key kind standard information-class] (cond
   (and (= :rsa kind) (= :public information-class) (= :pkcs1 standard)) (pk/rsa-to-pkcs1-public key)
