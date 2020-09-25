@@ -42,6 +42,7 @@
   "1.3.132.0.10" :secp256k1
 })
 
+(def- curve-group-oid-map (freeze (invert oid-curve-group-map)))
 
 (def pk/formats [:components :encoded])
 (def pk/encoding [:der :pem])
@@ -100,11 +101,14 @@
   (def plaintext (:decrypt key ciphertext))
   plaintext)
 
-(defn- pk/to-pem-type [kind standard information-class] (cond
-  (and (= :rsa kind) (= :public information-class) (= :pkcs1 standard)) "RSA PUBLIC KEY"
-  (and (= :rsa kind) (= :private information-class) (= :pkcs1 standard)) "RSA PRIVATE KEY"
-  (and (= :public information-class) (= :pkcs8 standard)) "PUBLIC KEY"
-  (and (= :private information-class) (= :pkcs8 standard)) "PRIVATE KEY"
+(defn- pk/to-pem-type [kind standard information-class] (case [kind information-class standard]
+  [:rsa :public :pkcs1] "RSA PUBLIC KEY"
+  [:rsa :private :pkcs1] "RSA PUBLIC KEY"
+  [:rsa :public :pkcs8] "PUBLIC KEY"
+  [:rsa :private :pkcs8] "PUBLIC KEY"
+  [:ecdsa :private :sec1] "EC PUBLIC KEY"
+  [:ecdsa :public :pkcs8] "PUBLIC KEY"
+  [:ecdsa :private :pkcs8] "PUBLIC KEY"
   (errorf "Unable to match PEM type from parameters %p %p %p" kind standard information-class)
   ))
 
@@ -134,7 +138,36 @@
 
 (defn- pk/rsa-to-pkcs8-public [key] [
   ["1.2.840.113549.1.1.1" nil]
-  {:type :bit-string :value {:type :sequence :value (pk/rsa-to-pkcs1-public key)}}
+  {:type :bit-string :value {:type :sequence :value (pk/rsa-to-pkcs1-public key) :bits (key :bits)}}
+  ])
+
+(defn- pk/ec-to-sec1-private [key include-identifier] [
+  1
+  {:type :octet-string :value (key :d)}
+  ;(if include-identifier [{
+    :value (curve-group-oid-map (key :curve-group))
+    :type :context-specific
+    :constructed true
+    :tag 0
+    }] [])
+  {
+    :value {:type :bit-string :value (key :p)}
+    :type :context-specific
+    :constructed true
+    :tag 1
+    }
+  ])
+
+(defn- pk/ec-to-pkcs8-private [key] [
+  0
+  ["1.2.840.10045.2.1" (curve-group-oid-map (key :curve-group))]
+  {:type :octet-string :value {:type :sequence :value (pk/ec-to-sec1-private key false)}}
+  ])
+
+(defn- pk/ec-to-pkcs8-public [key] [
+  0
+  ["1.2.840.10045.2.1" (curve-group-oid-map (key :curve-group))]
+  {:type :bit-string :value (key :p) :bits (key :bits)}
   ])
 
 # NOTE: SEC1 EC keys have EC in the PEM name,
@@ -143,11 +176,14 @@
 # RFC 5915
 # RFC 5208
 
-(defn- pk/to-asn1 [key kind standard information-class] (cond
-  (and (= :rsa kind) (= :public information-class) (= :pkcs1 standard)) (pk/rsa-to-pkcs1-public key)
-  (and (= :rsa kind) (= :private information-class) (= :pkcs1 standard)) (pk/rsa-to-pkcs1-private key)
-  (and (= :rsa kind) (= :public information-class) (= :pkcs8 standard)) (pk/rsa-to-pkcs8-public key)
-  (and (= :rsa kind) (= :private information-class) (= :pkcs8 standard)) (pk/rsa-to-pkcs8-private key)
+(defn- pk/to-asn1 [key kind standard information-class] (case [kind information-class standard]
+  [:rsa :public :pkcs1] (pk/rsa-to-pkcs1-public key)
+  [:rsa :private :pkcs1] (pk/rsa-to-pkcs1-private key)
+  [:rsa :public :pkcs8] (pk/rsa-to-pkcs8-public key)
+  [:rsa :private :pkcs8] (pk/rsa-to-pkcs8-private key)
+  [:ecdsa :private :sec1] (pk/ec-to-sec1-private key true)
+  [:ecdsa :private :pkcs8] (pk/ec-to-pkcs8-private key)
+  [:ecdsa :public :pkcs8] (pk/ec-to-pkcs8-public key)
   (errorf "Unable to match ASN.1 format from parameters %p %p %p" kind standard information-class)
   ))
 
@@ -204,3 +240,9 @@
   (table/setproto @{:key key :type kind} PK-Prototype)
   )
 
+(defn pk/oid-to-curve [oid]
+  (def oid (if (indexed? oid) (string/join (map string oid) ".") oid))
+  (oid-curve-group-map oid)
+  )
+
+(defn pk/curve-to-oid [curve] (curve-group-oid-map curve))

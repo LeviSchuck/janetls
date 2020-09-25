@@ -436,12 +436,13 @@ static Janet ecdsa_export_public(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
-  JanetTable * table = janet_table(7);
+  JanetTable * table = janet_table(8);
 
   janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ecdsa));
   janet_table_put(table, janet_ckeywordv("information-class"), janetls_search_pk_information_class_to_janet(janetls_pk_information_class_public));
   janet_table_put(table, janet_ckeywordv("digest"), janetls_search_md_supported_algorithms_to_janet(ecdsa->digest));
   janet_table_put(table, janet_ckeywordv("curve-group"), janetls_search_ecp_curve_group_to_janet(ecdsa->group->group));
+  janet_table_put(table, janet_ckeywordv("bits"), janet_wrap_number(ecdsa->group->ecp_group.nbits));
 
   janetls_ecp_point_object * point = ecdsa->public_coordinate;
   if (point == NULL)
@@ -472,12 +473,13 @@ static Janet ecdsa_export_private(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
-  JanetTable * table = janet_table(8);
+  JanetTable * table = janet_table(9);
 
   janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ecdsa));
   janet_table_put(table, janet_ckeywordv("information-class"), janetls_search_pk_information_class_to_janet(janetls_pk_information_class_private));
   janet_table_put(table, janet_ckeywordv("digest"), janetls_search_md_supported_algorithms_to_janet(ecdsa->digest));
   janet_table_put(table, janet_ckeywordv("curve-group"), janetls_search_ecp_curve_group_to_janet(ecdsa->group->group));
+  janet_table_put(table, janet_ckeywordv("bits"), janet_wrap_number(ecdsa->group->ecp_group.nbits));
 
   janetls_ecp_point_object * point = ecdsa->public_coordinate;
   if (point == NULL)
@@ -684,6 +686,11 @@ static Janet ecdsa_import(int32_t argc, Janet * argv)
             "but got %p", kv->key, kv->value);
           }
         }
+        else if (janet_byte_cstrcmp_insensitive(key, "bits") == 0)
+        {
+          // Nothing
+        }
+        // Maybe an else that complains about unknown values?
       }
       else
       {

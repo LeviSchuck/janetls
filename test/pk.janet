@@ -85,6 +85,22 @@ ckktMjq9QBS7RUQ+Y5fFidprkztiC8Y/JWGEKC6Z5Au/9chZrx0DeSoleiKtdVFQ
 UvjvrgrVsamztTbnH5fkFZoX4lc/S0FgT3q9tys2k/nwY0jYvUO2EaBY2CnR/drd
 FS+iw+l0aIy9yxEQmQIDAQAB"))
 
+(def ec-private-sec1 (base64/decode
+"MHcCAQEEIH4et747bbOv+eLWNSW01tr9zuYSYGSjBT6T4NTpNTLYoAoGCCqGSM4
+9AwEHoUQDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0wEYF/pxNtkoMO4CzC+XtZWh
+RVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ=="))
+
+# There is no public sec1 key..
+
+(def ec-private-pkcs8 (base64/decode
+"MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgfh63vjtts6/54tY1
+JbTW2v3O5hJgZKMFPpPg1Ok1MtihRANCAASXL8Qz6UTn3TvME3BjLZBDpRUpALTA
+RgX+nE22Sgw7gLML5e1laFFUyyC189o6BwJvkRqYNdhXrwi6z2/tVn2N"))
+
+(def ec-public-pkcs8 (base64/decode
+"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0
+wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ=="))
+
 
 (deftest "rsa public export is identical"
   (def asn1-public-key (asn1/decode rsa-pub-key))
@@ -108,6 +124,19 @@ FS+iw+l0aIy9yxEQmQIDAQAB"))
 
   (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
   (is (= der rsa-priv-pkcs8))
+  )
+
+(deftest "ec private export is identical"
+  (def asn1-private-key (asn1/decode ec-private-sec1))
+  (def {:value [_ {:value d} {:value [{:value oid}]} ]} asn1-private-key)
+  (def curve (pk/oid-to-curve oid) )
+  (def priv (pk/import {:d d :curve-group curve :type :ecdsa}))
+  (def exported (pk/export-private priv {:export-standard :sec1 :export-format :encoded :export-encoding :der}))
+  (def {:der der} exported)
+  (is (= der ec-private-sec1))
+
+  (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der ec-private-pkcs8))
   )
 
 (run-tests!)
