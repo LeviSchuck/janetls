@@ -146,7 +146,6 @@
   ])
 
 (defn- pk/ec-to-pkcs8-public [key] [
-  0
   ["1.2.840.10045.2.1" (oid/from-curve (key :curve-group))]
   {:type :bit-string :value (key :p) :bits (key :bits)}
   ])
