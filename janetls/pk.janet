@@ -21,28 +21,9 @@
 
 (import ./native :prefix "")
 (import ./pem :prefix "")
+(import ./oid :prefix "")
 
 (defn- semi [v] ;(if v [v] []))
-
-(def- oid-curve-group-map {
-  "1.2.840.10045.3.1.1" :secp192r1
-  "1.3.132.0.33" :secp224r1
-  "1.2.840.10045.3.1.7" :secp256r1
-  "1.3.132.0.34" :secp384r1
-  "1.3.132.0.35" :secp521r1
-  "1.3.36.3.3.2.8.1.1.7" :bp256r1
-  "1.3.36.3.3.2.8.1.1.11" :bp384r1
-  "1.3.36.3.3.2.8.1.1.13" :bp512r1
-  "1.3.101.110" :x25519
-  "1.3.101.111" :x448
-  "1.3.101.112" :ed25519
-  "1.3.101.113" :ed448
-  "1.3.132.0.31" :secp192k1
-  "1.3.132.0.32" :secp224k1
-  "1.3.132.0.10" :secp256k1
-})
-
-(def- curve-group-oid-map (freeze (invert oid-curve-group-map)))
 
 (def pk/formats [:components :encoded])
 (def pk/encoding [:der :pem])
@@ -145,7 +126,7 @@
   1
   {:type :octet-string :value (key :d)}
   ;(if include-identifier [{
-    :value (curve-group-oid-map (key :curve-group))
+    :value (oid/from-curve (key :curve-group))
     :type :context-specific
     :constructed true
     :tag 0
@@ -160,13 +141,13 @@
 
 (defn- pk/ec-to-pkcs8-private [key] [
   0
-  ["1.2.840.10045.2.1" (curve-group-oid-map (key :curve-group))]
+  ["1.2.840.10045.2.1" (oid/from-curve (key :curve-group))]
   {:type :octet-string :value {:type :sequence :value (pk/ec-to-sec1-private key false)}}
   ])
 
 (defn- pk/ec-to-pkcs8-public [key] [
   0
-  ["1.2.840.10045.2.1" (curve-group-oid-map (key :curve-group))]
+  ["1.2.840.10045.2.1" (oid/from-curve (key :curve-group))]
   {:type :bit-string :value (key :p) :bits (key :bits)}
   ])
 
@@ -239,10 +220,3 @@
   ))
   (table/setproto @{:key key :type kind} PK-Prototype)
   )
-
-(defn pk/oid-to-curve [oid]
-  (def oid (if (indexed? oid) (string/join (map string oid) ".") oid))
-  (oid-curve-group-map oid)
-  )
-
-(defn pk/curve-to-oid [curve] (curve-group-oid-map curve))

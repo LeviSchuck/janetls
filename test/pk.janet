@@ -129,7 +129,7 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ=="))
 (deftest "ec private export is identical"
   (def asn1-private-key (asn1/decode ec-private-sec1))
   (def {:value [_ {:value d} {:value [{:value oid}]} ]} asn1-private-key)
-  (def curve (pk/oid-to-curve oid) )
+  (def curve (oid/to-curve oid) )
   (def priv (pk/import {:d d :curve-group curve :type :ecdsa}))
   (def exported (pk/export-private priv {:export-standard :sec1 :export-format :encoded :export-encoding :der}))
   (def {:der der} exported)
