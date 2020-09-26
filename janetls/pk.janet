@@ -29,6 +29,10 @@
 (def pk/encoding [:der :pem])
 (def pk/standard [:pkcs8 :pkcs1 :sec1])
 
+(defn check-public [key information-class]
+  (if
+    (and (= information-class :private) (= (key :information-class) :public))
+    (error "The key given is a public key and cannot be written as a private key")))
 
 (defn- pk/options [&opt options]
   (default options {})
@@ -171,6 +175,8 @@
   (def data (pk/to-asn1 key kind standard information-class))
   (asn1/encode data))
 
+
+
 (defn- pk/export-internal [{:key key :type kind} information-class &opt options]
   (def options (pk/options options))
   (def components (cond
@@ -178,6 +184,7 @@
     (= :private information-class) (:export-private key)
     (errorf "Expected :public or :private but got %p" information-class)
     ))
+  (check-public components information-class)
   (def {:export-format format :export-encoding encoding :export-standard standard} options)
   (cond
     (= :components format) components
@@ -200,8 +207,10 @@
 (defn pk/export-private [key &opt options]
   (pk/export-internal key :private options))
 
+
 (def- PK-Prototype @{
   :type :none
+  :information-class :none
   :sign pk/sign
   :verify pk/verify
   :encrypt pk/encrypt
@@ -217,5 +226,14 @@
     (= :ecdsa kind) (ecdsa/import key)
     (errorf "Could not determine type, should be :rsa or :ecdsa but got %p" kind)
   ))
-  (table/setproto @{:key key :type kind} PK-Prototype)
+  (table/setproto @{:key key :type kind :information-class (:information-class key)} PK-Prototype)
+  )
+
+(defn pk/wrap [key]
+  (def kind (:type key))
+  (case (type key)
+    :janetls/rsa nil
+    :janetls/ecdsa nil
+    (errorf "Could not determine type, should be janetls/rsa or janetls/ecdsa but got %p" (type key)))
+  (table/setproto @{:key key :type kind :information-class (:information-class key)} PK-Prototype)
   )

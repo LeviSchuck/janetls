@@ -32,6 +32,8 @@ static int ecdsa_get_fn(void * data, Janet key, Janet * out);
 
 static Janet ecdsa_is_private(int32_t argc, Janet * argv);
 static Janet ecdsa_is_public(int32_t argc, Janet * argv);
+static Janet ecdsa_information_class(int32_t argc, Janet * argv);
+static Janet ecdsa_type(int32_t argc, Janet * argv);
 static Janet ecdsa_sign(int32_t argc, Janet * argv);
 static Janet ecdsa_verify(int32_t argc, Janet * argv);
 static Janet ecdsa_export_public(int32_t argc, Janet * argv);
@@ -60,6 +62,8 @@ static JanetMethod ecdsa_methods[] = {
   {"sign", ecdsa_sign},
   {"private?", ecdsa_is_private},
   {"public?", ecdsa_is_public},
+  {"information-class", ecdsa_information_class},
+  {"type", ecdsa_type},
   {"curve-group", ecdsa_get_curve_group},
   {"digest", ecdsa_get_digest},
   {"bits", ecdsa_get_sizebits},
@@ -114,9 +118,12 @@ static const JanetReg cfuns[] =
     "Returns true if this key is a private key and can perform private and "
     "public operations."
     },
-  {"ecdsa/public?", ecdsa_is_public, "(janetls/ecdsa/private? ecdsa)\n\n"
+  {"ecdsa/public?", ecdsa_is_public, "(janetls/ecdsa/public? ecdsa)\n\n"
     "Returns true if this key is a public key and can only perform public "
     "operations."
+    },
+  {"ecdsa/information-class", ecdsa_information_class, "(janetls/ecdsa/information-class ecdsa)\n\n"
+    "Returns :public or :private depending on the components this key has."
     },
   {"ecdsa/curve-group", ecdsa_get_curve_group, "(janetls/ecdsa/curve-group ecdsa)\n\n"
     "Returns a keyword found in janetls/ecp/curve-groups."
@@ -222,6 +229,20 @@ static Janet ecdsa_is_public(int32_t argc, Janet * argv)
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
   return janet_wrap_boolean(ecdsa->information_class == janetls_pk_information_class_public);
+}
+
+static Janet ecdsa_information_class(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
+  return janetls_search_pk_information_class_to_janet(ecdsa->information_class);
+}
+
+static Janet ecdsa_type(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  (void)argv;
+  return janet_ckeywordv("ecdsa");
 }
 
 static Janet ecdsa_sign(int32_t argc, Janet * argv)

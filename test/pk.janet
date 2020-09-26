@@ -26,6 +26,20 @@
   (is (:verify public-ecdsa data sig {:encoding :hex}))
   )
 
+(deftest "RSA can be wrapped and behaves as if imported"
+  (def wrapped (pk/wrap rsa-key))
+  (def sig (:sign wrapped data {:encoding :hex}))
+  (is (:verify pk-rsa data sig {:encoding :hex}))
+  (is (:verify public-rsa data sig {:encoding :hex}))
+  )
+
+(deftest "ECDSA can be wrapped and behaves as if imported"
+  (def wrapped (pk/wrap ecdsa-key))
+  (def sig (:sign wrapped data {:encoding :hex}))
+  (is (:verify pk-ecdsa data sig {:encoding :hex}))
+  (is (:verify public-ecdsa data sig {:encoding :hex}))
+  )
+
 (deftest "RSA can encrypt and decrypt"
   (def ciphertext (:encrypt pk-rsa data {:encoding :hex}))
   (is (= data (:decrypt pk-rsa ciphertext {:encoding :hex})))

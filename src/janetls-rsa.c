@@ -32,6 +32,8 @@ static int rsa_gcmark(void * data, size_t len);
 static int rsa_get_fn(void * data, Janet key, Janet * out);
 static Janet rsa_is_private(int32_t argc, Janet * argv);
 static Janet rsa_is_public(int32_t argc, Janet * argv);
+static Janet rsa_information_class(int32_t argc, Janet * argv);
+static Janet rsa_type(int32_t argc, Janet * argv);
 static Janet rsa_sign(int32_t argc, Janet * argv);
 static Janet rsa_verify(int32_t argc, Janet * argv);
 static Janet rsa_encrypt(int32_t argc, Janet * argv);
@@ -64,6 +66,8 @@ static JanetAbstractType rsa_object_type = {
 static JanetMethod rsa_methods[] = {
   {"private?", rsa_is_private},
   {"public?", rsa_is_public},
+  {"information-class", rsa_information_class},
+  {"type", rsa_type},
   {"version", rsa_get_version},
   {"mask", rsa_get_mgf},
   {"digest", rsa_get_digest},
@@ -156,6 +160,9 @@ static const JanetReg cfuns[] =
     "Returns true when the key is a private information class.\n"
     "When true, it can perform only public operations, "
     "such as verify, and encrypt."
+    },
+  {"rsa/information-class", rsa_information_class, "(janetls/rsa/information-class rsa)\n\n"
+    "Returns :public or :private depending on the components this key has."
     },
   {"rsa/sign", rsa_sign, "(janetls/rsa/sign rsa data &opt alg)\n\n"
     "A Private key operation, sign the input data with the given key.\n"
@@ -277,6 +284,20 @@ static Janet rsa_is_public(int32_t argc, Janet * argv)
   janet_fixarity(argc, 1);
   janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
   return janet_wrap_boolean(rsa->information_class == janetls_pk_information_class_public);
+}
+
+static Janet rsa_information_class(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_rsa_object * rsa = janet_getabstract(argv, 0, &rsa_object_type);
+  return janetls_search_pk_information_class_to_janet(rsa->information_class);
+}
+
+static Janet rsa_type(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  (void)argv;
+  return janet_ckeywordv("rsa");
 }
 
 static Janet rsa_sign(int32_t argc, Janet * argv)
