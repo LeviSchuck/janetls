@@ -72,6 +72,25 @@ BEx5UsGrslr6Xdw7XTuYM5Ep0uRBh8vjWZGADgfYGoSGrPY91urDC548Rsw3MbbU
 3qKa3KXaKtNxurS/fwQkCQHeoIAy2aRltkFsaOfeghvX4kTQFAh7uLm+JV4xGrUU
 sjtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ="))
 
+(def rsa-private-pkcs1-pem
+"
+-----BEGIN RSA PRIVATE KEY-----\n
+MIICXAIBAAKBgQDkCGRwBG1j/WPjDO+nkQfKxhQDckktMjq9QBS7RUQ+Y5fFidpr\n
+kztiC8Y/JWGEKC6Z5Au/9chZrx0DeSoleiKtdVFQUvjvrgrVsamztTbnH5fkFZoX\n
+4lc/S0FgT3q9tys2k/nwY0jYvUO2EaBY2CnR/drdFS+iw+l0aIy9yxEQmQIDAQAB\n
+AoGAfJpFX5xbte6I/VFdRyANtPSljPiPGd4/kJgKfAYuczTyguN/8ZZjNYEfk/O2\n
+JIPcawTckskX8EGqxfIYYKArf7rzvlEQvXiFbN/znIOfgAL8JtB5bi5bO5PXUaqp\n
+iaAb5NQoZ+3O+T3etnxHORrpC7socZRtZIb9tQT2aLbHoDECQQDzgh3yBX0o998D\n
+l1aWi28kgZOhpSAqw6ZyWvwgC+qz69w9QXkT/E1Gxmfy9uex9z2DDR/nMTc1nt9Q\n
+kNtzrm4lAkEA77sK+DkUE8an+lZNFW8D5c/HsemVExOCF7VrZf1otTAP+Je9LAHB\n
+XV6VvCQyGrkR6IbkAxLWRJvOIL6+fyhsZQJBANEIBzC06YX7kaOBjEDbHONXoCWI\n
+nB5ZqU5NMFVKJYWhmIO06nzvfl6c/qqgrLAmrtUKtTI/G0eaQ9TjJJ8fQ0kCQBrB\n
+Ex5UsGrslr6Xdw7XTuYM5Ep0uRBh8vjWZGADgfYGoSGrPY91urDC548Rsw3MbbU3\n
+qKa3KXaKtNxurS/fwQkCQHeoIAy2aRltkFsaOfeghvX4kTQFAh7uLm+JV4xGrUUs\n
+jtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ=\n
+-----END RSA PRIVATE KEY-----
+")
+
 (def rsa-priv-pkcs8 (base64/decode
 "MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAOQIZHAEbWP9Y+MM
 76eRB8rGFANySS0yOr1AFLtFRD5jl8WJ2muTO2ILxj8lYYQoLpnkC7/1yFmvHQN5
@@ -88,10 +107,39 @@ qqCssCau1Qq1Mj8bR5pD1OMknx9DSQJAGsETHlSwauyWvpd3DtdO5gzkSnS5EGHy
 GW2QWxo596CG9fiRNAUCHu4ub4lXjEatRSyO0l+x5gbjgROTz6bcCPA2rmOaSGJ/
 xgZ4UELzDQp15A=="))
 
+(def rsa-private-pkcs8-pem
+"
+-----BEGIN PRIVATE KEY-----\n
+MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAOQIZHAEbWP9Y+MM\n
+76eRB8rGFANySS0yOr1AFLtFRD5jl8WJ2muTO2ILxj8lYYQoLpnkC7/1yFmvHQN5\n
+KiV6Iq11UVBS+O+uCtWxqbO1Nucfl+QVmhfiVz9LQWBPer23KzaT+fBjSNi9Q7YR\n
+oFjYKdH92t0VL6LD6XRojL3LERCZAgMBAAECgYB8mkVfnFu17oj9UV1HIA209KWM\n
++I8Z3j+QmAp8Bi5zNPKC43/xlmM1gR+T87Ykg9xrBNySyRfwQarF8hhgoCt/uvO+\n
+URC9eIVs3/Ocg5+AAvwm0HluLls7k9dRqqmJoBvk1Chn7c75Pd62fEc5GukLuyhx\n
+lG1khv21BPZotsegMQJBAPOCHfIFfSj33wOXVpaLbySBk6GlICrDpnJa/CAL6rPr\n
+3D1BeRP8TUbGZ/L257H3PYMNH+cxNzWe31CQ23OubiUCQQDvuwr4ORQTxqf6Vk0V\n
+bwPlz8ex6ZUTE4IXtWtl/Wi1MA/4l70sAcFdXpW8JDIauRHohuQDEtZEm84gvr5/\n
+KGxlAkEA0QgHMLTphfuRo4GMQNsc41egJYicHlmpTk0wVUolhaGYg7TqfO9+Xpz+\n
+qqCssCau1Qq1Mj8bR5pD1OMknx9DSQJAGsETHlSwauyWvpd3DtdO5gzkSnS5EGHy\n
++NZkYAOB9gahIas9j3W6sMLnjxGzDcxttTeoprcpdoq03G6tL9/BCQJAd6ggDLZp\n
+GW2QWxo596CG9fiRNAUCHu4ub4lXjEatRSyO0l+x5gbjgROTz6bcCPA2rmOaSGJ/\n
+xgZ4UELzDQp15A==\n
+-----END PRIVATE KEY-----
+")
+
 (def rsa-pub-key (base64/decode
 "MIGJAoGBAOQIZHAEbWP9Y+MM76eRB8rGFANySS0yOr1AFLtFRD5jl8WJ2muTO2IL
 xj8lYYQoLpnkC7/1yFmvHQN5KiV6Iq11UVBS+O+uCtWxqbO1Nucfl+QVmhfiVz9L
 QWBPer23KzaT+fBjSNi9Q7YRoFjYKdH92t0VL6LD6XRojL3LERCZAgMBAAE="))
+
+(def rsa-public-pkcs1-pem
+"
+-----BEGIN RSA PUBLIC KEY-----\n
+MIGJAoGBAOQIZHAEbWP9Y+MM76eRB8rGFANySS0yOr1AFLtFRD5jl8WJ2muTO2IL\n
+xj8lYYQoLpnkC7/1yFmvHQN5KiV6Iq11UVBS+O+uCtWxqbO1Nucfl+QVmhfiVz9L\n
+QWBPer23KzaT+fBjSNi9Q7YRoFjYKdH92t0VL6LD6XRojL3LERCZAgMBAAE=\n
+-----END RSA PUBLIC KEY-----
+")
 
 (def rsa-pub-pkcs8 (base64/decode
 "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDkCGRwBG1j/WPjDO+nkQfKxhQD
@@ -99,10 +147,29 @@ ckktMjq9QBS7RUQ+Y5fFidprkztiC8Y/JWGEKC6Z5Au/9chZrx0DeSoleiKtdVFQ
 UvjvrgrVsamztTbnH5fkFZoX4lc/S0FgT3q9tys2k/nwY0jYvUO2EaBY2CnR/drd
 FS+iw+l0aIy9yxEQmQIDAQAB"))
 
+(def rsa-public-pkcs8-pem
+"
+-----BEGIN PUBLIC KEY-----\n
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDkCGRwBG1j/WPjDO+nkQfKxhQD\n
+ckktMjq9QBS7RUQ+Y5fFidprkztiC8Y/JWGEKC6Z5Au/9chZrx0DeSoleiKtdVFQ\n
+UvjvrgrVsamztTbnH5fkFZoX4lc/S0FgT3q9tys2k/nwY0jYvUO2EaBY2CnR/drd\n
+FS+iw+l0aIy9yxEQmQIDAQAB\n
+-----END PUBLIC KEY-----
+")
+
 (def ec-private-sec1 (base64/decode
 "MHcCAQEEIH4et747bbOv+eLWNSW01tr9zuYSYGSjBT6T4NTpNTLYoAoGCCqGSM4
 9AwEHoUQDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0wEYF/pxNtkoMO4CzC+XtZWh
 RVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ=="))
+
+(def ec-private-sec1-pem
+"
+-----BEGIN EC PRIVATE KEY-----\n
+MHcCAQEEIH4et747bbOv+eLWNSW01tr9zuYSYGSjBT6T4NTpNTLYoAoGCCqGSM49\n
+AwEHoUQDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0wEYF/pxNtkoMO4CzC+XtZWhR\n
+VMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
+-----END EC PRIVATE KEY-----
+")
 
 # There is no public sec1 key..
 
@@ -111,9 +178,24 @@ RVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ=="))
 JbTW2v3O5hJgZKMFPpPg1Ok1MtihRANCAASXL8Qz6UTn3TvME3BjLZBDpRUpALTA
 RgX+nE22Sgw7gLML5e1laFFUyyC189o6BwJvkRqYNdhXrwi6z2/tVn2N"))
 
+(def ec-private-pkcs8-pem
+"-----BEGIN PRIVATE KEY-----\n
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgfh63vjtts6/54tY1\n
+JbTW2v3O5hJgZKMFPpPg1Ok1MtihRANCAASXL8Qz6UTn3TvME3BjLZBDpRUpALTA\n
+RgX+nE22Sgw7gLML5e1laFFUyyC189o6BwJvkRqYNdhXrwi6z2/tVn2N\n
+-----END PRIVATE KEY-----
+")
+
 (def ec-public-pkcs8 (base64/decode
 "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0
 wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ=="))
+
+(def ec-public-pkcs8-pem
+"-----BEGIN PUBLIC KEY-----\n
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0\n
+wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
+-----END PUBLIC KEY-----
+")
 
 
 (deftest "rsa public export is identical"
@@ -153,14 +235,47 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ=="))
   (is (= der ec-private-pkcs8))
   )
 
-  (deftest "ec public export is identical"
-    (def asn1-private-key (asn1/decode ec-private-sec1))
-    (def {:value [_ {:value d} {:value [{:value oid}]} ]} asn1-private-key)
-    (def curve (oid/to-curve oid))
-    (def priv (pk/import {:d d :curve-group curve :type :ecdsa}))
-    (def exported (pk/export-public priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
-    (def {:der der} exported)
-    (is (= der ec-public-pkcs8))
-    )
+(deftest "ec public export is identical"
+  (def asn1-private-key (asn1/decode ec-private-sec1))
+  (def {:value [_ {:value d} {:value [{:value oid}]} ]} asn1-private-key)
+  (def curve (oid/to-curve oid))
+  (def priv (pk/import {:d d :curve-group curve :type :ecdsa}))
+  (def exported (pk/export-public priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (def {:der der} exported)
+  (is (= der ec-public-pkcs8))
+  )
+
+(deftest "pem export is identical"
+  # RSA
+  (def asn1-private-key (asn1/decode rsa-priv-key))
+  (def {:value [_ {:value n} {:value e} {:value d} {:value p} {:value q}]} asn1-private-key)
+  (def priv (pk/import {:n n :e e :d d :p p :q q :type :rsa}))
+  (def {:pem pem} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :pem}))
+  (is (= rsa-private-pkcs8-pem pem))
+
+  (def {:pem pem} (pk/export-private priv {:export-standard :pkcs1 :export-format :encoded :export-encoding :pem}))
+  (is (= rsa-private-pkcs1-pem pem))
+
+  (def {:pem pem} (pk/export-public priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :pem}))
+  (is (= rsa-public-pkcs8-pem pem))
+
+  (def {:pem pem} (pk/export-public priv {:export-standard :pkcs1 :export-format :encoded :export-encoding :pem}))
+  (is (= rsa-public-pkcs1-pem pem))
+
+  # EC
+  (def asn1-private-key (asn1/decode ec-private-sec1))
+  (def {:value [_ {:value d} {:value [{:value oid}]} ]} asn1-private-key)
+  (def curve (oid/to-curve oid))
+  (def priv (pk/import {:d d :curve-group curve :type :ecdsa}))
+
+  (def {:pem pem} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :pem}))
+  (is (= ec-private-pkcs8-pem pem))
+
+  (def {:pem pem} (pk/export-private priv {:export-standard :sec1 :export-format :encoded :export-encoding :pem}))
+  (is (= ec-private-sec1-pem pem))
+
+  (def {:pem pem} (pk/export-public priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :pem}))
+  (is (= ec-public-pkcs8-pem pem))
+)
 
 (run-tests!)

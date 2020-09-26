@@ -88,12 +88,12 @@
 
 (defn- pk/to-pem-type [kind standard information-class] (case [kind information-class standard]
   [:rsa :public :pkcs1] "RSA PUBLIC KEY"
-  [:rsa :private :pkcs1] "RSA PUBLIC KEY"
+  [:rsa :private :pkcs1] "RSA PRIVATE KEY"
   [:rsa :public :pkcs8] "PUBLIC KEY"
-  [:rsa :private :pkcs8] "PUBLIC KEY"
-  [:ecdsa :private :sec1] "EC PUBLIC KEY"
+  [:rsa :private :pkcs8] "PRIVATE KEY"
+  [:ecdsa :private :sec1] "EC PRIVATE KEY"
   [:ecdsa :public :pkcs8] "PUBLIC KEY"
-  [:ecdsa :private :pkcs8] "PUBLIC KEY"
+  [:ecdsa :private :pkcs8] "PRIVATE KEY"
   (errorf "Unable to match PEM type from parameters %p %p %p" kind standard information-class)
   ))
 
@@ -195,7 +195,7 @@
       (def der (pk/to-der components kind standard information-class))
       (cond
         (= :der encoding) (put result :der der)
-        (= :pem encoding) (put result :pem (error "not implemented"))
+        (= :pem encoding) (put result :pem (pem/encode {:name (pk/to-pem-type kind standard information-class) :body der}))
         (errorf "expected :pem or :der but got %p" encoding)
         )
     )

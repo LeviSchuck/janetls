@@ -75,5 +75,5 @@
   (def pem-header (if headers (buffer (string/join (map pem/encode-header (pairs headers)) "\n") "\n\n")))
   (def ascii-armor-checksum (if checksum (buffer "\n" checksum)))
   (def pem-body (string/join (util/chunk (base64/encode body) 64) "\n"))
-  (buffer "-----BEGIN " name "-----\n" pem-header pem-body ascii-armor-checksum "\n-----END " name "-----")
+  (freeze (buffer "-----BEGIN " name "-----\n" pem-header pem-body ascii-armor-checksum "\n-----END " name "-----"))
   )
