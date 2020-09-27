@@ -28,7 +28,7 @@
 #include <ctype.h>
 #include <inttypes.h>
 
-//#define PRINT_TRACE_EVERYTHING
+// #define PRINT_TRACE_EVERYTHING
 
 static int parse_length(asn1_parser * parser, uint64_t * length);
 static int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed);
@@ -392,6 +392,9 @@ static int decode_base127_as_u64(asn1_parser * parser, uint64_t * external_resul
 
     if (parser->position >= parser->length)
     {
+      #ifdef PRINT_TRACE_EVERYTHING
+      janet_eprintf("decode base127 incomplete length\n");
+      #endif
       return JANETLS_ERR_ASN1_INCOMPLETE;
     }
 
@@ -484,8 +487,14 @@ cleanup:
 
 static int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed)
 {
+  #ifdef PRINT_TRACE_EVERYTHING
+  janet_eprintf("parse header at position %d\n", parser->position);
+  #endif
   if (parser->position >= parser->length)
   {
+    #ifdef PRINT_TRACE_EVERYTHING
+    janet_eprintf("parse header incomplete\n");
+    #endif
     return JANETLS_ERR_ASN1_INCOMPLETE;
   }
   int ret = 0;
@@ -548,6 +557,11 @@ static int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed)
   parsed->value_length = value_length;
   parsed->asn1_universal_type = universal_type;
 
+  #ifdef PRINT_TRACE_EVERYTHING
+  size_t tag_position = tag_start - (parser->buffer);
+  janet_eprintf("parse header %p at position %d:%d+%d\n", janetls_search_asn1_universal_type_to_janet(universal_type), tag_position, parsed->header_length, value_length);
+  #endif
+
 end:
   return ret;
 }
@@ -579,6 +593,9 @@ static int parse_length(asn1_parser * parser, uint64_t * length)
 {
   if (parser->position >= parser->length)
   {
+    #ifdef PRINT_TRACE_EVERYTHING
+    janet_eprintf("parse length incomplete length\n");
+    #endif
     return JANETLS_ERR_ASN1_INCOMPLETE;
   }
   uint64_t internal_length = 0;
@@ -598,6 +615,9 @@ static int parse_length(asn1_parser * parser, uint64_t * length)
     {
       if (parser->position >= parser->length)
       {
+        #ifdef PRINT_TRACE_EVERYTHING
+        janet_eprintf("parse length incomplete length\n");
+        #endif
         return JANETLS_ERR_ASN1_INCOMPLETE;
       }
 
@@ -623,8 +643,14 @@ static int decode_asn1_construction(asn1_parser * parser, Janet * output, size_t
   int ret = 0;
   int count = 0;
   size_t end_position = parser->position + length;
+  #ifdef PRINT_TRACE_EVERYTHING
+  janet_eprintf("Iterating construction at position %d, length is %d\n", parser->position, length);
+  #endif
   while (parser->position < end_position)
   {
+    #ifdef PRINT_TRACE_EVERYTHING
+    janet_eprintf("Next construction element at position %d, end position %d\n", parser->position, end_position);
+    #endif
     Janet result = janet_wrap_nil();
     ret = decode_asn1(parser, &result);
     if (ret != 0) goto end;
@@ -756,8 +782,9 @@ static int decode_asn1(asn1_parser * parser, Janet * output)
         goto end;
       }
       type_keyword = "bit-string";
-      if (parser->flags & ASN1_FLAG_EAGER_PARSE)
+      if ((parser->flags & ASN1_FLAG_EAGER_PARSE) && *(tag.value_start) == 0)
       {
+        // If there are unused bits, then this isn't an asn1 structure
         sub_value = 1;
       }
       break;
@@ -788,6 +815,9 @@ static int decode_asn1(asn1_parser * parser, Janet * output)
       size_t end_position = tag.value_position + tag.value_length;
       if (end_position > parser->length)
       {
+        #ifdef PRINT_TRACE_EVERYTHING
+        janet_eprintf("decode asn1 oid incomplete length\n");
+        #endif
         ret = JANETLS_ERR_ASN1_INCOMPLETE;
         goto end;
       }
@@ -968,6 +998,9 @@ static int decode_asn1(asn1_parser * parser, Janet * output)
     Janet nested_value;
     // Rewind to the tag value start position to continue decoding
     parser->position = tag.value_position;
+    #ifdef PRINT_TRACE_EVERYTHING
+    janet_eprintf("Tag is constructed, diving in\n");
+    #endif
     ret = decode_asn1_construction(parser, &nested_value, tag.value_length);
     // Fast forward to end of content
     parser->position = tag.value_position + tag.value_length;
@@ -984,6 +1017,9 @@ static int decode_asn1(asn1_parser * parser, Janet * output)
 
   if (sub_value)
   {
+    #ifdef PRINT_TRACE_EVERYTHING
+    janet_eprintf("Sub value is possible\n");
+    #endif
     // A sub value is POSSIBLE. Not Guaranteed.
     // When we try to decode an ASN.1 document, it may fail!
     // When we fail, we should not fail this document.
@@ -992,15 +1028,36 @@ static int decode_asn1(asn1_parser * parser, Janet * output)
 
     parser->position = tag.value_position;
     parser->length = tag.value_position + tag.value_length;
+    size_t sub_length = tag.value_length;
 
+    if (tag.asn1_universal_type == janetls_asn1_universal_type_bit_string)
+    {
+      // skip the first byte
+      parser->position++;
+      sub_length--;
+      #ifdef PRINT_TRACE_EVERYTHING
+      janet_eprintf("This field is a bit string, the first byte is being skipped, position is %d, length is %d\n", parser->position, tag.value_length);
+      janet_eprintf("The first byte now is.. %02x%02x, last is %02x%02x%02x%02x\n", parser->buffer[parser->position], parser->buffer[parser->position + 1], parser->buffer[parser->length - 3], parser->buffer[parser->length - 2], parser->buffer[parser->length - 1], parser->buffer[parser->length]);
+      #endif
+      // parser->length++;
+    }
 
     Janet nested_value;
-    int sub_ret = decode_asn1_construction(parser, &nested_value, tag.value_length);
+    int sub_ret = decode_asn1_construction(parser, &nested_value, sub_length);
 
     if (sub_ret == 0)
     {
       // Decoding succeded!
       value = nested_value;
+    }
+    else
+    {
+      #ifdef PRINT_TRACE_EVERYTHING
+      janet_eprintf("The sub parse failed\n");
+      janet_eprintf("The failure reason is %04x\n", sub_ret);
+      #else
+      (void)nested_value;
+      #endif
     }
 
     // Restore position data
