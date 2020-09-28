@@ -219,14 +219,199 @@
   :export-public pk/export-public
   })
 
+(def- zero (bignum/parse 0))
+(def- one (bignum/parse 1))
+(defn- bignum? [b] (= :janetls/bignum (type b)))
+
+(defn- pk/match-pkcs1-private [key] (match key
+  ({:value [
+    {:value version :type :integer}
+    {:value n :type :integer}
+    {:value e :type :integer}
+    {:value d :type :integer}
+    {:value p :type :integer}
+    {:value q :type :integer}
+    {:value _ :type :integer}
+    {:value _ :type :integer}
+    {:value _ :type :integer}
+  ] :type :sequence}
+    (and (= version zero) (bignum? n) (bignum? e) (bignum? d) (bignum? p) (bignum? q)))
+    {:n n :e e :d d :p p :q q :type :rsa :information-class :private}
+  _ nil
+  ))
+
+(defn- pk/match-pkcs1-public [key] (match key
+  ({:value [
+    {:value n :type :integer}
+    {:value e :type :integer}
+    ] :type :sequence} (and (bignum? n) (bignum? e) (= 2 (length (key :value)))))
+    {:n n :e e :type :rsa :information-class :public}
+  _ nil
+  ))
+
+(defn- pk/match-sec1-private [key] (match key
+  ({:value [
+    {:value version :type :integer}
+    {:value d :type :octet-string}
+    {:tag 0 :value [
+      {:value curve-group :type :object-identifier}
+      ] :constructed true :type :context-specific}
+    {:tag 1 :value [
+      {:value p :type :bit-string :bits _}
+      ] :constructed true :type :context-specific}
+    ] :type :sequence} (= one version))
+  (let [curve-group (oid/to-curve curve-group)]
+    (if curve-group
+      { :d d
+        :p p
+        :curve-group curve-group
+        :type :ecdsa
+        :information-class :private}))
+  # Without curve, With public key (likely pkcs8 wrapped)
+  ({:value [
+    {:value version :type :integer}
+    {:value d :type :octet-string}
+    {:tag 1 :value [
+      {:value p :type :bit-string :bits _}
+      ] :constructed true :type :context-specific}
+    ] :type :sequence} (= one version))
+  { :d d
+    :p p
+    :information-class :private}
+  # With curve, Without public key
+  ({:value [
+    {:value version :type :integer}
+    {:value d :type :octet-string}
+    {:tag 0 :value [
+      {:value curve-group :type :object-identifier}
+      ] :constructed true :type :context-specific}
+    ] :type :sequence} (and (= one version) (= 3 (length (key :value)))))
+  (let [curve-group (oid/to-curve curve-group)]
+    (if curve-group
+      { :d d
+        :curve-group curve-group
+        :type :ecdsa
+        :information-class :private}))
+    # Withoutcurve, Without public key (likely pkcs8 wrapped)
+  ({:value [
+    {:value version :type :integer}
+    {:value d :type :octet-string}
+    ] :type :sequence} (and (= one version) (= 2 (length (key :value)))))
+  { :d d
+    :information-class :private}
+  _ nil
+))
+
+(defn- pk/match-pcks8-private [key] (match key
+  ({:value [
+    {:value version :type :integer}
+    {:value [
+      {:value oid-type :type :object-identifier}
+      option
+      ] :type :sequence}
+    {:value [inner-value] :type :octet-string}
+    ] :type :sequence} (= version zero))
+  (match [oid-type option]
+    # RSA
+    [[1 2 840 113549 1 1 1] {:type :null}]
+    (pk/match-pkcs1-private inner-value)
+    # ECDSA
+    [[1 2 840 10045 2 1] {:value curve-group :type :object-identifier}]
+    (let [
+      curve-group (oid/to-curve curve-group)
+      components (pk/match-sec1-private inner-value)]
+      (if (and curve-group components)
+        (freeze (merge components {:type :ecdsa :curve-group curve-group}))
+        ))
+    _ nil
+  )
+  _ nil
+  ))
+
+(defn- pk/match-pcks8-public [key] (match key
+  {:value [
+    {:value [
+      {:value oid-type :type :object-identifier}
+      option
+      ] :type :sequence}
+    {:value inner-value :type :bit-string :bits _}
+    ] :type :sequence}
+  (match [oid-type option]
+    # RSA - should have an eager parsed element
+    # Hence we unwrap it
+    [[1 2 840 113549 1 1 1] {:type :null}]
+    (let [[inner-value] inner-value] (pk/match-pkcs1-public inner-value))
+    # ECDSA - It's an opaque binary, should be the public point.
+    [[1 2 840 10045 2 1] {:value curve-group :type :object-identifier}]
+    (let [curve-group (oid/to-curve curve-group)]
+      (if (and curve-group (string? inner-value))
+        {:type :ecdsa :curve-group curve-group :p inner-value :information-class :public}
+        ))
+    _ nil
+  )
+  _ nil
+  ))
+
+
+(defn pk/asn1-to-components [asn1] (or
+  (pk/match-pkcs1-private asn1)
+  (pk/match-pkcs1-public asn1)
+  (pk/match-pcks8-private asn1)
+  (pk/match-pcks8-public asn1)
+  (pk/match-sec1-private asn1)
+  ))
+
 (defn pk/import [key]
   (def kind (key :type))
-  (def key (cond
-    (= :rsa kind) (rsa/import key)
-    (= :ecdsa kind) (ecdsa/import key)
-    (errorf "Could not determine type, should be :rsa or :ecdsa but got %p" kind)
+  # only used in der and pem
+  (def body (or (key :der) (key :pem)))
+  (def kind (if kind
+    (case kind
+      :rsa :rsa
+      :ecdsa :ecdsa
+      (errorf ":type %p is not supported" kind))
+    (cond
+      (key :der) :der
+      (key :pem) :pem
+      (error "No :type was found, could not find :der or :pem either.")
+      )))
+  (def imported (case kind
+    :rsa (rsa/import key)
+    :ecdsa (ecdsa/import key)
+    :der (do
+      (def asn1 (asn1/decode (key :der) :eager-parse))
+      (def components (pk/asn1-to-components asn1))
+      (if (not components) (error "Could not decode DER into a known key type"))
+      ((pk/import components) :key)
+      )
+    :pem (do
+      (def pem (pem/decode (key :pem)))
+      (if (not pem) (error "PEM could not be decoded"))
+      (def [pem] pem)
+      (def {:name name :body body} pem)
+      (def asn1 (asn1/decode body))
+      (def components (case name
+        "RSA PRIVATE KEY" (pk/match-pkcs1-private asn1)
+        "RSA PUBLIC KEY" (pk/match-pkcs1-public asn1)
+        "PRIVATE KEY" (pk/match-pcks8-private asn1)
+        "PUBLIC KEY" (pk/match-pcks8-public asn1)
+        "EC PRIVATE KEY" (pk/match-sec1-private asn1)
+        (errorf "Pem type %p not supported" name)
+        ))
+      (if (not components) (errorf "PEM %p did not match expected ASN.1 structure" name))
+      ((pk/import components) :key)
+      )
+    (errorf "Could not determine type, should be :rsa, :ecdsa, :der, or :pem but got %p" kind)
   ))
-  (table/setproto @{:key key :type kind :information-class (:information-class key)} PK-Prototype)
+  (def kind (if (cfunction? (imported :type)) (:type imported) (imported :type)))
+  (def information-class (if (cfunction?
+    (imported :information-class))
+    (:information-class imported)
+    (imported :information-class)))
+  (def result @{:key imported :type kind :information-class information-class})
+  (if (= :rsa kind) (put result :version (:version imported)))
+  (if (= :ecdsa kind) (put result :curve-group (:curve-group imported)))
+  (table/setproto result PK-Prototype)
   )
 
 (defn pk/wrap [key]

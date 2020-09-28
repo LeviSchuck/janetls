@@ -782,10 +782,29 @@ static int decode_asn1(asn1_parser * parser, Janet * output)
         goto end;
       }
       type_keyword = "bit-string";
-      if ((parser->flags & ASN1_FLAG_EAGER_PARSE) && *(tag.value_start) == 0)
+      if ((parser->flags & ASN1_FLAG_EAGER_PARSE))
       {
-        // If there are unused bits, then this isn't an asn1 structure
-        sub_value = 1;
+        if (*(tag.value_start) == 0)
+        {
+          // If there are unused bits, then this isn't an asn1 structure
+          sub_value = 1;
+        }
+        else
+        {
+          #ifdef PRINT_TRACE_EVERYTHING
+          janet_eprintf("Rejected sub value, first byte is %d\n",*(tag.value_start));
+          #else
+          (void)sub_value;
+          #endif
+        }
+      }
+      else
+      {
+        #ifdef PRINT_TRACE_EVERYTHING
+        janet_eprintf("Eager parse is not enabled.\n");
+        #else
+        (void)sub_value;
+        #endif
       }
       break;
     }

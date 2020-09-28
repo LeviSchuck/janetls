@@ -1,6 +1,8 @@
 (import testament :prefix "" :exit true)
 (import ../janetls :exit true :prefix "")
 
+(setdyn :pretty-format "%.99N")
+
 (def ecdsa-key (ecdsa/generate))
 (def rsa-key (rsa/generate))
 (def pk-rsa (pk/import (rsa/export-private rsa-key)))
@@ -208,6 +210,20 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
 
   (def {:der der} (pk/export-public pub {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
   (is (= der rsa-pub-pkcs8))
+
+  (def pub (pk/import {:der rsa-pub-key}))
+  (def {:der der} (pk/export-public pub {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der rsa-pub-pkcs8))
+
+  (def pub (pk/import {:der rsa-pub-pkcs8}))
+  (def {:der der} (pk/export-public pub {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der rsa-pub-pkcs8))
+
+  (def pub (pk/import {:pem rsa-public-pkcs1-pem}))
+  (def {:der der} (pk/export-public pub {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der rsa-pub-pkcs8))
+  (def {:pem pem} (pk/export-public pub {:export-standard :pkcs1 :export-format :encoded :export-encoding :pem}))
+  (is (= pem rsa-public-pkcs1-pem))
   )
 
 (deftest "rsa private export is identical"
@@ -220,6 +236,20 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
 
   (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
   (is (= der rsa-priv-pkcs8))
+
+  (def priv (pk/import {:der rsa-priv-key}))
+  (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der rsa-priv-pkcs8))
+
+  (def priv (pk/import {:der rsa-priv-pkcs8}))
+  (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der rsa-priv-pkcs8))
+
+  (def priv (pk/import {:pem rsa-private-pkcs1-pem}))
+  (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der rsa-priv-pkcs8))
+  (def {:pem pem} (pk/export-private priv {:export-standard :pkcs1 :export-format :encoded :export-encoding :pem}))
+  (is (= pem rsa-private-pkcs1-pem))
   )
 
 (deftest "ec private export is identical"
@@ -233,6 +263,20 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
 
   (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
   (is (= der ec-private-pkcs8))
+
+  (def priv (pk/import {:der ec-private-sec1}))
+  (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der ec-private-pkcs8))
+
+  (def priv (pk/import {:der ec-private-pkcs8}))
+  (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der ec-private-pkcs8))
+
+  (def priv (pk/import {:pem ec-private-sec1-pem}))
+  (def {:der der} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (is (= der ec-private-pkcs8))
+  (def {:pem pem} (pk/export-private priv {:export-standard :sec1 :export-format :encoded :export-encoding :pem}))
+  (is (= pem ec-private-sec1-pem))
   )
 
 (deftest "ec public export is identical"
@@ -240,6 +284,16 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
   (def {:value [_ {:value d} {:value [{:value oid}]} ]} asn1-private-key)
   (def curve (oid/to-curve oid))
   (def priv (pk/import {:d d :curve-group curve :type :ecdsa}))
+  (def exported (pk/export-public priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (def {:der der} exported)
+  (is (= der ec-public-pkcs8))
+
+  (def priv (pk/import {:der ec-public-pkcs8}))
+  (def exported (pk/export-public priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
+  (def {:der der} exported)
+  (is (= der ec-public-pkcs8))
+
+  (def priv (pk/import {:pem ec-public-pkcs8-pem}))
   (def exported (pk/export-public priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :der}))
   (def {:der der} exported)
   (is (= der ec-public-pkcs8))
