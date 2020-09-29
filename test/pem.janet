@@ -40,15 +40,15 @@ oCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k\n
   "\nComments after\n\n\n"
   ))
 
-(def expected-ec-key @{
+(def expected-ec-key {
   :name "PUBLIC KEY"
   :body (base64/decode "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0\nwEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==")
   })
 
 
-(def expected-pgp-example @{
+(def expected-pgp-example {
   :name "PGP SIGNATURE"
-  :headers @{
+  :headers {
     "Version" "GnuPG v0.9.7 (GNU/Linux)"
     "Comment" "For info see http://www.gnupg.org"
     }
@@ -57,16 +57,16 @@ oCoAoOuqpRqEzr4kOkQqHRLE/b8/Rw2k\n
   })
 
 (deftest "Examples parse as expected" (do
-  (is (deep= @[expected-ec-key] (pem/decode ec-key)))
-  (is (deep= @[expected-pgp-example] (pem/decode pgp-example)))
-  (is (deep= @[expected-ec-key expected-pgp-example] (pem/decode combined)))
+  (is (deep= [expected-ec-key] (pem/decode ec-key)))
+  (is (deep= [expected-pgp-example] (pem/decode pgp-example)))
+  (is (deep= [expected-ec-key expected-pgp-example] (pem/decode combined)))
   ))
 
 (deftest "Examples encode as expected" (do
-  (is (deep= (buffer ec-key) (pem/encode expected-ec-key)))
+  (is (deep= ec-key (pem/encode expected-ec-key)))
   (is (or
-    (deep= (buffer pgp-example) (pem/encode expected-pgp-example))
-    (deep= (buffer pgp-example2) (pem/encode expected-pgp-example))
+    (deep= pgp-example (pem/encode expected-pgp-example))
+    (deep= pgp-example2 (pem/encode expected-pgp-example))
     ))
   ))
 

@@ -55,7 +55,7 @@
   [str]
   (def result (peg/match pem-grammar str))
   (def pems (if (= nil result) @[] [;result]))
-  (map pem/base64-parse pems)
+  (freeze (map pem/base64-parse pems))
   )
 
 (defn- pem/encode-header [[k v]] (buffer k ": " v))
