@@ -422,3 +422,22 @@
     (errorf "Could not determine type, should be janetls/rsa or janetls/ecdsa but got %p" (type key)))
   (table/setproto @{:key key :type kind :information-class (:information-class key)} PK-Prototype)
   )
+
+# An enhancement may be to provide access to the other portions of the
+# generation functions.
+# For example, rsa has versions, digests, mask generation function in a tables.
+# ECDSA has a digest as an additional option.
+
+(defn pk/generate [&opt kind option]
+  (default kind :rsa)
+  (case kind
+    :rsa (do
+      (default option 2048)
+      (pk/wrap (rsa/generate {:bits option}))
+      )
+    :ecdsa (do
+      (default option :secp256r1)
+      (pk/wrap (ecdsa/generate option))
+      )
+    (errorf "Expected :rsa or :ecdsa but got %p" kind)
+    ))

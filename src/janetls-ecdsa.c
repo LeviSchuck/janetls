@@ -865,7 +865,13 @@ static Janet ecdsa_generate(int32_t argc, Janet * argv)
   else if (janet_is_byte_typed(argv[0]))
   {
     janetls_ecp_curve_group curve_group;
-    check_result(janetls_search_ecp_curve_group(argv[0], &curve_group));
+    int ret = janetls_search_ecp_curve_group(argv[0], &curve_group);
+    if (ret == JANETLS_ERR_SEARCH_OPTION_NOT_FOUND
+      || ret == JANETLS_ERR_SEARCH_OPTION_INPUT_INVALID_TYPE)
+    {
+      janet_panicf("Could not find a group for %p, see (janetls/ecp/curve-groups) for options", argv[0]);
+    }
+    check_result(ret);
     group = janetls_ecp_load_curve_group(curve_group);
   }
   else if ((group = janet_checkabstract(argv[0], janetls_ecp_group_object_type())))

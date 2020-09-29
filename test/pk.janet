@@ -332,4 +332,25 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
   (is (= ec-public-pkcs8-pem pem))
 )
 
+(defn ck [key]
+  (def sig (:sign key data))
+  (is sig)
+  (is (:verify key data sig))
+  )
+
+(deftest "Generating is fine"
+  (ck (pk/generate))
+  (ck (pk/generate :rsa))
+  (ck (pk/generate :rsa 1024))
+  (ck (pk/generate :rsa 2048))
+  (ck (pk/generate :ecdsa))
+  (ck (pk/generate :ecdsa :secp192r1))
+  (ck (pk/generate :ecdsa :secp256r1))
+  (ck (pk/generate :ecdsa :secp384r1))
+  (ck (pk/generate :ecdsa :secp521r1))
+  (assert-thrown (pk/generate :rsa "hello"))
+  (assert-thrown (pk/generate :rsa 1025))
+  (assert-thrown (pk/generate :ecdsa :secp521k1))
+  )
+
 (run-tests!)
