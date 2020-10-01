@@ -7,11 +7,11 @@
 # S E T U P
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # private.key file with (the same contents as ec-private below)
-# -----BEGIN RSA PRIVATE KEY-----
+# -----BEGIN EC PRIVATE KEY-----
 # MHcCAQEEIH4et747bbOv+eLWNSW01tr9zuYSYGSjBT6T4NTpNTLYoAoGCCqGSM4
 # 9AwEHoUQDQgAEly/EM+lE5907zBNwYy2QQ6UVKQC0wEYF/pxNtkoMO4CzC+XtZWh
 # RVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==
-# -----END RSA PRIVATE KEY-----
+# -----END EC PRIVATE KEY-----
 #
 # To get the public key
 # openssl ec -in private.key -pubout -out public.pem

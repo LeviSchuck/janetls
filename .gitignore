@@ -1,5 +1,5 @@
 build
 scratchpad.txt
 .vscode
-crash.janet
+crash*.janet
 scratchfolder

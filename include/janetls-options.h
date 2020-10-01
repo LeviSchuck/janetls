@@ -51,7 +51,7 @@ JANETLS_SEARCH_OPTION_FORWARD_DECLARE(pk_information_class, janetls_pk_informati
 typedef enum janetls_pk_key_type
 {
   janetls_pk_key_type_rsa,
-  janetls_pk_key_type_ec,
+  janetls_pk_key_type_ecdsa,
 } janetls_pk_key_type;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(pk_key_type, janetls_pk_key_type)
@@ -210,11 +210,13 @@ typedef enum janetls_ecp_curve_group
   janetls_ecp_curve_group_bp256r1, // Brainpool 256bit
   janetls_ecp_curve_group_bp384r1, // Brainpool 384bit
   janetls_ecp_curve_group_bp512r1, // Brainpool 512bit
-  janetls_ecp_curve_group_curve25519, // Curve25519
   janetls_ecp_curve_group_secp192k1, // Koblitz
   janetls_ecp_curve_group_secp224k1, // Koblitz
   janetls_ecp_curve_group_secp256k1, // Koblitz
-  janetls_ecp_curve_group_curve448, // Curve448
+  janetls_ecp_curve_group_x25519, // Curve25519
+  janetls_ecp_curve_group_x448, // Curve448
+  janetls_ecp_curve_group_ed25519, // Curve25519
+  janetls_ecp_curve_group_ed448, // Curve448
 } janetls_ecp_curve_group;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(ecp_curve_group, janetls_ecp_curve_group)

@@ -3,6 +3,7 @@
 # https://github.com/pyrmont/testament/blob/master/api.md
 (import ../janetls :exit true :prefix "")
 
+(setdyn :pretty-format "%.99N")
 
 (def five (bignum/parse 5))
 
@@ -41,6 +42,12 @@ BEx5UsGrslr6Xdw7XTuYM5Ep0uRBh8vjWZGADgfYGoSGrPY91urDC548Rsw3MbbU
 3qKa3KXaKtNxurS/fwQkCQHeoIAy2aRltkFsaOfeghvX4kTQFAh7uLm+JV4xGrUU
 sjtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ="))
 
+(def rsa-pub-pkcs8-key (base64/decode
+"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDkCGRwBG1j/WPjDO+nkQfKxhQD
+ckktMjq9QBS7RUQ+Y5fFidprkztiC8Y/JWGEKC6Z5Au/9chZrx0DeSoleiKtdVFQ
+UvjvrgrVsamztTbnH5fkFZoX4lc/S0FgT3q9tys2k/nwY0jYvUO2EaBY2CnR/drd
+FS+iw+l0aIy9yxEQmQIDAQAB"))
+
 (def rsa-key-json [
   "0"
   "160130065517131389311344861145589848370959233533492526527506806257632158161956866978965544486311181725659944465317576320271788371253085185156632919863850842571131863281257875796540238614704909618203514071942012433027603660426789715885659507750104298441589289165587947230177847758528357237225001175279364804761"
@@ -66,6 +73,14 @@ sjtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ="))
   ]
   :type :sequence
 })
+
+(def rsa-pub-pkcs8-json-eager [
+  ["1.2.840.113549.1.1.1" nil]
+  {:bits 1120 :value [
+    "160130065517131389311344861145589848370959233533492526527506806257632158161956866978965544486311181725659944465317576320271788371253085185156632919863850842571131863281257875796540238614704909618203514071942012433027603660426789715885659507750104298441589289165587947230177847758528357237225001175279364804761"
+    "65537"
+    ] :type :bit-string}
+  ])
 
 (def ec-key-json [
   "1"
@@ -106,6 +121,7 @@ sjtJfseYG44ETk8+m3AjwNq5jmkhif8YGeFBC8w0KdeQ="))
 # Test ASN1 Decode
 (deftest "RSA key decode meets expectations" (is (= rsa-key-json (asn1/decode rsa-key :json))))
 (deftest "EC key decode meets expectations" (is (= ec-key-json (asn1/decode ec-key :json))))
+(deftest "EC key decode meets expectations" (is (= rsa-pub-pkcs8-json-eager (asn1/decode rsa-pub-pkcs8-key :json :eager-parse))))
 (deftest "RSA key decode meets expectations" (is (= rsa-key-full (asn1/decode rsa-key))))
 (deftest "EC key decode meets expectations" (is (= ec-key-full (asn1/decode ec-key))))
 

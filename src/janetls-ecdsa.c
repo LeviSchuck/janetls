@@ -32,6 +32,8 @@ static int ecdsa_get_fn(void * data, Janet key, Janet * out);
 
 static Janet ecdsa_is_private(int32_t argc, Janet * argv);
 static Janet ecdsa_is_public(int32_t argc, Janet * argv);
+static Janet ecdsa_information_class(int32_t argc, Janet * argv);
+static Janet ecdsa_type(int32_t argc, Janet * argv);
 static Janet ecdsa_sign(int32_t argc, Janet * argv);
 static Janet ecdsa_verify(int32_t argc, Janet * argv);
 static Janet ecdsa_export_public(int32_t argc, Janet * argv);
@@ -60,6 +62,8 @@ static JanetMethod ecdsa_methods[] = {
   {"sign", ecdsa_sign},
   {"private?", ecdsa_is_private},
   {"public?", ecdsa_is_public},
+  {"information-class", ecdsa_information_class},
+  {"type", ecdsa_type},
   {"curve-group", ecdsa_get_curve_group},
   {"digest", ecdsa_get_digest},
   {"bits", ecdsa_get_sizebits},
@@ -108,15 +112,18 @@ static const JanetReg cfuns[] =
     ":p is an octet encoded form of the public coordinate, it replaces "
     ":x and :y\n"
     ":d is an octet encoded form of the private secret\n"
-    ":type if provided should be :ec"
+    ":type if provided should be :ecdsa"
     },
   {"ecdsa/private?", ecdsa_is_private, "(janetls/ecdsa/private? ecdsa)\n\n"
     "Returns true if this key is a private key and can perform private and "
     "public operations."
     },
-  {"ecdsa/public?", ecdsa_is_public, "(janetls/ecdsa/private? ecdsa)\n\n"
+  {"ecdsa/public?", ecdsa_is_public, "(janetls/ecdsa/public? ecdsa)\n\n"
     "Returns true if this key is a public key and can only perform public "
     "operations."
+    },
+  {"ecdsa/information-class", ecdsa_information_class, "(janetls/ecdsa/information-class ecdsa)\n\n"
+    "Returns :public or :private depending on the components this key has."
     },
   {"ecdsa/curve-group", ecdsa_get_curve_group, "(janetls/ecdsa/curve-group ecdsa)\n\n"
     "Returns a keyword found in janetls/ecp/curve-groups."
@@ -222,6 +229,20 @@ static Janet ecdsa_is_public(int32_t argc, Janet * argv)
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
   return janet_wrap_boolean(ecdsa->information_class == janetls_pk_information_class_public);
+}
+
+static Janet ecdsa_information_class(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
+  return janetls_search_pk_information_class_to_janet(ecdsa->information_class);
+}
+
+static Janet ecdsa_type(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  (void)argv;
+  return janet_ckeywordv("ecdsa");
 }
 
 static Janet ecdsa_sign(int32_t argc, Janet * argv)
@@ -436,12 +457,13 @@ static Janet ecdsa_export_public(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
-  JanetTable * table = janet_table(7);
+  JanetTable * table = janet_table(8);
 
-  janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ec));
+  janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ecdsa));
   janet_table_put(table, janet_ckeywordv("information-class"), janetls_search_pk_information_class_to_janet(janetls_pk_information_class_public));
   janet_table_put(table, janet_ckeywordv("digest"), janetls_search_md_supported_algorithms_to_janet(ecdsa->digest));
   janet_table_put(table, janet_ckeywordv("curve-group"), janetls_search_ecp_curve_group_to_janet(ecdsa->group->group));
+  janet_table_put(table, janet_ckeywordv("bits"), janet_wrap_number(ecdsa->group->ecp_group.nbits));
 
   janetls_ecp_point_object * point = ecdsa->public_coordinate;
   if (point == NULL)
@@ -472,12 +494,13 @@ static Janet ecdsa_export_private(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
-  JanetTable * table = janet_table(8);
+  JanetTable * table = janet_table(9);
 
-  janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ec));
+  janet_table_put(table, janet_ckeywordv("type"), janetls_search_pk_key_type_to_janet(janetls_pk_key_type_ecdsa));
   janet_table_put(table, janet_ckeywordv("information-class"), janetls_search_pk_information_class_to_janet(janetls_pk_information_class_private));
   janet_table_put(table, janet_ckeywordv("digest"), janetls_search_md_supported_algorithms_to_janet(ecdsa->digest));
   janet_table_put(table, janet_ckeywordv("curve-group"), janetls_search_ecp_curve_group_to_janet(ecdsa->group->group));
+  janet_table_put(table, janet_ckeywordv("bits"), janet_wrap_number(ecdsa->group->ecp_group.nbits));
 
   janetls_ecp_point_object * point = ecdsa->public_coordinate;
   if (point == NULL)
@@ -601,11 +624,11 @@ static Janet ecdsa_import(int32_t argc, Janet * argv)
           janetls_pk_key_type type;
           if (janetls_search_pk_key_type(kv->value, &type) != 0)
           {
-            janet_panicf("Expected :ec for :type, but got %p", kv->value);
+            janet_panicf("Expected :ecdsa for :type, but got %p", kv->value);
           }
-          if (type != janetls_pk_key_type_ec)
+          if (type != janetls_pk_key_type_ecdsa)
           {
-            janet_panicf("Expected :ec for :type, but got %p", kv->value);
+            janet_panicf("Expected :ecdsa for :type, but got %p", kv->value);
           }
         }
         else if (janet_byte_cstrcmp_insensitive(key, "information-class") == 0)
@@ -684,6 +707,11 @@ static Janet ecdsa_import(int32_t argc, Janet * argv)
             "but got %p", kv->key, kv->value);
           }
         }
+        else if (janet_byte_cstrcmp_insensitive(key, "bits") == 0)
+        {
+          // Nothing
+        }
+        // Maybe an else that complains about unknown values?
       }
       else
       {
@@ -837,7 +865,13 @@ static Janet ecdsa_generate(int32_t argc, Janet * argv)
   else if (janet_is_byte_typed(argv[0]))
   {
     janetls_ecp_curve_group curve_group;
-    check_result(janetls_search_ecp_curve_group(argv[0], &curve_group));
+    int ret = janetls_search_ecp_curve_group(argv[0], &curve_group);
+    if (ret == JANETLS_ERR_SEARCH_OPTION_NOT_FOUND
+      || ret == JANETLS_ERR_SEARCH_OPTION_INPUT_INVALID_TYPE)
+    {
+      janet_panicf("Could not find a group for %p, see (janetls/ecp/curve-groups) for options", argv[0]);
+    }
+    check_result(ret);
     group = janetls_ecp_load_curve_group(curve_group);
   }
   else if ((group = janet_checkabstract(argv[0], janetls_ecp_group_object_type())))

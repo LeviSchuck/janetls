@@ -173,7 +173,7 @@ JANETLS_SEARCH_OPTION_LIST(pk_information_class, janetls_pk_information_class)
 
 option_list_entry pk_key_type[] = {
   {janetls_pk_key_type_rsa, "rsa", 0},
-  {janetls_pk_key_type_ec, "ec", 0},
+  {janetls_pk_key_type_ecdsa, "ecdsa", 0},
 };
 JANETLS_SEARCH_OPTION_LIST(pk_key_type, janetls_pk_key_type)
 
@@ -202,15 +202,15 @@ option_list_entry ecp_curve_group[] = {
   {janetls_ecp_curve_group_secp384r1, "p384", OPTION_LIST_HIDDEN},
   {janetls_ecp_curve_group_secp521r1, "secp521r1", 0},
   {janetls_ecp_curve_group_secp521r1, "p521", OPTION_LIST_HIDDEN},
-  {janetls_ecp_curve_group_bp256r1, "bp256r1", 0},
-  {janetls_ecp_curve_group_bp384r1, "bp384r1", 0},
-  {janetls_ecp_curve_group_bp512r1, "bp512r1", 0},
-  {janetls_ecp_curve_group_curve25519, "curve25519", 0},
-  {janetls_ecp_curve_group_curve25519, "25519", OPTION_LIST_HIDDEN},
   {janetls_ecp_curve_group_secp192k1, "secp192k1", 0},
   {janetls_ecp_curve_group_secp224k1, "secp224k1", 0},
   {janetls_ecp_curve_group_secp256k1, "secp256k1", 0},
-  {janetls_ecp_curve_group_curve448, "curve448", 0},
-  {janetls_ecp_curve_group_curve448, "448", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_bp256r1, "bp256r1", 0},
+  {janetls_ecp_curve_group_bp384r1, "bp384r1", 0},
+  {janetls_ecp_curve_group_bp512r1, "bp512r1", 0},
+  {janetls_ecp_curve_group_x25519, "x25519", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_x448, "x448", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_ed25519, "ed25519", OPTION_LIST_HIDDEN},
+  {janetls_ecp_curve_group_ed448, "ed448", OPTION_LIST_HIDDEN},
 };
 JANETLS_SEARCH_OPTION_LIST(ecp_curve_group, janetls_ecp_curve_group)

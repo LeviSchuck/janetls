@@ -559,7 +559,7 @@ static void ecp_keypair_from_secret(
   // be convenient.
   // Below is an adaptation / inline of mbedtls_ecp_read_key
 
-  if (group->group == janetls_ecp_curve_group_curve25519)
+  if (group->group == janetls_ecp_curve_group_x25519)
   {
     if (bytes.len != CURVE25519_KEY_SIZE)
     {
@@ -581,7 +581,7 @@ static void ecp_keypair_from_secret(
     // Set the second most significant bit to 1
     check_result(mbedtls_mpi_set_bit(&keypair->keypair.d, CURVE25519_KEY_BITS - 2, 1));
   }
-  else if (group->group == janetls_ecp_curve_group_curve448)
+  else if (group->group == janetls_ecp_curve_group_x448)
   {
     // This code is a derivation of the curve25519 read_key code
     // It is NOT present in mbedtls, however the implementation is
@@ -955,7 +955,7 @@ static int32_t ecp_point_hash(void * data, size_t len)
 
   // But wait! We're not done yet!
   // We need to also account for the group
-  hash = hash ^ ecp_group_hash(&point->group, 0);
+  hash = hash ^ ecp_group_hash(point->group, 0);
 
   point->hash = hash;
 
@@ -1000,7 +1000,7 @@ static int32_t ecp_keypair_hash(void * data, size_t len)
   hash = (int32_t)janetls_bignum_hash_mpi(&keypair->keypair.d);
   // But wait! We're not done yet!
   // We need to also account for the group
-  hash = hash ^ ecp_group_hash(&keypair->group, 0);
+  hash = hash ^ ecp_group_hash(keypair->group, 0);
 
   keypair->hash = hash;
   return hash;
