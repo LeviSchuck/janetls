@@ -25,11 +25,22 @@
 
 (defn- semi [v] ;(if v [v] []))
 
-(def pk/formats [:components :encoded])
-(def pk/encoding [:der :pem])
-(def pk/standard [:pkcs8 :pkcs1 :sec1])
+(def pk/formats
+  "Enumerates the export formats, to export a PEM file, :encoded must be used."
+  [:components :encoded])
+(def pk/encoding
+  "Enumerates the :encoded encoding options, be it binary DER or ascii PEM"
+  [:der :pem])
+(def pk/standard
+  "Enumerates the ASN.1 standard that a DER or PEM can be encoded with.\n
+  If you want your key PEM header to mention \"RSA\", you want :pkcs1.\n
+  If you want your key PEM header to mention \"EC\", you want :sec1
+  (only available for private EC keys).\n
+  Otherwise, and by default, :pkcs8 is used.\n
+  "
+  [:pkcs8 :pkcs1 :sec1])
 
-(defn check-public [key information-class]
+(defn- check-public [key information-class]
   (if
     (and (= information-class :private) (= (key :information-class) :public))
     (error "The key given is a public key and cannot be written as a private key")))
@@ -56,35 +67,8 @@
     :export-standard ex-standard
     })
 
-(defn pk/sign [{:key key} data &opt options]
-  (def options (pk/options options))
-  (def signature (:sign key data ;(semi (options :digest))))
-  (encoding/encode signature (options :encoding) ;(semi (options :encoding-variant)))
-  )
-
-(defn pk/verify [{:key key} data signature &opt options]
-  (def options (pk/options options))
-  (def signature (encoding/decode signature (options :encoding ;(semi (options :encoding-variant)))))
-  (:verify key data signature ;(semi (options :digest)))
-  )
-
 (defn- only-type [expected actual reason]
   (if (not= expected actual) (errorf "Only %p keys can %S, this key is of type %p" expected reason actual)))
-
-
-(defn pk/encrypt [{:key key :type kind} plaintext &opt options]
-  (only-type :rsa kind "can encrypt and decrypt")
-  (def options (pk/options options))
-  (def ciphertext (:encrypt key plaintext))
-  (def ciphertext (encoding/encode ciphertext (options :encoding ;(semi (options :encoding-variant)))))
-  ciphertext)
-
-(defn pk/decrypt [{:key key :type kind} ciphertext &opt options]
-  (only-type :rsa kind "can encrypt and decrypt")
-  (def options (pk/options options))
-  (def ciphertext (encoding/decode ciphertext (options :encoding ;(semi (options :encoding-variant)))))
-  (def plaintext (:decrypt key ciphertext))
-  plaintext)
 
 (defn- pk/to-pem-type [kind standard information-class] (case [kind information-class standard]
   [:rsa :public :pkcs1] "RSA PUBLIC KEY"
@@ -175,8 +159,6 @@
   (def data (pk/to-asn1 key kind standard information-class))
   (asn1/encode data))
 
-
-
 (defn- pk/export-internal [{:key key :type kind} information-class &opt options]
   (def options (pk/options options))
   (def components (cond
@@ -201,12 +183,203 @@
     )
     (errorf "Expected :components or :encoded for :export-format but got %p" format)))
 
-(defn pk/export-public [key &opt options]
+(defn pk/export-public
+  "Export a private or public key to a public key.\n
+  Options are described in the documentation for (pk/export).\n
+  \n
+  The return value depends on the options format, it is either a struct of
+  components or a string.
+  "
+  [key &opt options]
   (pk/export-internal key :public options))
 
-(defn pk/export-private [key &opt options]
+(defn pk/export-private
+  "Export a private key to a private key.\n
+  Public keys cannot be exported as private keys.\n
+  Options are described in the documentation for (pk/export).\n
+  \n
+  The return value depends on the options format, it is either a struct of
+  components or a string.
+  "
+  [key &opt options]
   (pk/export-internal key :private options))
 
+(defn pk/export
+  "Export a key with the same information class.\n
+  That is, if the imported key is private, the exported key is private,
+  likewise if the imported key is public, the exported key is public.\n
+  \n
+  Options:\n
+  {:export-format format :export-encoding encoding :export-standard standard}\n
+  \n
+  format - valid values are enumerated from (pk/formats).
+  By default is :components.\n
+  \n
+  encoding - valid values are enumerated from (pk/encoding) and is
+  only applicable if format is :encoded. By default is :pem\n
+  \n
+  standard - valid values are enumaretd from (pk/standard) and is only
+  applicable if format is :encoded. :pkcs1 only supports RSA,
+  :sec1 only supports ECDSA, :pkcs8 supports all keys. By default is :pkcs8.\n
+  \n
+  The return value depends on the options format, it is either a struct of
+  components or a string.
+  "
+  [key &opt options]
+  (pk/export-internal key (key :information-class) options))
+
+(defn pk/sign
+  "
+  Sign a string or buffer with this private key.
+
+  Options:\n
+  {:encoding encoding :encoding-variant variant :digest digest}\n
+  \n
+  encoding - valid options enumerated in (encoding/types), by default :raw.\n
+  \n
+  encoding-variant - used for base64, valid options enumareted in
+  (base64/variants), by default :standard.\n
+  \n
+  digest - can override the digest algorithm used for signatures,
+  valid options enumerated in (md/algorithms). Default is attached to the
+  wrapped key (rsa, ecdsa), usually :sha256.
+  The attached digest can be determined with (:digest key).
+  \n
+  \n
+  Examples:\n
+  (pk/sign key \"data here\")\n
+  (:sign key data {:encoding :hex})\n
+  (:sign key data {:encoding :base64 :encoding-variant :url-unpadded})\n
+  (:sign key data {:digest :sha512})\n
+  \n
+  The return value is a string, which may be encoded according to the options.
+  \n
+  \n
+  Note that this does not support signing a hash directly,
+  please file an issue if you need to sign a large amount of data
+  without having it all in memory.
+  "
+  [key data &opt options]
+  (def {:key key} key)
+  (def options (pk/options options))
+  (def signature (:sign key data ;(semi (options :digest))))
+  (encoding/encode signature (options :encoding) ;(semi (options :encoding-variant)))
+  )
+
+(defn pk/verify
+  "
+  Verify a string or buffer of data against a string or buffer of
+  signature with a private or public key.\n
+  \n
+  Options are described in the documentation for (pk/sign),
+  settings for encoding will be reversed prior to verification.\n
+  \n
+  Examples:\n
+  (pk/verify key data signature)\n
+  (:verify key data signature {:encoding :hex})\n
+  (:verify key data signature {:encoding :base64 :encoding-variant :url-unpadded})\n
+  (:verify key data signature {:digest :sha512})\n
+  \n
+  The return value is a boolean.\n
+  \n
+  \n
+  Note that this does not support verifying a hash directly,
+  please file an issue if you need to sign a large amount of data
+  without having it all in memory.\n
+  \n
+  Note that :rsa signatures vary by the rsa version, such as :pkcs1-v2.1.
+  Verification is not compatible across versions, and must be set in the
+  wrapped key.
+  Please file an issue if you need to pass the version as a part of
+  this function. Wrapping a key with the appropriate version beforehand is
+  a workaround for this limitation.
+  "
+  [key data signature &opt options]
+  (def {:key key} key)
+  (def options (pk/options options))
+  (def signature (encoding/decode signature (options :encoding ;(semi (options :encoding-variant)))))
+  (:verify key data signature ;(semi (options :digest)))
+  )
+
+(defn pk/encrypt
+  "Encrypt a plaintext with this key, note only :rsa keys are supported.\n
+  \n
+  Options:\n
+  {:encoding encoding :encoding-variant variant}\n
+  \n
+  encoding - valid options enumerated in (encoding/types), by default :raw.\n
+  \n
+  encoding-variant - used for base64, valid options enumareted in
+  (base64/variants), by default :standard.\n
+  \n
+  Examples:\n
+  (pk/encrypt key \"hello world\")
+  (:encrypt key data {:encoding :hex})\n
+  (:encrypt key data {:encoding :base64 :encoding-variant :url-unpadded})\n
+  \n
+  Note that :rsa encryption varies by the rsa version, such as :pkcs1-v2.1.
+  Decryption is not compatible across versions, and must be set in the wrapped
+  key. Please file an issue if you need to pass the version as a part of
+  this function. Wrapping a key with the appropriate version beforehand is
+  a workaround for this limitation.
+  "
+  [key plaintext &opt options]
+  (def {:key key :type kind} key)
+  (only-type :rsa kind "can encrypt and decrypt")
+  (def options (pk/options options))
+  (def ciphertext (:encrypt key plaintext))
+  (def ciphertext (encoding/encode ciphertext (options :encoding ;(semi (options :encoding-variant)))))
+  ciphertext)
+
+(defn pk/decrypt
+  "Decrypt a ciphertext into a plaintext, note that only :rsa keys are
+  supported.\n
+  \n
+  Options are documented in (pk/encrypt)
+  settings for encoding will be reversed prior to decryption.
+  \n
+  Examples:\n
+  (pk/decrypt key ciphertext)
+  (:decrypt key ciphertext {:encoding :hex})\n
+  (:decrypt key ciphertext {:encoding :base64 :encoding-variant :url-unpadded})\n
+  \n
+  Returns a successfully decrypted plaintext, or nil.\n
+  \n
+  Note that :rsa encryption varies by the rsa version, such as :pkcs1-v2.1.
+  Decryption is not compatible across versions, and must be set in the wrapped
+  key. Please file an issue if you need to pass the version as a part of
+  this function. Wrapping a key with the appropriate version beforehand is
+  a workaround for this limitation.
+  "
+  [key ciphertext &opt options]
+  (def {:key key :type kind} key)
+  (only-type :rsa kind "can encrypt and decrypt")
+  (def options (pk/options options))
+  (def ciphertext (encoding/decode ciphertext (options :encoding ;(semi (options :encoding-variant)))))
+  (def plaintext (:decrypt key ciphertext))
+  plaintext)
+
+(defn pk/digest
+  "Retrieves the digest used for signatures on this private key"
+  [key]
+  (:digest (key :key)))
+
+(defn pk/version
+  "Retrieves the internal version attached to the key, for rsa,
+  values may be :pkcs1-v1.5.
+  Otherwise returns nil.
+  "
+  [key]
+  (if (= :rsa (:type key)) (:version (key :key)))
+  )
+
+(defn pk/mask
+  "Retrieves the mask generation function attached to the key,
+  only applicable to :pkcs1-v2.1 rsa keys. Otherwise returns nil.
+  "
+  [key]
+  (if (= :rsa (:type key)) (:mask (key :key)))
+  )
 
 (def- PK-Prototype @{
   :type :none
@@ -217,6 +390,9 @@
   :decrypt pk/decrypt
   :export-private pk/export-private
   :export-public pk/export-public
+  :digest pk/digest
+  :mask pk/mask
+  :version pk/version
   })
 
 (def- zero (bignum/parse 0))
@@ -353,7 +529,7 @@
   ))
 
 
-(defn pk/asn1-to-components [asn1] (or
+(defn- pk/asn1-to-components [asn1] (or
   (pk/match-pkcs1-private asn1)
   (pk/match-pkcs1-public asn1)
   (pk/match-pcks8-private asn1)
@@ -361,7 +537,36 @@
   (pk/match-sec1-private asn1)
   ))
 
-(defn pk/import [key]
+(defn pk/import
+  "Import a private or public key.\n
+  Supported types are RSA and ECDSA.\n
+  This function accepts the component format, a table with
+  {:type :rsa or :ecdsa} and raw components.
+  To see the expected components, try (:export-private (rsa/generate)) and
+  (:export-private (ecdsa/generate)), :export-public will give a reduced set
+  of components used for the public key.\n
+  This function also supports DER and PEM files, DER keys are binary, while
+  PEM keys have a format like the example below.\n
+  -----BEGIN <KEY TYPE>-----\n
+  ...\n
+  -----END <KEY TYPE------\n
+  \n
+  When importing a DER key, the type will be automatically deduced.\n
+  When importing a PEM key, the type will be mapped by the <KEY TYPE> in the
+  PEM header.\n
+  \n
+  Examples:\n
+  (pk/import {:type :rsa :n ... :e  65537)}) - imports a RSA public key
+  by components\n
+  (pk/import (:export-private (rsa/generate))) - imports a generated RSA key,
+  by components\n
+  (pk/import {:type :ecdsa :curve-group :secp2561r :d \"...\"}) - imports
+  an ECDSA secp2561r private key by components\n
+  (pk/import {:der \"...\"}) - imports a DER key\n
+  (pk/import {:pem \"...\"}) - imports a PEM key, only supports one PEM body
+  within the input\n
+  "
+  [key]
   (def kind (key :type))
   # only used in der and pem
   (def body (or (key :der) (key :pem)))
@@ -414,7 +619,16 @@
   (table/setproto result PK-Prototype)
   )
 
-(defn pk/wrap [key]
+(defn pk/wrap
+  "Wrap a janetls rsa or ecdsa key. This is useful if you need to set other
+  options, such as rsa version, digest type, mask generation function digest,
+  etc.\n
+  \n
+  Examples:\n
+  (pk/wrap (rsa/generate {:bits 2048 :version :pkcs1-v2.1
+    :mgf1 :sha256 :digest :sha256}))
+  "
+  [key]
   (def kind (:type key))
   (case (type key)
     :janetls/rsa nil
@@ -423,12 +637,30 @@
   (table/setproto @{:key key :type kind :information-class (:information-class key)} PK-Prototype)
   )
 
+(defn pk/unwrap
+  "Unwrap the wrapped key (rsa, ecdsa) to the janetls object that backs this private key."
+  [key]
+  (key :key)
+  )
+
 # An enhancement may be to provide access to the other portions of the
 # generation functions.
 # For example, rsa has versions, digests, mask generation function in a tables.
 # ECDSA has a digest as an additional option.
 
-(defn pk/generate [&opt kind option]
+(defn pk/generate
+  "Generate a private keypair. By default will generate an RSA 2048 key.\n
+  When generating an ECDSA key, by default the curve :secp256r1 will be used.\n
+  \n
+  Examples:\n
+  (pk/generate)\n
+  (pk/generate :rsa)\n
+  (pk/generate :rsa 4096) - note the bit size is a parameter\n
+  (pk/generate :ecdsa)\n
+  (pk/generate :ecdsa :secp521r1) - note the curve group is a parameter
+  available curve options are enumerated in (ecp/curve-groups).
+  "
+  [&opt kind option]
   (default kind :rsa)
   (case kind
     :rsa (do
