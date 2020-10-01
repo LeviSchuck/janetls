@@ -35,7 +35,7 @@
 
 (def- to-digest {
   "1.2.840.113549.2.5" :md5
-  "1.2.840.113549.2.5" :sha1
+  "1.3.14.3.2.26" :sha1
   "2.16.840.1.101.3.4.2.4" :sha224
   "2.16.840.1.101.3.4.2.1" :sha256
   "2.16.840.1.101.3.4.2.2" :sha384
@@ -65,6 +65,12 @@
 
 (def- from-curve (flip-map to-curve))
 
+(defn- with-kind [v kind] (if v [kind v]))
+(defn- fold-kinds [kinds pair] (if pair (put kinds ;pair) kinds))
+(defn- build-table [searches]
+  (def result (reduce fold-kinds @{} searches))
+  (if (> (length result) 0) (freeze result))
+  )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # P U B L I C
@@ -74,4 +80,26 @@
 (defn oid/from-curve [curve] (from-curve curve))
 
 (defn oid/to-digest [oid] (to-digest (normalize-oid oid)))
-(defn oid/from-digest [digest] (from-digest digest))
+(defn oid/from-digest [digest](from-digest digest))
+
+
+(defn oid/to
+  """
+  Searches known OIDs and returns nil a table of {:kind :value}.
+  There may be multiple results, but it is unlikely.
+  """
+  [oid] (build-table [
+    (with-kind (oid/to-digest oid) :digest)
+    (with-kind (oid/to-curve oid) :curve)
+    ]))
+
+
+(defn oid/from
+  """
+  Searches mappings for OIDs and returns nil or a table of {:kind oid}.
+  There may be multiple results in this map.
+  """
+  [thing] (build-table [
+    (with-kind (oid/from-digest thing) :digest)
+    (with-kind (oid/from-curve thing) :curve)
+    ]))
