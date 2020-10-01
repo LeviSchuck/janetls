@@ -31,7 +31,7 @@
 
 (def is-win (= :windows (os/which)))
 (def debug-flags [])
-# (def debug-flags ["-g" "-Og" "-Wall" "-Wpedantic"])
+(def debug-flags ["-g" "-Og" "-Wall" "-Wpedantic"])
 
 (declare-native
   :name "_janetls"

@@ -955,7 +955,7 @@ static int32_t ecp_point_hash(void * data, size_t len)
 
   // But wait! We're not done yet!
   // We need to also account for the group
-  hash = hash ^ ecp_group_hash(&point->group, 0);
+  hash = hash ^ ecp_group_hash(point->group, 0);
 
   point->hash = hash;
 
@@ -1000,7 +1000,7 @@ static int32_t ecp_keypair_hash(void * data, size_t len)
   hash = (int32_t)janetls_bignum_hash_mpi(&keypair->keypair.d);
   // But wait! We're not done yet!
   // We need to also account for the group
-  hash = hash ^ ecp_group_hash(&keypair->group, 0);
+  hash = hash ^ ecp_group_hash(keypair->group, 0);
 
   keypair->hash = hash;
   return hash;
