@@ -84,10 +84,10 @@
 
 
 (defn oid/to
-  """
+  "
   Searches known OIDs and returns nil a table of {:kind :value}.
   There may be multiple results, but it is unlikely.
-  """
+  "
   [oid] (build-table [
     (with-kind (oid/to-digest oid) :digest)
     (with-kind (oid/to-curve oid) :curve)
@@ -95,10 +95,10 @@
 
 
 (defn oid/from
-  """
+  "
   Searches mappings for OIDs and returns nil or a table of {:kind oid}.
   There may be multiple results in this map.
-  """
+  "
   [thing] (build-table [
     (with-kind (oid/from-digest thing) :digest)
     (with-kind (oid/from-curve thing) :curve)
