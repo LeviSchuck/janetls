@@ -71,8 +71,14 @@
     "mbedtls/library/sha1.c"
     "mbedtls/library/sha256.c"
     "mbedtls/library/sha512.c"
-    # For randomness, AES is used. It'll be in its own section later.
+    # For Cipher
     "mbedtls/library/aes.c"
+    "mbedtls/library/ccm.c"
+    "mbedtls/library/chachapoly.c"
+    "mbedtls/library/chacha20.c"
+    "mbedtls/library/gcm.c"
+    "mbedtls/library/cipher.c"
+    # For randomness, AES is used. It'll be in its own section later.
     "mbedtls/library/ctr_drbg.c"
     "mbedtls/library/entropy.c"
     "mbedtls/library/entropy_poll.c"
