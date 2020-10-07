@@ -214,3 +214,24 @@ option_list_entry ecp_curve_group[] = {
   {janetls_ecp_curve_group_ed448, "ed448", OPTION_LIST_HIDDEN},
 };
 JANETLS_SEARCH_OPTION_LIST(ecp_curve_group, janetls_ecp_curve_group)
+
+option_list_entry cipher_class[] = {
+  {janetls_cipher_class_aes, "aes", 0},
+  {janetls_cipher_class_chacha20, "chacha20", 0},
+  {janetls_cipher_class_chacha20, "chacha", OPTION_LIST_HIDDEN},
+};
+JANETLS_SEARCH_OPTION_LIST(cipher_class, janetls_cipher_class)
+
+option_list_entry cipher_mode[] = {
+  {janetls_cipher_mode_ecb, "ecb", 0},
+  {janetls_cipher_mode_cbc, "cbc", 0},
+  {janetls_cipher_mode_ctr, "ctr", 0},
+  {janetls_cipher_mode_gcm, "gcm", 0},
+  {janetls_cipher_mode_stream, "stream", 0},
+  {janetls_cipher_mode_chachapoly, "chacha20-poly1305", 0},
+  {janetls_cipher_mode_chachapoly, "poly", OPTION_LIST_HIDDEN},
+  {janetls_cipher_mode_chachapoly, "poly1305", OPTION_LIST_HIDDEN},
+  {janetls_cipher_mode_chachapoly, "chachapoly", OPTION_LIST_HIDDEN},
+  {janetls_cipher_mode_chachapoly, "chachapoly1305", OPTION_LIST_HIDDEN},
+};
+JANETLS_SEARCH_OPTION_LIST(cipher_mode, janetls_cipher_mode)

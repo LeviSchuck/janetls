@@ -221,4 +221,24 @@ typedef enum janetls_ecp_curve_group
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(ecp_curve_group, janetls_ecp_curve_group)
 
+typedef enum janetls_cipher_class
+{
+  janetls_cipher_class_aes,
+  janetls_cipher_class_chacha20,
+} janetls_cipher_class;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_class, janetls_cipher_class)
+
+typedef enum janetls_cipher_mode
+{
+  janetls_cipher_mode_ecb,
+  janetls_cipher_mode_cbc,
+  janetls_cipher_mode_ctr,
+  janetls_cipher_mode_gcm,
+  janetls_cipher_mode_stream,
+  janetls_cipher_mode_chachapoly,
+} janetls_cipher_mode;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_mode, janetls_cipher_mode)
+
 #endif
