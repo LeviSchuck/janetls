@@ -44,6 +44,7 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_rsa(env);
   submod_ecp(env);
   submod_ecdsa(env);
+  submod_cipher(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)

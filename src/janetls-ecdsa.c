@@ -159,6 +159,7 @@ static const JanetReg cfuns[] =
 void submod_ecdsa(JanetTable * env)
 {
   janet_cfuns(env, "janetls", cfuns);
+  janet_register_abstract_type(janetls_ecdsa_object_type());
 }
 
 janetls_ecdsa_object * janetls_new_ecdsa()

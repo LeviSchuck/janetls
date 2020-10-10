@@ -65,6 +65,7 @@
     "src/janetls-rsa.c"
     "src/janetls-ecp.c"
     "src/janetls-ecdsa.c"
+    "src/janetls-cipher.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
