@@ -229,8 +229,6 @@ typedef enum janetls_cipher_class
   janetls_cipher_class_blowfish,
   janetls_cipher_class_camellia,
   janetls_cipher_class_des,
-  janetls_cipher_class_2des,
-  janetls_cipher_class_3des,
 } janetls_cipher_class;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_class, janetls_cipher_class)

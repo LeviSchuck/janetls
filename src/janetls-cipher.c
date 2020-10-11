@@ -137,15 +137,11 @@ static Janet class_key_size(int32_t argc, Janet * argv)
       break;
     case janetls_cipher_class_des:
       values[0] = janet_wrap_number(64);
-      size = 1;
-      break;
-    case janetls_cipher_class_2des:
-      values[0] = janet_wrap_number(128);
-      size = 1;
-      break;
-    case janetls_cipher_class_3des:
-      values[0] = janet_wrap_number(192);
-      size = 1;
+      //2des
+      values[1] = janet_wrap_number(128);
+      //3des
+      values[2] = janet_wrap_number(192);
+      size = 3;
       break;
     default:
       break;
@@ -193,8 +189,6 @@ static Janet class_modes(int32_t argc, Janet * argv)
       size = 5;
       break;
     case janetls_cipher_class_des:
-    case janetls_cipher_class_2des:
-    case janetls_cipher_class_3des:
       values[0] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ecb);
       values[1] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_cbc);
       size = 2;
