@@ -23,12 +23,20 @@
 #include "janetls.h"
 #include "janetls-cipher.h"
 
+// Abstract Object functions
 static int cipher_gc_fn(void * data, size_t len);
 static int cipher_gcmark(void * data, size_t len);
 static int cipher_get_fn(void * data, Janet key, Janet * out);
 
+// Janet c functions
 static Janet class_key_size(int32_t argc, Janet * argv);
 static Janet class_modes(int32_t argc, Janet * argv);
+
+// internal helpers
+static mbedtls_cipher_type_t cipher_type_from(
+  janetls_cipher_class cipher_class,
+  int key_size,
+  janetls_cipher_mode mode);
 
 JanetAbstractType cipher_object_type = {
   "janetls/cipher",
@@ -197,4 +205,92 @@ static Janet class_modes(int32_t argc, Janet * argv)
       break;
   }
   return janet_wrap_tuple(janet_tuple_n(values, size));
+}
+
+struct mbedtls_cipher_map_t {
+  janetls_cipher_class cipher_class;
+  int key_size;
+  janetls_cipher_mode mode;
+  mbedtls_cipher_type_t mbedtls_type;
+};
+
+static const struct mbedtls_cipher_map_t mbedtls_cipher_map[] = {
+  {janetls_cipher_class_aes, 128, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_AES_128_ECB},
+  {janetls_cipher_class_aes, 192, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_AES_192_ECB},
+  {janetls_cipher_class_aes, 256, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_AES_256_ECB},
+  {janetls_cipher_class_aes, 128, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_AES_128_CBC},
+  {janetls_cipher_class_aes, 192, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_AES_192_CBC},
+  {janetls_cipher_class_aes, 256, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_AES_256_CBC},
+  {janetls_cipher_class_aes, 128, janetls_cipher_mode_cfb, MBEDTLS_CIPHER_AES_128_CFB128},
+  {janetls_cipher_class_aes, 192, janetls_cipher_mode_cfb, MBEDTLS_CIPHER_AES_192_CFB128},
+  {janetls_cipher_class_aes, 256, janetls_cipher_mode_cfb, MBEDTLS_CIPHER_AES_256_CFB128},
+  {janetls_cipher_class_aes, 128, janetls_cipher_mode_ctr, MBEDTLS_CIPHER_AES_128_CTR},
+  {janetls_cipher_class_aes, 192, janetls_cipher_mode_ctr, MBEDTLS_CIPHER_AES_192_CTR},
+  {janetls_cipher_class_aes, 256, janetls_cipher_mode_ctr, MBEDTLS_CIPHER_AES_256_CTR},
+  {janetls_cipher_class_aes, 128, janetls_cipher_mode_gcm, MBEDTLS_CIPHER_AES_128_GCM},
+  {janetls_cipher_class_aes, 192, janetls_cipher_mode_gcm, MBEDTLS_CIPHER_AES_192_GCM},
+  {janetls_cipher_class_aes, 256, janetls_cipher_mode_gcm, MBEDTLS_CIPHER_AES_256_GCM},
+  {janetls_cipher_class_camellia, 128, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_CAMELLIA_128_ECB},
+  {janetls_cipher_class_camellia, 192, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_CAMELLIA_192_ECB},
+  {janetls_cipher_class_camellia, 256, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_CAMELLIA_256_ECB},
+  {janetls_cipher_class_camellia, 128, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_CAMELLIA_128_CBC},
+  {janetls_cipher_class_camellia, 192, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_CAMELLIA_192_CBC},
+  {janetls_cipher_class_camellia, 256, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_CAMELLIA_256_CBC},
+  {janetls_cipher_class_camellia, 128, janetls_cipher_mode_cfb, MBEDTLS_CIPHER_CAMELLIA_128_CFB128},
+  {janetls_cipher_class_camellia, 192, janetls_cipher_mode_cfb, MBEDTLS_CIPHER_CAMELLIA_192_CFB128},
+  {janetls_cipher_class_camellia, 256, janetls_cipher_mode_cfb, MBEDTLS_CIPHER_CAMELLIA_256_CFB128},
+  {janetls_cipher_class_camellia, 128, janetls_cipher_mode_ctr, MBEDTLS_CIPHER_CAMELLIA_128_CTR},
+  {janetls_cipher_class_camellia, 192, janetls_cipher_mode_ctr, MBEDTLS_CIPHER_CAMELLIA_192_CTR},
+  {janetls_cipher_class_camellia, 256, janetls_cipher_mode_ctr, MBEDTLS_CIPHER_CAMELLIA_256_CTR},
+  {janetls_cipher_class_camellia, 128, janetls_cipher_mode_gcm, MBEDTLS_CIPHER_CAMELLIA_128_GCM},
+  {janetls_cipher_class_camellia, 192, janetls_cipher_mode_gcm, MBEDTLS_CIPHER_CAMELLIA_192_GCM},
+  {janetls_cipher_class_camellia, 256, janetls_cipher_mode_gcm, MBEDTLS_CIPHER_CAMELLIA_256_GCM},
+  {janetls_cipher_class_des, 64, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_DES_ECB},
+  {janetls_cipher_class_des, 64, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_DES_CBC},
+  {janetls_cipher_class_des, 128, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_DES_EDE_ECB},
+  {janetls_cipher_class_des, 128, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_DES_EDE_CBC},
+  {janetls_cipher_class_des, 192, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_DES_EDE3_ECB},
+  {janetls_cipher_class_des, 192, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_DES_EDE3_CBC},
+  {janetls_cipher_class_blowfish, 128, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_BLOWFISH_ECB},
+  {janetls_cipher_class_blowfish, 192, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_BLOWFISH_ECB},
+  {janetls_cipher_class_blowfish, 256, janetls_cipher_mode_ecb, MBEDTLS_CIPHER_BLOWFISH_ECB},
+  {janetls_cipher_class_blowfish, 128, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_BLOWFISH_CBC},
+  {janetls_cipher_class_blowfish, 192, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_BLOWFISH_CBC},
+  {janetls_cipher_class_blowfish, 256, janetls_cipher_mode_cbc, MBEDTLS_CIPHER_BLOWFISH_CBC},
+  {janetls_cipher_class_blowfish, 128, janetls_cipher_mode_cfb, MBEDTLS_CIPHER_BLOWFISH_CFB64},
+  {janetls_cipher_class_blowfish, 192, janetls_cipher_mode_cfb, MBEDTLS_CIPHER_BLOWFISH_CFB64},
+  {janetls_cipher_class_blowfish, 256, janetls_cipher_mode_cfb, MBEDTLS_CIPHER_BLOWFISH_CFB64},
+  {janetls_cipher_class_blowfish, 128, janetls_cipher_mode_ctr, MBEDTLS_CIPHER_BLOWFISH_CTR},
+  {janetls_cipher_class_blowfish, 192, janetls_cipher_mode_ctr, MBEDTLS_CIPHER_BLOWFISH_CTR},
+  {janetls_cipher_class_blowfish, 256, janetls_cipher_mode_ctr, MBEDTLS_CIPHER_BLOWFISH_CTR},
+  {janetls_cipher_class_aes, 128, janetls_cipher_mode_ccm, MBEDTLS_CIPHER_AES_128_CCM},
+  {janetls_cipher_class_aes, 192, janetls_cipher_mode_ccm, MBEDTLS_CIPHER_AES_192_CCM},
+  {janetls_cipher_class_aes, 256, janetls_cipher_mode_ccm, MBEDTLS_CIPHER_AES_256_CCM},
+  {janetls_cipher_class_camellia, 128, janetls_cipher_mode_ccm, MBEDTLS_CIPHER_CAMELLIA_128_CCM},
+  {janetls_cipher_class_camellia, 192, janetls_cipher_mode_ccm, MBEDTLS_CIPHER_CAMELLIA_192_CCM},
+  {janetls_cipher_class_camellia, 256, janetls_cipher_mode_ccm, MBEDTLS_CIPHER_CAMELLIA_256_CCM},
+  {janetls_cipher_class_aes, 128, janetls_cipher_mode_ofb, MBEDTLS_CIPHER_AES_128_OFB},
+  {janetls_cipher_class_aes, 192, janetls_cipher_mode_ofb, MBEDTLS_CIPHER_AES_192_OFB},
+  {janetls_cipher_class_aes, 256, janetls_cipher_mode_ofb, MBEDTLS_CIPHER_AES_256_OFB},
+  {janetls_cipher_class_aes, 128, janetls_cipher_mode_xts, MBEDTLS_CIPHER_AES_128_XTS},
+  {janetls_cipher_class_aes, 256, janetls_cipher_mode_xts, MBEDTLS_CIPHER_AES_256_XTS},
+  {janetls_cipher_class_chacha20, 256, janetls_cipher_mode_stream, MBEDTLS_CIPHER_CHACHA20},
+  {janetls_cipher_class_chacha20, 256, janetls_cipher_mode_chachapoly, MBEDTLS_CIPHER_CHACHA20_POLY1305},
+  {janetls_cipher_class_none, 0, janetls_cipher_mode_none, MBEDTLS_CIPHER_NONE},
+};
+
+static mbedtls_cipher_type_t cipher_type_from(janetls_cipher_class cipher_class, int key_size, janetls_cipher_mode mode)
+{
+  const struct mbedtls_cipher_map_t * mapping = mbedtls_cipher_map;
+  while(mapping->cipher_class != janetls_cipher_class_none)
+  {
+    if (cipher_class == mapping->cipher_class
+      && key_size == mapping->key_size
+      && mode == mapping->mode)
+    {
+      return mapping->mbedtls_type;
+    }
+    mapping++;
+  }
+  return MBEDTLS_CIPHER_NONE;
 }
