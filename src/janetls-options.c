@@ -217,6 +217,11 @@ JANETLS_SEARCH_OPTION_LIST(ecp_curve_group, janetls_ecp_curve_group)
 
 option_list_entry cipher_class[] = {
   {janetls_cipher_class_aes, "aes", 0},
+  {janetls_cipher_class_des, "des", 0},
+  {janetls_cipher_class_2des, "2des", 0},
+  {janetls_cipher_class_3des, "3des", 0},
+  {janetls_cipher_class_camellia, "camellia", 0},
+  {janetls_cipher_class_blowfish, "blowfish", 0},
   {janetls_cipher_class_chacha20, "chacha20", 0},
   {janetls_cipher_class_chacha20, "chacha", OPTION_LIST_HIDDEN},
 };
@@ -241,5 +246,9 @@ option_list_entry cipher_mode[] = {
   {janetls_cipher_mode_chachapoly, "poly1305", OPTION_LIST_HIDDEN},
   {janetls_cipher_mode_chachapoly, "chachapoly", OPTION_LIST_HIDDEN},
   {janetls_cipher_mode_chachapoly, "chachapoly1305", OPTION_LIST_HIDDEN},
+  {janetls_cipher_mode_cfb, "cfb", 0},
+  {janetls_cipher_mode_ccm, "ccm", 0},
+  {janetls_cipher_mode_ofb, "ofb", 0},
+  {janetls_cipher_mode_xts, "xts", 0},
 };
 JANETLS_SEARCH_OPTION_LIST(cipher_mode, janetls_cipher_mode)

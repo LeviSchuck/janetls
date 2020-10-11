@@ -74,8 +74,11 @@
     "mbedtls/library/sha512.c"
     # For Cipher
     "mbedtls/library/aes.c"
-    "mbedtls/library/ccm.c"
     "mbedtls/library/chacha20.c"
+    "mbedtls/library/blowfish.c"
+    "mbedtls/library/camellia.c"
+    "mbedtls/library/des.c"
+    "mbedtls/library/ccm.c"
     "mbedtls/library/poly1305.c"
     "mbedtls/library/chachapoly.c"
     "mbedtls/library/gcm.c"

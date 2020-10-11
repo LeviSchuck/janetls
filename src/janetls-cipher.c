@@ -27,6 +27,9 @@ static int cipher_gc_fn(void * data, size_t len);
 static int cipher_gcmark(void * data, size_t len);
 static int cipher_get_fn(void * data, Janet key, Janet * out);
 
+static Janet class_key_size(int32_t argc, Janet * argv);
+static Janet class_modes(int32_t argc, Janet * argv);
+
 JanetAbstractType cipher_object_type = {
   "janetls/cipher",
   cipher_gc_fn,
@@ -47,6 +50,12 @@ static const JanetReg cfuns[] =
     "Provides an tuple of keywords for available cipher paddings"},
   {"cipher/classes", janetls_search_cipher_class_set, "(janetls/cipher/classes)\n\n"
     "Provides an tuple of keywords for available cipher classes (like aes)"},
+  {"cipher/class-key-size", class_key_size, "(janetls/cipher/class-key-size class)\n\n"
+    "Returns a tuple of bit sizes expected for a cipher class"
+    },
+  {"cipher/class-modes", class_modes, "(janetls/cipher/class-modes class)\n\n"
+    "Returns a tuple of modes supported for a cipher class"
+    },
   {NULL, NULL, NULL}
 };
 
@@ -93,4 +102,105 @@ static int cipher_get_fn(void * data, Janet key, Janet * out)
   }
 
   return janet_getmethod(janet_unwrap_keyword(key), cipher_methods, out);
+}
+
+
+static Janet class_key_size(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_cipher_class cipher_class;
+  check_result(janetls_search_cipher_class(argv[0], &cipher_class));
+  Janet values[3];
+  int size = 0;
+  switch (cipher_class) {
+    case janetls_cipher_class_chacha20:
+      values[0] = janet_wrap_number(256);
+      size = 1;
+      break;
+    case janetls_cipher_class_aes:
+      values[0] = janet_wrap_number(128);
+      values[1] = janet_wrap_number(192);
+      values[2] = janet_wrap_number(256);
+      size = 3;
+      break;
+    case janetls_cipher_class_blowfish:
+      values[0] = janet_wrap_number(128);
+      values[1] = janet_wrap_number(192);
+      values[2] = janet_wrap_number(256);
+      size = 3;
+      break;
+    case janetls_cipher_class_camellia:
+      values[0] = janet_wrap_number(128);
+      values[1] = janet_wrap_number(192);
+      values[2] = janet_wrap_number(256);
+      size = 3;
+      break;
+    case janetls_cipher_class_des:
+      values[0] = janet_wrap_number(64);
+      size = 1;
+      break;
+    case janetls_cipher_class_2des:
+      values[0] = janet_wrap_number(128);
+      size = 1;
+      break;
+    case janetls_cipher_class_3des:
+      values[0] = janet_wrap_number(192);
+      size = 1;
+      break;
+    default:
+      break;
+  }
+  return janet_wrap_tuple(janet_tuple_n(values, size));
+}
+
+static Janet class_modes(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_cipher_class cipher_class;
+  check_result(janetls_search_cipher_class(argv[0], &cipher_class));
+  Janet values[10];
+  int size = 0;
+  switch (cipher_class) {
+    case janetls_cipher_class_chacha20:
+      values[0] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_stream);
+      values[1] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_chachapoly);
+      size = 2;
+      break;
+    case janetls_cipher_class_aes:
+      values[0] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ecb);
+      values[1] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_cbc);
+      values[2] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ctr);
+      values[3] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_gcm);
+      values[4] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ofb);
+      values[5] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_xts);
+      values[6] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_cfb);
+      values[7] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ccm);
+      size = 8;
+      break;
+    case janetls_cipher_class_blowfish:
+      values[0] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ecb);
+      values[1] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_cbc);
+      values[2] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ctr);
+      values[3] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_cfb);
+      size = 4;
+      break;
+    case janetls_cipher_class_camellia:
+      values[0] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ecb);
+      values[1] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_cbc);
+      values[2] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ctr);
+      values[3] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_cfb);
+      values[4] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_gcm);
+      size = 5;
+      break;
+    case janetls_cipher_class_des:
+    case janetls_cipher_class_2des:
+    case janetls_cipher_class_3des:
+      values[0] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_ecb);
+      values[1] = janetls_search_cipher_mode_to_janet(janetls_cipher_mode_cbc);
+      size = 2;
+      break;
+    default:
+      break;
+  }
+  return janet_wrap_tuple(janet_tuple_n(values, size));
 }

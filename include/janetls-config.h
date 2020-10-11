@@ -61,6 +61,9 @@
 #define MBEDTLS_CHACHAPOLY_C
 #define MBEDTLS_CCM_C
 #define MBEDTLS_CIPHER_C
+#define MBEDTLS_BLOWFISH_C
+#define MBEDTLS_CAMELLIA_C
+#define MBEDTLS_DES_C
 
 // For randomness, entropy gives access to using a random syscall
 // However in testing, it was not sufficient for generating 4096 bit primes

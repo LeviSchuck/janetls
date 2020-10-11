@@ -226,6 +226,11 @@ typedef enum janetls_cipher_class
   janetls_cipher_class_none = 0,
   janetls_cipher_class_aes,
   janetls_cipher_class_chacha20,
+  janetls_cipher_class_blowfish,
+  janetls_cipher_class_camellia,
+  janetls_cipher_class_des,
+  janetls_cipher_class_2des,
+  janetls_cipher_class_3des,
 } janetls_cipher_class;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_class, janetls_cipher_class)
@@ -250,6 +255,10 @@ typedef enum janetls_cipher_mode
   janetls_cipher_mode_gcm,
   janetls_cipher_mode_stream, // used for chacha20
   janetls_cipher_mode_chachapoly, // used for AEAD chacha20+poly1305
+  janetls_cipher_mode_cfb,
+  janetls_cipher_mode_ccm,
+  janetls_cipher_mode_ofb,
+  janetls_cipher_mode_xts,
 } janetls_cipher_mode;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_mode, janetls_cipher_mode)
