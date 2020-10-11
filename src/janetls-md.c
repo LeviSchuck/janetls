@@ -258,7 +258,7 @@ static const JanetReg cfuns[] =
     "the same object."
     },
   {"md/algorithms", janetls_search_md_supported_algorithms_set, "(janetls/md/algorithms)\n\n"
-    "Provides an array of keywords for available algorithms"},
+    "Provides an tuple of keywords for available algorithms"},
   {NULL, NULL, NULL}
 };
 

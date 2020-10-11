@@ -30,6 +30,7 @@ typedef struct janetls_cipher_object {
   mbedtls_cipher_context_t ctx;
   janetls_cipher_class cipher_class;
   janetls_cipher_mode mode;
+  janetls_cipher_padding padding;
   uint32_t flags;
 } janetls_cipher_object;
 

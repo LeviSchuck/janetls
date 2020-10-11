@@ -222,6 +222,14 @@ option_list_entry cipher_class[] = {
 };
 JANETLS_SEARCH_OPTION_LIST(cipher_class, janetls_cipher_class)
 
+option_list_entry cipher_padding[] = {
+  {janetls_cipher_padding_pkcs7, "pkcs7", 0},
+  {janetls_cipher_padding_one_and_zeros, "one-and-zeros", 0},
+  {janetls_cipher_padding_zeros_and_len, "zeros-and-len", 0},
+  {janetls_cipher_padding_zeros, "zeros", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(cipher_padding, janetls_cipher_padding)
+
 option_list_entry cipher_mode[] = {
   {janetls_cipher_mode_ecb, "ecb", 0},
   {janetls_cipher_mode_cbc, "cbc", 0},

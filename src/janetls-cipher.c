@@ -41,6 +41,12 @@ static JanetMethod cipher_methods[] = {
 
 static const JanetReg cfuns[] =
 {
+  {"cipher/modes", janetls_search_cipher_mode_set, "(janetls/cipher/modes)\n\n"
+    "Provides an tuple of keywords for available cipher modes"},
+  {"cipher/paddings", janetls_search_cipher_padding_set, "(janetls/cipher/paddings)\n\n"
+    "Provides an tuple of keywords for available cipher paddings"},
+  {"cipher/classes", janetls_search_cipher_class_set, "(janetls/cipher/classes)\n\n"
+    "Provides an tuple of keywords for available cipher classes (like aes)"},
   {NULL, NULL, NULL}
 };
 
@@ -54,6 +60,7 @@ janetls_cipher_object * janetls_new_cipher()
 {
   janetls_cipher_object * cipher = janet_abstract(&cipher_object_type, sizeof(janetls_cipher_object));
   memset(cipher, 0, sizeof(janetls_cipher_object));
+  mbedtls_cipher_init(&cipher->ctx);
   return cipher;
 }
 

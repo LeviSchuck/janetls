@@ -75,10 +75,12 @@
     # For Cipher
     "mbedtls/library/aes.c"
     "mbedtls/library/ccm.c"
-    "mbedtls/library/chachapoly.c"
     "mbedtls/library/chacha20.c"
+    "mbedtls/library/poly1305.c"
+    "mbedtls/library/chachapoly.c"
     "mbedtls/library/gcm.c"
     "mbedtls/library/cipher.c"
+    "mbedtls/library/cipher_wrap.c"
     # For randomness, AES is used. It'll be in its own section later.
     "mbedtls/library/ctr_drbg.c"
     "mbedtls/library/entropy.c"

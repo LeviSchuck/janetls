@@ -230,6 +230,17 @@ typedef enum janetls_cipher_class
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_class, janetls_cipher_class)
 
+typedef enum janetls_cipher_padding
+{
+  janetls_cipher_padding_none = 0,
+  janetls_cipher_padding_pkcs7,
+  janetls_cipher_padding_one_and_zeros,
+  janetls_cipher_padding_zeros_and_len,
+  janetls_cipher_padding_zeros,
+} janetls_cipher_padding;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_padding, janetls_cipher_padding)
+
 typedef enum janetls_cipher_mode
 {
   janetls_cipher_mode_none = 0,
@@ -237,8 +248,8 @@ typedef enum janetls_cipher_mode
   janetls_cipher_mode_cbc,
   janetls_cipher_mode_ctr,
   janetls_cipher_mode_gcm,
-  janetls_cipher_mode_stream,
-  janetls_cipher_mode_chachapoly,
+  janetls_cipher_mode_stream, // used for chacha20
+  janetls_cipher_mode_chachapoly, // used for AEAD chacha20+poly1305
 } janetls_cipher_mode;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_mode, janetls_cipher_mode)
