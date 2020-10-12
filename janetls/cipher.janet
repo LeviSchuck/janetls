@@ -19,9 +19,18 @@
 # SOFTWARE.
 #
 
-(import ./native :prefix "" :export true)
-(import ./pem :prefix "" :export true)
-(import ./util :prefix "" :export true)
-(import ./pk :prefix "" :export true)
-(import ./oid :prefix "" :export true)
-(import ./cipher :prefix "" :export true)
+(import ./native :prefix "")
+
+(def- cached-ciphers (cipher/native-ciphers))
+
+(var- ciphers (table))
+(each [cipher mode size] cached-ciphers
+  (var c (get ciphers cipher))
+  (if (not c) (do (set c @{}) (put ciphers cipher c)))
+  (var m (get c mode))
+  (if (not m) (do (set m @{:sizes @[]}) (put c mode m)))
+  (array/push (get m :sizes) size)
+  )
+(set ciphers (freeze ciphers))
+
+(def cipher/ciphers ciphers)
