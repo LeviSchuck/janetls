@@ -149,6 +149,12 @@ int janetls_random_rng(void * untyped_random, unsigned char * buffer, size_t siz
   return mbedtls_ctr_drbg_random(&random->drbg, buffer, size);
 }
 
+int janetls_random_set(uint8_t * buffer, size_t size)
+{
+  janetls_random_object * random = janetls_get_random();
+  return mbedtls_ctr_drbg_random(&random->drbg, buffer, size);
+}
+
 janetls_random_object * janetls_get_random()
 {
   static JANET_THREAD_LOCAL janetls_random_object * thread_random = NULL;

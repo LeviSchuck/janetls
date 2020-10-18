@@ -127,6 +127,24 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "Invalid input type, should be string or buffer";
     case JANETLS_ERR_MD_INVALID_ALGORITHM:
       return "Invalid algorithm";
+    case JANETLS_ERR_CIPHER_INVALID_CIPHER:
+      return "Invalid cipher";
+    case JANETLS_ERR_CIPHER_INVALID_MODE:
+      return "Invalid cipher mode";
+    case JANETLS_ERR_CIPHER_INVALID_ALGORITHM:
+      return "Invalid cipher algorithm";
+    case JANETLS_ERR_CIPHER_INVALID_KEY_SIZE:
+      return "Invalid cipher key size";
+    case JANETLS_ERR_CIPHER_INVALID_IV_SIZE:
+      return "Invalid IV / nonce size";
+    case JANETLS_ERR_CIPHER_INVALID_STATE:
+      return "Cipher is in a state where this operation cannot be performed";
+    case JANETLS_ERR_CIPHER_INVALID_PADDING:
+      return "Cipher padding is invalid";
+    case JANETLS_ERR_CIPHER_INVALID_TAG_SIZE:
+      return "Cipher tag size is different from what is requested, cannot get tag of this size";
+    case JANETLS_ERR_CIPHER_INVALID_OPERATION:
+      return "Cipher invalid operation, encrypt or decrypt is expected";
     case JANETLS_ERR_ASN1_INVALID_BIT_STRING_LENGTH:
       return "A bitstring had an invalid length while parsing";
     case JANETLS_ERR_ASN1_EMPTY_INPUT:

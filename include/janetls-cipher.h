@@ -26,15 +26,76 @@
 #include "mbedtls/cipher.h"
 #include "janetls-options.h"
 
+#define JANETLS_MAX_CIPHER_KEY_SIZE 64
+// GCM tags 4 - 16 bytes
+// Cachapoly is exactly 16 bytes
+#define JANETLS_MAX_CIPHER_TAG_SIZE 16
+
+typedef struct janetls_cipher_type
+{
+  janetls_cipher_cipher cipher;
+  janetls_cipher_algorithm algorithm;
+  janetls_cipher_mode mode;
+  uint16_t key_size;
+  mbedtls_cipher_type_t mbedtls_type;
+  uint32_t default_flags;
+} janetls_cipher_type;
+
 typedef struct janetls_cipher_object {
   mbedtls_cipher_context_t ctx;
-  janetls_cipher_class cipher_class;
-  janetls_cipher_mode mode;
+  const janetls_cipher_type * type;
   janetls_cipher_padding padding;
+  janetls_cipher_operation operation;
+  uint32_t buffer_length;
+  uint32_t key_size;
+  uint32_t iv_size;
+  uint32_t tag_size;
   uint32_t flags;
+  uint8_t key[JANETLS_MAX_CIPHER_KEY_SIZE];
+  uint8_t buffer[MBEDTLS_MAX_BLOCK_LENGTH];
+  uint8_t iv[MBEDTLS_MAX_IV_LENGTH];
+  uint8_t tag[JANETLS_MAX_CIPHER_TAG_SIZE];
 } janetls_cipher_object;
 
 janetls_cipher_object * janetls_new_cipher();
 JanetAbstractType * janetls_cipher_object_type();
+int janetls_setup_cipher(
+  janetls_cipher_object * cipher_object,
+  janetls_cipher_cipher cipher);
+int janetls_cipher_set_key(
+  janetls_cipher_object * cipher_object,
+  uint8_t * key,
+  size_t length,
+  janetls_cipher_operation operation);
+int janetls_cipher_set_iv(
+  janetls_cipher_object * cipher_object,
+  uint8_t * iv,
+  size_t length);
+int janetls_cipher_set_padding(
+  janetls_cipher_object * cipher_object,
+  janetls_cipher_padding padding);
+int janetls_cipher_update(
+  janetls_cipher_object * cipher_object,
+  uint8_t * data,
+  size_t length,
+  Janet * output);
+int janetls_cipher_update_ad(
+  janetls_cipher_object * cipher_object,
+  uint8_t * data,
+  size_t length,
+  Janet * output);
+int janetls_cipher_finish(
+  janetls_cipher_object * cipher_object,
+  Janet * output);
+int janetls_cipher_get_tag(
+  janetls_cipher_object * cipher_object,
+  Janet * output,
+  size_t tag_size);
+int janetls_cipher_get_iv(
+  janetls_cipher_object * cipher_object,
+  Janet * output);
+int janetls_cipher_get_key(
+  janetls_cipher_object * cipher_object,
+  Janet * output);
 
 #endif

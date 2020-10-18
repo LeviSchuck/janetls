@@ -57,17 +57,17 @@
 #define MBEDTLS_CIPHER_MODE_CFB
 #define MBEDTLS_CIPHER_MODE_OFB
 #define MBEDTLS_CIPHER_MODE_CTR
-#define MBEDTLS_CIPHER_MODE_XTS
+// #define MBEDTLS_CIPHER_MODE_XTS
 #define MBEDTLS_CHACHA20_C
 #define MBEDTLS_POLY1305_C
 #define MBEDTLS_AES_C
 #define MBEDTLS_GCM_C
 #define MBEDTLS_CHACHAPOLY_C
-#define MBEDTLS_CCM_C
+// #define MBEDTLS_CCM_C
 #define MBEDTLS_CIPHER_C
-#define MBEDTLS_BLOWFISH_C
-#define MBEDTLS_CAMELLIA_C
-#define MBEDTLS_DES_C
+// #define MBEDTLS_BLOWFISH_C
+// #define MBEDTLS_CAMELLIA_C
+// #define MBEDTLS_DES_C
 
 // For randomness, entropy gives access to using a random syscall
 // However in testing, it was not sufficient for generating 4096 bit primes

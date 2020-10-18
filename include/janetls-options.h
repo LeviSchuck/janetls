@@ -221,17 +221,17 @@ typedef enum janetls_ecp_curve_group
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(ecp_curve_group, janetls_ecp_curve_group)
 
-typedef enum janetls_cipher_class
+typedef enum janetls_cipher_algorithm
 {
-  janetls_cipher_class_none = 0,
-  janetls_cipher_class_aes,
-  janetls_cipher_class_chacha20,
-  janetls_cipher_class_blowfish,
-  janetls_cipher_class_camellia,
-  janetls_cipher_class_des,
-} janetls_cipher_class;
+  janetls_cipher_algorithm_none = 0,
+  janetls_cipher_algorithm_aes,
+  janetls_cipher_algorithm_chacha20,
+  // janetls_cipher_algorithm_blowfish,
+  // janetls_cipher_algorithm_camellia,
+  // janetls_cipher_algorithm_des,
+} janetls_cipher_algorithm;
 
-JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_class, janetls_cipher_class)
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_algorithm, janetls_cipher_algorithm)
 
 typedef enum janetls_cipher_padding
 {
@@ -251,14 +251,51 @@ typedef enum janetls_cipher_mode
   janetls_cipher_mode_cbc,
   janetls_cipher_mode_ctr,
   janetls_cipher_mode_gcm,
+  janetls_cipher_mode_cfb,
+  // janetls_cipher_mode_ccm,
+  janetls_cipher_mode_ofb,
+  // janetls_cipher_mode_xts,
   janetls_cipher_mode_stream, // used for chacha20
   janetls_cipher_mode_chachapoly, // used for AEAD chacha20+poly1305
-  janetls_cipher_mode_cfb,
-  janetls_cipher_mode_ccm,
-  janetls_cipher_mode_ofb,
-  janetls_cipher_mode_xts,
 } janetls_cipher_mode;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_mode, janetls_cipher_mode)
+
+typedef enum janetls_cipher_cipher
+{
+  janetls_cipher_cipher_none = 0,
+  janetls_cipher_cipher_aes_128_ecb,
+  janetls_cipher_cipher_aes_192_ecb,
+  janetls_cipher_cipher_aes_256_ecb,
+  janetls_cipher_cipher_aes_128_cbc,
+  janetls_cipher_cipher_aes_192_cbc,
+  janetls_cipher_cipher_aes_256_cbc,
+  janetls_cipher_cipher_aes_128_ctr,
+  janetls_cipher_cipher_aes_192_ctr,
+  janetls_cipher_cipher_aes_256_ctr,
+  janetls_cipher_cipher_aes_128_gcm,
+  janetls_cipher_cipher_aes_192_gcm,
+  janetls_cipher_cipher_aes_256_gcm,
+  janetls_cipher_cipher_aes_128_cfb,
+  janetls_cipher_cipher_aes_192_cfb,
+  janetls_cipher_cipher_aes_256_cfb,
+  janetls_cipher_cipher_aes_128_ofb,
+  janetls_cipher_cipher_aes_192_ofb,
+  janetls_cipher_cipher_aes_256_ofb,
+  janetls_cipher_cipher_chacha20,
+  janetls_cipher_cipher_chacha20_poly1305,
+} janetls_cipher_cipher;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_cipher, janetls_cipher_cipher)
+
+typedef enum janetls_cipher_operation
+{
+  janetls_cipher_operation_none = 0,
+  janetls_cipher_operation_encrypt,
+  janetls_cipher_operation_decrypt,
+} janetls_cipher_operation;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_operation, janetls_cipher_operation)
+
 
 #endif
