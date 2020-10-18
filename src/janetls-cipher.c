@@ -163,23 +163,8 @@ int janetls_cipher_set_key(janetls_cipher_object * cipher_object, uint8_t * key,
 
   if (cipher_object->type == NULL)
   {
-    // No type? Select one! By default AES GCM
-    uint16_t bit_length = (uint16_t)length * 8;
-
-    if (bit_length == 0)
-    {
-      // By default 256 bit
-      bit_length = 256;
-    }
-
-    const janetls_cipher_type * type = cipher_type_from(janetls_cipher_algorithm_aes, bit_length, janetls_cipher_mode_gcm, 0);
-
-    if (type->cipher == janetls_cipher_cipher_none)
-    {
-      retcheck(JANETLS_ERR_CIPHER_INVALID_KEY_SIZE);
-    }
-
-    retcheck(janetls_setup_cipher(cipher_object, type->cipher));
+    // No type?
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
   }
 
   if (cipher_object->flags & (FLAG_HAS_KEY))
@@ -246,8 +231,7 @@ int janetls_cipher_set_iv(janetls_cipher_object * cipher_object, uint8_t * iv, s
 
   if (!(cipher_object->flags & FLAG_HAS_KEY))
   {
-    // No key? then generate one
-    retcheck(janetls_cipher_set_key(cipher_object, NULL, length, janetls_cipher_operation_encrypt));
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
   }
 
 
@@ -296,8 +280,7 @@ int janetls_cipher_set_padding(janetls_cipher_object * cipher_object, janetls_ci
 
   if (!(cipher_object->flags & FLAG_HAS_KEY))
   {
-    // No key? Odd.. but set one up
-    retcheck(janetls_cipher_set_key(cipher_object, NULL, 0, janetls_cipher_operation_encrypt));
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
   }
 
   if (cipher_object->flags & FLAG_HAS_DATA)
@@ -359,14 +342,12 @@ int janetls_cipher_update(
 
   if (!(cipher_object->flags & FLAG_HAS_KEY))
   {
-    // No key? set one up
-    retcheck(janetls_cipher_set_key(cipher_object, NULL, 0, janetls_cipher_operation_encrypt));
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
   }
 
   if ((cipher_object->flags & FLAG_IV) && !(cipher_object->flags & FLAG_HAS_IV))
   {
-    // No IV? set one up
-    retcheck(janetls_cipher_set_iv(cipher_object, NULL, 0));
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
   }
 
   size_t current_buffer_length = cipher_object->buffer_length;
@@ -431,14 +412,12 @@ int janetls_cipher_update_ad(
 
   if (!(cipher_object->flags & FLAG_HAS_KEY))
   {
-    // No key? set one up
-    retcheck(janetls_cipher_set_key(cipher_object, NULL, 0, janetls_cipher_operation_encrypt));
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
   }
 
   if ((cipher_object->flags & FLAG_IV) && !(cipher_object->flags & FLAG_HAS_IV))
   {
-    // No IV? set one up
-    retcheck(janetls_cipher_set_iv(cipher_object, NULL, 0));
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
   }
 
   switch (cipher_object->type->mode)
