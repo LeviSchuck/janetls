@@ -30,6 +30,10 @@
 #include "mbedtls/rsa.h"
 #include "mbedtls/ecp.h"
 #include "mbedtls/ecdsa.h"
+#include "mbedtls/cipher.h"
+#include "mbedtls/aes.h"
+#include "mbedtls/gcm.h"
+#include "mbedtls/chacha20.h"
 
 JANET_MODULE_ENTRY(JanetTable *env)
 {
@@ -65,6 +69,7 @@ const char * result_error_message(int result, uint8_t * unhandled)
     case MBEDTLS_ERR_MPI_ALLOC_FAILED:
     case JANETLS_ERR_ALLOCATION_FAILED:
     case MBEDTLS_ERR_ECP_ALLOC_FAILED:
+    case MBEDTLS_ERR_CIPHER_ALLOC_FAILED:
       return "Ran out of memory";
     case MBEDTLS_ERR_MD_BAD_INPUT_DATA:
     case MBEDTLS_ERR_MPI_BAD_INPUT_DATA:
@@ -116,6 +121,37 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "ECP: Invalid public or private key";
     case MBEDTLS_ERR_ECP_SIG_LEN_MISMATCH:
       return "ECP: The signature is the wrong length";
+    case MBEDTLS_ERR_CIPHER_AUTH_FAILED:
+      return "CIPHER: Auth tag failed";
+    case MBEDTLS_ERR_CIPHER_BAD_INPUT_DATA:
+      return "CIPHER: Bad input data";
+    case MBEDTLS_ERR_CIPHER_FULL_BLOCK_EXPECTED:
+      return "CIPHER: Full block expected";
+    case MBEDTLS_ERR_CIPHER_INVALID_CONTEXT:
+      return "CIPHER: Invalid context";
+    case MBEDTLS_ERR_CIPHER_INVALID_PADDING:
+      return "CIPHER: Invalid padding";
+    case MBEDTLS_ERR_AES_BAD_INPUT_DATA:
+      return "AES Bad input data";
+    case MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH:
+      return "AES: Invalid input length";
+    case MBEDTLS_ERR_AES_INVALID_KEY_LENGTH:
+      return "AES: Invalid key length";
+    case MBEDTLS_ERR_GCM_AUTH_FAILED:
+      return "GCM: Auth tag failed";
+    case MBEDTLS_ERR_GCM_BAD_INPUT:
+      return "GCM: Bad input data";
+    case MBEDTLS_ERR_CHACHA20_BAD_INPUT_DATA:
+      return "Chacha20: Bad input data";
+    case MBEDTLS_ERR_CIPHER_FEATURE_UNAVAILABLE:
+    case MBEDTLS_ERR_AES_FEATURE_UNAVAILABLE:
+    case MBEDTLS_ERR_CHACHA20_FEATURE_UNAVAILABLE:
+      return "CIPHER: Feature Unavailable";
+    case MBEDTLS_ERR_CIPHER_HW_ACCEL_FAILED:
+    case MBEDTLS_ERR_GCM_HW_ACCEL_FAILED:
+    case MBEDTLS_ERR_AES_HW_ACCEL_FAILED:
+    case MBEDTLS_ERR_CHACHA20_HW_ACCEL_FAILED:
+      return "CIPHER: Hardware accelleration failure";
     // -------------- JANETLS ERRORS ------------------
     case JANETLS_ERR_ENCODING_INVALID_CHARACTER:
       return "Invalid character found during decoding";

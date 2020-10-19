@@ -64,24 +64,24 @@ int janetls_setup_cipher(
   janetls_cipher_cipher cipher);
 int janetls_cipher_set_key(
   janetls_cipher_object * cipher_object,
-  uint8_t * key,
+  const uint8_t * key,
   size_t length,
   janetls_cipher_operation operation);
 int janetls_cipher_set_iv(
   janetls_cipher_object * cipher_object,
-  uint8_t * iv,
+  const uint8_t * iv,
   size_t length);
 int janetls_cipher_set_padding(
   janetls_cipher_object * cipher_object,
   janetls_cipher_padding padding);
 int janetls_cipher_update(
   janetls_cipher_object * cipher_object,
-  uint8_t * data,
+  const uint8_t * data,
   size_t length,
   Janet * output);
 int janetls_cipher_update_ad(
   janetls_cipher_object * cipher_object,
-  uint8_t * data,
+  const uint8_t * data,
   size_t length,
   Janet * output);
 int janetls_cipher_finish(
@@ -96,6 +96,11 @@ int janetls_cipher_get_iv(
   Janet * output);
 int janetls_cipher_get_key(
   janetls_cipher_object * cipher_object,
+  Janet * output);
+int janetls_cipher_check_tag(
+  janetls_cipher_object * cipher_object,
+  const uint8_t * data,
+  size_t length,
   Janet * output);
 
 #endif

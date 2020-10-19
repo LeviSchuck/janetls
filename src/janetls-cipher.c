@@ -31,6 +31,17 @@ static int cipher_get_fn(void * data, Janet key, Janet * out);
 
 // Janet c functions
 static Janet ciphers(int32_t argc, Janet * argv);
+static Janet cipher_encrypt(int32_t argc, Janet * argv);
+static Janet cipher_decrypt(int32_t argc, Janet * argv);
+static Janet cipher_crypt(int32_t argc, Janet * argv);
+static Janet cipher_update(int32_t argc, Janet * argv);
+static Janet cipher_update_ad(int32_t argc, Janet * argv);
+static Janet cipher_finish(int32_t argc, Janet * argv);
+static Janet cipher_tag(int32_t argc, Janet * argv);
+static Janet cipher_iv(int32_t argc, Janet * argv);
+static Janet cipher_key(int32_t argc, Janet * argv);
+static Janet cipher_cipher(int32_t argc, Janet * argv);
+static Janet cipher_check_tag(int32_t argc, Janet * argv);
 
 
 // internal helpers
@@ -51,11 +62,14 @@ JanetAbstractType cipher_object_type = {
 };
 
 static JanetMethod cipher_methods[] = {
-  {"update", NULL},
-  {"update-ad", NULL},
-  {"finish", NULL},
-  {"tag", NULL},
-  {"iv", NULL},
+  {"update", cipher_update},
+  {"update-ad", cipher_update_ad},
+  {"finish", cipher_finish},
+  {"tag", cipher_tag},
+  {"iv", cipher_iv},
+  {"key", cipher_key},
+  {"cipher", cipher_cipher},
+  {"check-tag", cipher_check_tag},
   {NULL, NULL}
 };
 
@@ -71,6 +85,17 @@ static const JanetReg cfuns[] =
     "Provides an tuple of keywords for available ciphers (like aes-128-cbc)"},
   {"cipher/native-ciphers", ciphers, "internal use, use (cipher/ciphers)"
     },
+  {"cipher/update", cipher_update, ""},
+  {"cipher/update-ad", cipher_update_ad, ""},
+  {"cipher/finish", cipher_finish, ""},
+  {"cipher/tag", cipher_tag, ""},
+  {"cipher/iv", cipher_iv, ""},
+  {"cipher/key", cipher_key, ""},
+  {"cipher/encrypt", cipher_encrypt, ""},
+  {"cipher/decrypt", cipher_decrypt, ""},
+  {"cipher/crypt", cipher_crypt, ""},
+  {"cipher/cipher", cipher_cipher, ""},
+  {"cipher/check-tag", cipher_check_tag, ""},
   {NULL, NULL, NULL}
 };
 
@@ -95,6 +120,7 @@ janetls_cipher_object * janetls_new_cipher()
 {
   janetls_cipher_object * cipher = janet_abstract(&cipher_object_type, sizeof(janetls_cipher_object));
   memset(cipher, 0, sizeof(janetls_cipher_object));
+  janet_eprintf("Calling init\n");
   mbedtls_cipher_init(&cipher->ctx);
   return cipher;
 }
@@ -107,6 +133,7 @@ JanetAbstractType * janetls_cipher_object_type()
 static int cipher_gc_fn(void * data, size_t len)
 {
   janetls_cipher_object * cipher = (janetls_cipher_object *)data;
+  janet_eprintf("Calling free\n");
   mbedtls_cipher_free(&cipher->ctx);
   // Ensure the key does not remain in memory
   mbedtls_platform_zeroize(data, len);
@@ -146,8 +173,11 @@ int janetls_setup_cipher(janetls_cipher_object * cipher_object, janetls_cipher_c
     retcheck(JANETLS_ERR_CIPHER_INVALID_CIPHER);
   }
 
+  janet_eprintf("Setting up cipher to %p\n", janetls_search_cipher_cipher_to_janet(cipher));
+
   const mbedtls_cipher_info_t * info = mbedtls_cipher_info_from_type(type->mbedtls_type);
 
+  janet_eprintf("Calling setup\n");
   retcheck(mbedtls_cipher_setup(&cipher_object->ctx, info));
 
   cipher_object->type = type;
@@ -157,7 +187,7 @@ int janetls_setup_cipher(janetls_cipher_object * cipher_object, janetls_cipher_c
   return ret;
 }
 
-int janetls_cipher_set_key(janetls_cipher_object * cipher_object, uint8_t * key, size_t length, janetls_cipher_operation operation)
+int janetls_cipher_set_key(janetls_cipher_object * cipher_object, const uint8_t * key, size_t length, janetls_cipher_operation operation)
 {
   int ret = 0;
 
@@ -179,6 +209,7 @@ int janetls_cipher_set_key(janetls_cipher_object * cipher_object, uint8_t * key,
   {
     if (length != expected_length || expected_length > JANETLS_MAX_CIPHER_KEY_SIZE)
     {
+      janet_eprintf("Expected length %d but got %d\n", expected_length, length);
       retcheck(JANETLS_ERR_CIPHER_INVALID_KEY_SIZE);
     }
 
@@ -214,8 +245,10 @@ int janetls_cipher_set_key(janetls_cipher_object * cipher_object, uint8_t * key,
     default:
     retcheck(JANETLS_ERR_CIPHER_INVALID_OPERATION);
   }
-
-  retcheck(mbedtls_cipher_setkey(&cipher_object->ctx, cipher_object->iv, length, mbedtls_operation));
+  janet_eprintf("Before set key with length %d\n", length);
+  janet_eprintf("Calling setkey\n");
+  retcheck(mbedtls_cipher_setkey(&cipher_object->ctx, cipher_object->key, length * 8, mbedtls_operation));
+  janet_eprintf("Key written is %p\n", janet_wrap_string(janet_string(cipher_object->key, length)));
 
   cipher_object->flags |= FLAG_HAS_KEY;
   cipher_object->key_size = length;
@@ -224,7 +257,7 @@ int janetls_cipher_set_key(janetls_cipher_object * cipher_object, uint8_t * key,
   return ret;
 }
 
-int janetls_cipher_set_iv(janetls_cipher_object * cipher_object, uint8_t * iv, size_t length)
+int janetls_cipher_set_iv(janetls_cipher_object * cipher_object, const uint8_t * iv, size_t length)
 {
   int ret = 0;
 
@@ -233,7 +266,6 @@ int janetls_cipher_set_iv(janetls_cipher_object * cipher_object, uint8_t * iv, s
   {
     retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
   }
-
 
   if ((cipher_object->flags & FLAG_HAS_IV) || !(cipher_object->flags & FLAG_IV))
   {
@@ -247,6 +279,7 @@ int janetls_cipher_set_iv(janetls_cipher_object * cipher_object, uint8_t * iv, s
   {
     if (length != expected_length || expected_length > MBEDTLS_MAX_IV_LENGTH)
     {
+      janet_eprintf("Expected length %d but got %d\n", expected_length, length);
       retcheck(JANETLS_ERR_CIPHER_INVALID_IV_SIZE);
     }
 
@@ -261,11 +294,14 @@ int janetls_cipher_set_iv(janetls_cipher_object * cipher_object, uint8_t * iv, s
   else
   {
     // Randomly generate an IV
+    janet_eprintf("Randomly generating IV\n");
     retcheck(janetls_random_set(cipher_object->iv, expected_length));
     length = expected_length;
   }
 
+  janet_eprintf("Calling set_iv\n");
   retcheck(mbedtls_cipher_set_iv(&cipher_object->ctx, cipher_object->iv, length));
+  janet_eprintf("IV written is %p\n", janet_wrap_string(janet_string(cipher_object->iv, length)));
 
   cipher_object->flags |= FLAG_HAS_IV;
   cipher_object->iv_size = length;
@@ -311,6 +347,7 @@ int janetls_cipher_set_padding(janetls_cipher_object * cipher_object, janetls_ci
     retcheck(JANETLS_ERR_CIPHER_INVALID_PADDING);
   }
 
+  janet_eprintf("Calling set_padding_mode\n");
   retcheck(mbedtls_cipher_set_padding_mode(&cipher_object->ctx, mbedtls_padding));
   cipher_object->padding = padding;
   cipher_object->flags |= FLAG_HAS_PADDING;
@@ -321,7 +358,7 @@ int janetls_cipher_set_padding(janetls_cipher_object * cipher_object, janetls_ci
 
 int janetls_cipher_update(
   janetls_cipher_object * cipher_object,
-  uint8_t * data,
+  const uint8_t * data,
   size_t length,
   Janet * output)
 {
@@ -364,12 +401,14 @@ int janetls_cipher_update(
   {
     offset = block_size - current_buffer_length;
     memcpy(cipher_object->buffer + current_buffer_length, data, offset);
+    janet_eprintf("Calling update\n");
     retcheck(mbedtls_cipher_update(
         &cipher_object->ctx,
         cipher_object->buffer,
         block_size,
         output_content,
         &output_length));
+    janet_eprintf("Update with data %p\n", janet_wrap_string(janet_string(cipher_object->buffer, block_size)));
     janet_buffer_push_bytes(buffer, output_content, output_length);
     mbedtls_platform_zeroize(cipher_object->buffer, block_size);
     blocks--;
@@ -378,12 +417,14 @@ int janetls_cipher_update(
 
   for (size_t i = 0; i < blocks; i++, offset += block_size)
   {
+    janet_eprintf("Calling update\n");
     retcheck(mbedtls_cipher_update(
         &cipher_object->ctx,
         data + offset,
         block_size,
         output_content,
         &output_length));
+    janet_eprintf("Update with data %p\n", janet_wrap_string(janet_string(data + offset, block_size)));
     janet_buffer_push_bytes(buffer, output_content, output_length);
   }
 
@@ -399,7 +440,7 @@ int janetls_cipher_update(
 
 int janetls_cipher_update_ad(
   janetls_cipher_object * cipher_object,
-  uint8_t * data,
+  const uint8_t * data,
   size_t length,
   Janet * output)
 {
@@ -430,6 +471,7 @@ int janetls_cipher_update_ad(
       break;
   }
 
+  janet_eprintf("Calling update_ad\n");
   retcheck(mbedtls_cipher_update_ad(&cipher_object->ctx, data, length));
 
   *output = janet_wrap_nil();
@@ -467,12 +509,14 @@ int janetls_cipher_finish(
   if (cipher_object->buffer_length > 0)
   {
     // commit the last partial block
+    janet_eprintf("Calling update\n");
     retcheck(mbedtls_cipher_update(
         &cipher_object->ctx,
         cipher_object->buffer,
         cipher_object->buffer_length,
         output_content,
         &output_length));
+    janet_eprintf("Finish with data %p\n", janet_wrap_string(janet_string(cipher_object->buffer, cipher_object->buffer_length)));
     if (output_length > 0)
     {
       // This is unlikely, given we know it is under the block size.
@@ -480,6 +524,7 @@ int janetls_cipher_finish(
     }
   }
 
+  janet_eprintf("Calling finish\n");
   retcheck(mbedtls_cipher_finish(&cipher_object->ctx, output_content, &output_length));
   if (output_length > 0)
   {
@@ -499,7 +544,7 @@ int janetls_cipher_get_tag(
 {
   int ret = 0;
 
-  if (cipher_object->type == NULL || !(cipher_object->flags & FLAG_HAS_KEY))
+  if (cipher_object->type == NULL || !(cipher_object->flags & FLAG_FINISHED))
   {
     retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
   }
@@ -546,8 +591,10 @@ int janetls_cipher_get_tag(
     // output byte content
     // For Cacha20 Poly1305, the tag length is constant
     // This is checked above.
+    janet_eprintf("Calling write_tag\n");
     retcheck(mbedtls_cipher_write_tag(&cipher_object->ctx, cipher_object->tag, tag_max));
     cipher_object->flags |= FLAG_HAS_TAG;
+    janet_eprintf("Tag written is %p\n", janet_wrap_string(janet_string(cipher_object->tag, tag_max)));
   }
 
   JanetBuffer * buffer = buffer_from_output(output, tag_size);
@@ -589,6 +636,68 @@ int janetls_cipher_get_key(
 
   JanetBuffer * buffer = buffer_from_output(output, JANETLS_MAX_CIPHER_KEY_SIZE);
   janet_buffer_push_bytes(buffer, cipher_object->key, cipher_object->key_size);
+
+  end:
+  return ret;
+}
+
+int janetls_cipher_check_tag(
+  janetls_cipher_object * cipher_object,
+  const uint8_t * data,
+  size_t length,
+  Janet * output)
+{
+  int ret = 0;
+
+  if (cipher_object->type == NULL || !(cipher_object->flags & FLAG_HAS_KEY))
+  {
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
+  }
+
+  int has_tag;
+  size_t tag_min;
+  size_t tag_max;
+  switch (cipher_object->type->mode)
+  {
+    case janetls_cipher_mode_gcm:
+      has_tag = 1;
+      tag_min = 4;
+      tag_max = 16;
+      break;
+    case janetls_cipher_mode_chachapoly:
+      tag_min = 16;
+      tag_max = 16;
+      has_tag = 1;
+      break;
+    default:
+      has_tag = 0;
+      break;
+  }
+
+  if (!has_tag)
+  {
+    *output = janet_wrap_nil();
+    goto end;
+  }
+
+  if (length < tag_min || length > tag_max)
+  {
+    retcheck(JANETLS_ERR_CIPHER_INVALID_TAG_SIZE);
+  }
+
+  janet_eprintf("Calling check_tag\n");
+  ret = mbedtls_cipher_check_tag(&cipher_object->ctx, data, length);
+  if (ret == 0)
+  {
+    janet_eprintf("Successfully authenticated tag\n");
+    *output = janet_wrap_true();
+  }
+  else if (ret == MBEDTLS_ERR_CIPHER_AUTH_FAILED)
+  {
+    janet_eprintf("Failed to authenticate tag\n");
+    *output = janet_wrap_false();
+    ret = 0;
+  }
 
   end:
   return ret;
@@ -662,8 +771,6 @@ const janetls_cipher_type * cipher_type_from(
   return mapping;
 }
 
-
-
 JanetBuffer * buffer_from_output(Janet * output, int32_t max_size)
 {
   JanetBuffer * buffer;
@@ -678,4 +785,490 @@ JanetBuffer * buffer_from_output(Janet * output, int32_t max_size)
     *output = janet_wrap_buffer(buffer);
   }
   return buffer;
+}
+
+static void cipher_setup_options(
+  Janet value,
+  janetls_cipher_cipher * cipher,
+  janetls_cipher_padding * padding,
+  janetls_cipher_operation * operation,
+  JanetByteView * key,
+  JanetByteView * iv,
+  JanetByteView * data,
+  JanetByteView * additional_data,
+  JanetByteView * tag,
+  int * padding_set
+  )
+{
+  const JanetKV * kv = NULL;
+  const JanetKV * kvs = NULL;
+  int32_t len;
+  int32_t cap = 0;
+  janet_dictionary_view(value, &kvs, &len, &cap);
+  janet_eprintf("Options dictionary has %d entries\n", len);
+  while ((kv = janet_dictionary_next(kvs, cap, kv)))
+  {
+    if (janet_is_byte_typed(kv->key))
+    {
+      JanetByteView option = janet_to_bytes(kv->key);
+      if (janet_byte_cstrcmp_insensitive(option, "iv") == 0
+        || janet_byte_cstrcmp_insensitive(option, "nonce") == 0)
+      {
+        if (!janet_is_byte_typed(kv->value))
+        {
+          janet_panicf("Expected a string or buffer for %p but got %p", kv->key, kv->value);
+        }
+        *iv = janet_to_bytes(kv->value);
+      }
+      else if (janet_byte_cstrcmp_insensitive(option, "key") == 0)
+      {
+        if (!janet_is_byte_typed(kv->value))
+        {
+          janet_panicf("Expected a string or buffer for %p but got %p", kv->key, kv->value);
+        }
+        *key = janet_to_bytes(kv->value);
+      }
+      else if (janet_byte_cstrcmp_insensitive(option, "data") == 0)
+      {
+        if (!janet_is_byte_typed(kv->value))
+        {
+          janet_panicf("Expected a string or buffer for %p but got %p", kv->key, kv->value);
+        }
+        *data = janet_to_bytes(kv->value);
+      }
+      else if (janet_byte_cstrcmp_insensitive(option, "additional-data") == 0
+        || janet_byte_cstrcmp_insensitive(option, "ad") == 0)
+      {
+        if (!janet_is_byte_typed(kv->value))
+        {
+          janet_panicf("Expected a string or buffer for %p but got %p", kv->key, kv->value);
+        }
+        *additional_data = janet_to_bytes(kv->value);
+      }
+      else if (janet_byte_cstrcmp_insensitive(option, "tag") == 0)
+      {
+        if (!janet_is_byte_typed(kv->value))
+        {
+          janet_panicf("Expected a string or buffer for %p but got %p", kv->key, kv->value);
+        }
+        *tag = janet_to_bytes(kv->value);
+      }
+      else if (janet_byte_cstrcmp_insensitive(option, "cipher") == 0)
+      {
+        check_result(janetls_search_cipher_cipher(kv->value, cipher));
+      }
+      else if (janet_byte_cstrcmp_insensitive(option, "padding") == 0)
+      {
+        check_result(janetls_search_cipher_padding(kv->value, padding));
+        *padding_set = 1;
+      }
+      else if (janet_byte_cstrcmp_insensitive(option, "operation") == 0)
+      {
+        check_result(janetls_search_cipher_operation(kv->value, operation));
+      }
+      else
+      {
+        janet_eprintf("Unexpected key %p with value %p\n", kv->key, kv->value);
+      }
+    }
+    else
+    {
+      janet_eprintf("Unexpected key %p with value %p\n", kv->key, kv->value);
+    }
+  }
+}
+
+static Janet cipher_encrypt(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 0, 1);
+  janetls_cipher_object * cipher_object = janetls_new_cipher();
+  janetls_cipher_cipher cipher = janetls_cipher_cipher_aes_256_gcm;
+  janetls_cipher_padding padding = janetls_cipher_padding_none;
+  int padding_set = 0;
+  JanetByteView iv = empty_byteview();
+  JanetByteView key = empty_byteview();
+  JanetByteView data = empty_byteview();
+  JanetByteView additional_data = empty_byteview();
+
+  if (argc > 0)
+  {
+    Janet value = argv[0];
+    if (!janet_checktype(value, JANET_STRUCT)
+      && !janet_checktype(value, JANET_TABLE))
+    {
+      janet_panicf("Expected a struct or table but got %p", value);
+    }
+    janetls_cipher_operation ignored_operation;
+    JanetByteView ignored_tag;
+    cipher_setup_options(value, &cipher, &padding, &ignored_operation, &key, &iv, &data, &additional_data, &ignored_tag, &padding_set);
+    (void)ignored_operation;
+    (void)ignored_tag;
+  }
+
+  check_result(janetls_setup_cipher(cipher_object, cipher));
+  check_result(janetls_cipher_set_key(cipher_object, key.bytes, key.len, janetls_cipher_operation_encrypt));
+  check_result(janetls_cipher_set_iv(cipher_object, iv.bytes, iv.len));
+  if (padding_set)
+  {
+    check_result(janetls_cipher_set_padding(cipher_object, padding));
+  }
+
+  // check_result(mbedtls_cipher_reset(&cipher_object->ctx));
+
+  if (additional_data.len > 0)
+  {
+    Janet ignored;
+    check_result(janetls_cipher_update_ad(cipher_object, additional_data.bytes, additional_data.len, &ignored));
+    (void)ignored;
+  }
+  Janet result[2] =
+  {
+    janet_wrap_abstract(cipher_object),
+    janet_wrap_buffer(janet_buffer(data.len + MBEDTLS_MAX_BLOCK_LENGTH)),
+  };
+
+  if (data.len > 0)
+  {
+    check_result(janetls_cipher_update(cipher_object, data.bytes, data.len, result + 1));
+    check_result(janetls_cipher_finish(cipher_object, result + 1));
+  }
+
+  return janet_wrap_tuple(janet_tuple_n(result, 2));
+}
+
+static Janet cipher_decrypt(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 0, 1);
+  janetls_cipher_object * cipher_object = janetls_new_cipher();
+  janetls_cipher_cipher cipher = janetls_cipher_cipher_aes_256_gcm;
+  janetls_cipher_padding padding = janetls_cipher_padding_none;
+  int padding_set = 0;
+  JanetByteView iv = empty_byteview();
+  JanetByteView key = empty_byteview();
+  JanetByteView data = empty_byteview();
+  JanetByteView additional_data = empty_byteview();
+  JanetByteView tag = empty_byteview();
+
+  if (argc > 0)
+  {
+    Janet value = argv[0];
+    if (!janet_checktype(value, JANET_STRUCT)
+      && !janet_checktype(value, JANET_TABLE))
+    {
+      janet_panicf("Expected a struct or table but got %p", value);
+    }
+    janetls_cipher_operation ignored_operation;
+    cipher_setup_options(value, &cipher, &padding, &ignored_operation, &key, &iv, &data, &additional_data, &tag, &padding_set);
+    (void)ignored_operation;
+  }
+
+  if (key.len == 0)
+  {
+    janet_panic("A :key must be specified in order to decrypt!");
+  }
+
+  check_result(janetls_setup_cipher(cipher_object, cipher));
+  check_result(janetls_cipher_set_key(cipher_object, key.bytes, key.len, janetls_cipher_operation_decrypt));
+
+  if (iv.len == 0 && cipher_object->flags & FLAG_IV)
+  {
+    janet_panic("An :iv or :nonce must be specified in order to decrypt!");
+  }
+
+  check_result(janetls_cipher_set_iv(cipher_object, iv.bytes, iv.len));
+  if (padding_set)
+  {
+    check_result(janetls_cipher_set_padding(cipher_object, padding));
+  }
+
+  // check_result(mbedtls_cipher_reset(&cipher_object->ctx));
+
+  if (additional_data.len > 0)
+  {
+    Janet ignored;
+    check_result(janetls_cipher_update_ad(cipher_object, additional_data.bytes, additional_data.len, &ignored));
+    (void)ignored;
+  }
+  JanetBuffer * output_buffer = janet_buffer(data.len + MBEDTLS_MAX_BLOCK_LENGTH);
+  Janet result[2] =
+  {
+    janet_wrap_abstract(cipher_object),
+    janet_wrap_buffer(output_buffer),
+  };
+
+  if (data.len > 0)
+  {
+    janet_eprintf("Data appears to be %p\n", janet_wrap_string(janet_string(data.bytes, data.len)));
+    check_result(janetls_cipher_update(cipher_object, data.bytes, data.len, result + 1));
+    check_result(janetls_cipher_finish(cipher_object, result + 1));
+  }
+
+  if (tag.len > 0)
+  {
+    if (data.len == 0)
+    {
+      janet_panic("A :tag can only be specified if the :data is also specified");
+    }
+    Janet tag_check = janet_wrap_nil();
+    check_result(janetls_cipher_check_tag(cipher_object, tag.bytes, tag.len, &tag_check));
+    if (!janet_checktype(tag_check, JANET_BOOLEAN) || !janet_unwrap_boolean(tag_check))
+    {
+      janet_eprintf("Decrypted content was %p\n", janet_wrap_buffer(output_buffer));
+      janet_eprintf("Tag appears to be %p\n", janet_wrap_string(janet_string(tag.bytes, tag.len)));
+      janet_panic("A :tag was specified but did not authenticate the content successfully");
+    }
+  }
+
+  return janet_wrap_tuple(janet_tuple_n(result, 2));
+}
+
+static Janet cipher_crypt(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 0);
+
+  uint8_t zeros[64];
+  uint8_t cipher_text[64];
+  uint8_t decrypted_text[64];
+  uint8_t tag[64];
+  size_t size = 0;
+  size_t cipher_text_size = 0;
+  size_t decrypted_text_size = 0;
+  size_t tag_size = 16;
+  size_t plaintext_length = 0;
+
+  mbedtls_platform_zeroize(zeros, 64);
+  mbedtls_platform_zeroize(cipher_text, 64);
+  mbedtls_platform_zeroize(tag, 64);
+
+  for (size_t i = 0; i < 64; i++)
+  {
+    tag[i] = i;
+  }
+
+  mbedtls_cipher_context_t ctx;
+  //    mbedtls_cipher_context_t *pctx = &ctx;
+  mbedtls_cipher_init (&ctx);
+  check_result(mbedtls_cipher_setup(&ctx, mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_128_GCM)));
+  check_result(mbedtls_cipher_setkey(&ctx, zeros, 128, MBEDTLS_ENCRYPT));
+  janet_eprintf("\nkey: ");
+  for (size_t i = 0; i < 128 / 8; i++)
+  {
+    janet_eprintf("%02X", zeros[i]);
+  }
+  check_result(mbedtls_cipher_set_iv (&ctx, zeros, 12));
+  janet_eprintf("\niv: ");
+  for (size_t i = 0; i < 12; i++)
+  {
+    janet_eprintf("%02X", zeros[i]);
+  }
+  check_result(mbedtls_cipher_reset(&ctx));
+  // mbedtls_cipher_update_ad (&ctx, aad.data, aad.size);
+  // In a loop to work the whole plained input file
+  check_result(mbedtls_cipher_update(&ctx, zeros, plaintext_length, cipher_text + cipher_text_size, &size));
+  janet_eprintf("\nplaintext: ");
+  for (size_t i = 0; i < plaintext_length; i++)
+  {
+    janet_eprintf("%02X", zeros[i]);
+  }
+  cipher_text_size += size;
+  // After the loop
+  check_result(mbedtls_cipher_finish(&ctx, cipher_text + cipher_text_size, &size));
+  cipher_text_size += size;
+
+  check_result(mbedtls_cipher_write_tag(&ctx, tag, tag_size));
+  mbedtls_cipher_free(&ctx);
+  janet_eprintf("\nciphertext: ");
+  for (size_t i = 0; i < cipher_text_size; i++)
+  {
+    janet_eprintf("%02X", cipher_text[i]);
+  }
+  janet_eprintf("\ntag: ");
+  for (size_t i = 0; i < tag_size; i++)
+  {
+    janet_eprintf("%02X", tag[i]);
+  }
+  janet_eprintf("\n");
+
+  // Decryption
+  mbedtls_cipher_init(&ctx);
+  check_result(mbedtls_cipher_setup(&ctx, mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_128_GCM)));
+  check_result(mbedtls_cipher_setkey(&ctx, zeros, 128, MBEDTLS_DECRYPT));
+  check_result(mbedtls_cipher_set_iv(&ctx, zeros, 12));
+  //  mbedtls_cipher_check_tag (&ctx, pTag, tag.size);
+  mbedtls_cipher_reset(&ctx);
+  check_result(mbedtls_cipher_update_ad(&ctx, zeros, 0));
+  // In a loop to work the whole encrypted input file
+  check_result(mbedtls_cipher_update(&ctx, cipher_text, cipher_text_size, decrypted_text + decrypted_text_size, &size));
+  decrypted_text_size+= size;
+  //    mbedtls_cipher_check_tag (&ctx, pTag, tag.size);
+  // After the loop
+  check_result(mbedtls_cipher_finish(&ctx, decrypted_text + decrypted_text_size, &size));
+  decrypted_text_size+= size;
+
+  check_result(mbedtls_cipher_check_tag(&ctx, tag, tag_size));
+  mbedtls_cipher_free (&ctx);
+
+  return janet_wrap_nil();
+}
+
+
+static Janet cipher_update(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 2, 3);
+
+  Janet output = janet_wrap_nil();
+
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected a string or buffer but got %p", argv[1]);
+  }
+
+  JanetByteView data = janet_to_bytes(argv[1]);
+
+  if (argc > 2)
+  {
+    output = argv[2];
+  }
+
+  janetls_cipher_object * cipher_object = janet_getabstract(argv, 0, janetls_cipher_object_type());
+  check_result(janetls_cipher_update(cipher_object, data.bytes, data.len, &output));
+
+  return output;
+}
+
+static Janet cipher_update_ad(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 2, 3);
+
+  Janet output = janet_wrap_nil();
+
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected a string or buffer but got %p", argv[1]);
+  }
+
+  JanetByteView data = janet_to_bytes(argv[1]);
+
+  if (argc > 2)
+  {
+    output = argv[2];
+  }
+
+  janetls_cipher_object * cipher_object = janet_getabstract(argv, 0, janetls_cipher_object_type());
+  check_result(janetls_cipher_update_ad(cipher_object, data.bytes, data.len, &output));
+
+  return output;
+}
+
+static Janet cipher_finish(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 1, 2);
+
+  Janet output = janet_wrap_nil();
+
+  if (argc > 1)
+  {
+    output = argv[1];
+  }
+
+  janetls_cipher_object * cipher_object = janet_getabstract(argv, 0, janetls_cipher_object_type());
+  check_result(janetls_cipher_finish(cipher_object, &output));
+
+  return output;
+}
+
+static Janet cipher_tag(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 1, 3);
+
+  Janet output = janet_wrap_nil();
+  size_t tag_size = 0;
+
+  if (argc > 1)
+  {
+    output = argv[1];
+  }
+
+  if (argc > 2)
+  {
+    double tag_size_number = janet_getnumber(argv, 2);
+    tag_size = tag_size_number;
+    if (tag_size_number != tag_size)
+    {
+      janet_panic("The tag size must be a whole number between 4 to 16");
+    }
+  }
+
+
+  janetls_cipher_object * cipher_object = janet_getabstract(argv, 0, janetls_cipher_object_type());
+  check_result(janetls_cipher_get_tag(cipher_object, &output, tag_size));
+
+  return output;
+}
+
+static Janet cipher_iv(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 1, 2);
+
+  Janet output = janet_wrap_nil();
+
+  if (argc > 1)
+  {
+    output = argv[1];
+  }
+
+  janetls_cipher_object * cipher_object = janet_getabstract(argv, 0, janetls_cipher_object_type());
+  check_result(janetls_cipher_get_iv(cipher_object, &output));
+
+  return output;
+}
+
+static Janet cipher_key(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 1, 2);
+
+  Janet output = janet_wrap_nil();
+
+  if (argc > 1)
+  {
+    output = argv[1];
+  }
+
+  janetls_cipher_object * cipher_object = janet_getabstract(argv, 0, janetls_cipher_object_type());
+  check_result(janetls_cipher_get_key(cipher_object, &output));
+
+  return output;
+}
+
+static Janet cipher_cipher(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+
+  janetls_cipher_object * cipher_object = janet_getabstract(argv, 0, janetls_cipher_object_type());
+
+  if (cipher_object->type == NULL)
+  {
+    return janetls_search_cipher_cipher_to_janet(janetls_cipher_cipher_none);
+  }
+
+  return janetls_search_cipher_cipher_to_janet(cipher_object->type->cipher);
+}
+
+static Janet cipher_check_tag(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 2);
+
+  Janet output = janet_wrap_nil();
+
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panicf("Expected string or buffer for tag but got %p", argv[1]);
+  }
+
+  janetls_cipher_object * cipher_object = janet_getabstract(argv, 0, janetls_cipher_object_type());
+  JanetByteView tag = janet_to_bytes(argv[1]);
+
+  check_result(janetls_cipher_check_tag(cipher_object, tag.bytes, tag.len, &output));
+
+  return output;
 }

@@ -76,6 +76,13 @@ JanetByteView janet_to_bytes(Janet x) {
     return view;
 }
 
+JanetByteView empty_byteview() {
+  JanetByteView value;
+  value.bytes = NULL;
+  value.len = 0;
+  return value;
+}
+
 int janet_is_byte_typed(Janet x)
 {
   return janet_checktype(x, JANET_STRING)  ||

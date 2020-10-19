@@ -42,6 +42,7 @@ const char * value_to_option_text(option_list_entry * list, int size, int value)
 
 // Byte view helpers
 JanetByteView janet_to_bytes(Janet x);
+JanetByteView empty_byteview();
 int janet_is_byte_typed(Janet x);
 void check_result(int return_code);
 const char * result_error_message(int result, uint8_t * unhandled);
