@@ -229,9 +229,9 @@ JANETLS_SEARCH_OPTION_LIST(cipher_algorithm, janetls_cipher_algorithm)
 option_list_entry cipher_padding[] = {
   {janetls_cipher_padding_none, "none", 0},
   {janetls_cipher_padding_pkcs7, "pkcs7", 0},
-  {janetls_cipher_padding_one_and_zeros, "one-and-zeros", 0},
-  {janetls_cipher_padding_zeros_and_len, "zeros-and-len", 0},
-  {janetls_cipher_padding_zeros, "zeros", 0},
+  // {janetls_cipher_padding_one_and_zeros, "one-and-zeros", 0},
+  // {janetls_cipher_padding_zeros_and_len, "zeros-and-len", 0},
+  // {janetls_cipher_padding_zeros, "zeros", 0},
 };
 JANETLS_SEARCH_OPTION_LIST(cipher_padding, janetls_cipher_padding)
 
@@ -286,3 +286,15 @@ option_list_entry cipher_operation[] = {
   {janetls_cipher_operation_decrypt, "decrypt", 0},
 };
 JANETLS_SEARCH_OPTION_LIST(cipher_operation, janetls_cipher_operation)
+
+option_list_entry aes_mode[] = {
+  {janetls_aes_mode_none, "none", OPTION_LIST_HIDDEN},
+  {janetls_aes_mode_ecb, "ecb", 0},
+  {janetls_aes_mode_cbc, "cbc", 0},
+  {janetls_aes_mode_ctr, "ctr", 0},
+  {janetls_aes_mode_cfb8, "cfb8", 0},
+  {janetls_aes_mode_cfb128, "cfb128", 0},
+  {janetls_aes_mode_ofb, "ofb", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(aes_mode, janetls_aes_mode)
+

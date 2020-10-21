@@ -66,6 +66,10 @@
     "src/janetls-ecp.c"
     "src/janetls-ecdsa.c"
     "src/janetls-cipher.c"
+    "src/janetls-aes.c"
+    "src/janetls-chacha.c"
+    "src/janetls-gcm.c"
+    "src/janetls-chachapoly.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"

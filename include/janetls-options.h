@@ -237,9 +237,9 @@ typedef enum janetls_cipher_padding
 {
   janetls_cipher_padding_none = 0,
   janetls_cipher_padding_pkcs7,
-  janetls_cipher_padding_one_and_zeros,
-  janetls_cipher_padding_zeros_and_len,
-  janetls_cipher_padding_zeros,
+  // janetls_cipher_padding_one_and_zeros,
+  // janetls_cipher_padding_zeros_and_len,
+  // janetls_cipher_padding_zeros,
 } janetls_cipher_padding;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_padding, janetls_cipher_padding)
@@ -297,5 +297,17 @@ typedef enum janetls_cipher_operation
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_operation, janetls_cipher_operation)
 
+typedef enum janetls_aes_mode
+{
+  janetls_aes_mode_none = 0,
+  janetls_aes_mode_ecb,
+  janetls_aes_mode_cbc,
+  janetls_aes_mode_ctr,
+  janetls_aes_mode_cfb8,
+  janetls_aes_mode_cfb128,
+  janetls_aes_mode_ofb,
+} janetls_aes_mode;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(aes_mode, janetls_aes_mode)
 
 #endif

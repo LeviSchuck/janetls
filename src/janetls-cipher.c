@@ -331,18 +331,18 @@ int janetls_cipher_set_padding(janetls_cipher_object * cipher_object, janetls_ci
     case janetls_cipher_padding_none:
     mbedtls_padding = MBEDTLS_PADDING_NONE;
     break;
-    case janetls_cipher_padding_one_and_zeros:
-    mbedtls_padding = MBEDTLS_PADDING_ONE_AND_ZEROS;
-    break;
+    // case janetls_cipher_padding_one_and_zeros:
+    // mbedtls_padding = MBEDTLS_PADDING_ONE_AND_ZEROS;
+    // break;
     case janetls_cipher_padding_pkcs7:
     mbedtls_padding = MBEDTLS_PADDING_PKCS7;
     break;
-    case janetls_cipher_padding_zeros:
-    mbedtls_padding = MBEDTLS_PADDING_ZEROS;
-    break;
-    case janetls_cipher_padding_zeros_and_len:
-    mbedtls_padding = MBEDTLS_PADDING_ZEROS_AND_LEN;
-    break;
+    // case janetls_cipher_padding_zeros:
+    // mbedtls_padding = MBEDTLS_PADDING_ZEROS;
+    // break;
+    // case janetls_cipher_padding_zeros_and_len:
+    // mbedtls_padding = MBEDTLS_PADDING_ZEROS_AND_LEN;
+    // break;
     default:
     retcheck(JANETLS_ERR_CIPHER_INVALID_PADDING);
   }
