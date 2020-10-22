@@ -28,7 +28,7 @@
 
 typedef struct janetls_aes_object {
   mbedtls_aes_context ctx;
-  janetls_cipher_mode mode;
+  janetls_aes_mode mode;
   janetls_cipher_padding padding;
   janetls_cipher_operation operation;
   uint32_t buffer_length;
@@ -52,7 +52,10 @@ typedef struct janetls_aes_object {
     size_t iv_size;
     size_t nonce_size;
   };
-  uint8_t stream_block[16];
+  union {
+    uint8_t stream_block[16];
+    uint8_t last_decrypted_block[16];
+  };
   size_t stream_offset;
 } janetls_aes_object;
 

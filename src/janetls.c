@@ -185,6 +185,8 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "Cipher tag size is different from what is requested, cannot get tag of this size";
     case JANETLS_ERR_CIPHER_INVALID_OPERATION:
       return "Cipher invalid operation, encrypt or decrypt is expected";
+    case JANETLS_ERR_CIPHER_INVALID_DATA_SIZE:
+      return "Cipher can only operate on a fixed size of data or the data is too large or too small.";
     case JANETLS_ERR_ASN1_INVALID_BIT_STRING_LENGTH:
       return "A bitstring had an invalid length while parsing";
     case JANETLS_ERR_ASN1_EMPTY_INPUT:
