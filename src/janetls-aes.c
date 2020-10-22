@@ -110,20 +110,35 @@ int janetls_setup_aes(
   )
 {
   int ret = 0;
-  if (operation == janetls_cipher_operation_decrypt)
+
+  if (key_length == 0)
   {
-    retcheck(mbedtls_aes_setkey_dec(&aes_object->ctx, key, key_length * 8));
+    // Generate a 256 bit key by default
+    janetls_random_set(aes_object->key, 32);
+    aes_object->key_size = 32;
+  }
+  else if (key_length == 16 || key_length == 24 || key_length == 32)
+  {
+    // accept 128, 192, and 256 bit keys
+    memcpy(aes_object->key, key, key_length);
+    aes_object->key_size = key_length;
   }
   else
   {
-    retcheck(mbedtls_aes_setkey_enc(&aes_object->ctx, key, key_length * 8));
+    retcheck(JANETLS_ERR_CIPHER_INVALID_KEY_SIZE);
   }
-  aes_object->key_size = key_length;
+
+  if (operation == janetls_cipher_operation_decrypt)
+  {
+    retcheck(mbedtls_aes_setkey_dec(&aes_object->ctx, aes_object->key, aes_object->key_size * 8));
+  }
+  else
+  {
+    retcheck(mbedtls_aes_setkey_enc(&aes_object->ctx, aes_object->key, aes_object->key_size * 8));
+  }
 
   aes_object->operation = operation;
   aes_object->mode = mode;
-  memcpy(aes_object->key, key, key_length);
-  aes_object->key_size = key_length;
   if (mode == janetls_aes_mode_ecb)
   {
     // there is no nonce
