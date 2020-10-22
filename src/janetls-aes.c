@@ -23,15 +23,81 @@
 #include "janetls.h"
 #include "janetls-random.h"
 #include "janetls-aes.h"
+#include "mbedtls/platform_util.h"
+
+// Abstract Object functions
+static int aes_gc_fn(void * data, size_t len);
+static int aes_gcmark(void * data, size_t len);
+static int aes_get_fn(void * data, Janet key, Janet * out);
+
+static JanetAbstractType aes_object_type = {
+  "janetls/aes",
+  aes_gc_fn,
+  aes_gcmark,
+  aes_get_fn,
+  JANET_ATEND_GET
+};
+
+static JanetMethod aes_methods[] = {
+  {NULL, NULL},
+};
+
+static const JanetReg cfuns[] =
+{
+  {"aes/modes", janetls_search_aes_mode_set, "(janetls/aes/modes)\n\n"
+    "Provides an tuple of keywords for available aes modes"},
+  {"aes/cbc-paddings", janetls_search_cipher_padding_set, "(janetls/aes/cbc-paddings)\n\n"
+    "Provides an tuple of keywords for available AES CBC paddings"},
+  {NULL, NULL, NULL}
+};
+
+void submod_aes(JanetTable * env)
+{
+  janet_cfuns(env, "janetls", cfuns);
+  janet_register_abstract_type(janetls_aes_object_type());
+}
 
 janetls_aes_object * janetls_new_aes()
 {
-  return NULL;
+  janetls_aes_object * aes = janet_abstract(&aes_object_type, sizeof(janetls_aes_object));
+  memset(aes, 0, sizeof(janetls_aes_object));
+  mbedtls_aes_init(&aes->ctx);
+  return aes;
 }
+
 JanetAbstractType * janetls_aes_object_type()
 {
-  return NULL;
+  return &aes_object_type;
 }
+
+static int aes_gc_fn(void * data, size_t len)
+{
+  janetls_aes_object * aes = (janetls_aes_object *)data;
+  mbedtls_aes_free(&aes->ctx);
+  // Ensure the key does not remain in memory
+  mbedtls_platform_zeroize(data, len);
+  return 0;
+}
+
+static int aes_gcmark(void * data, size_t len)
+{
+  (void)data;
+  (void)len;
+  return 0;
+}
+
+static int aes_get_fn(void *data, Janet key, Janet * out)
+{
+  (void)data;
+
+  if (!janet_checktype(key, JANET_KEYWORD))
+  {
+    janet_panicf("expected keyword, got %p", key);
+  }
+
+  return janet_getmethod(janet_unwrap_keyword(key), aes_methods, out);
+}
+
 int janetls_setup_aes(
   janetls_aes_object * aes_object,
   janetls_aes_mode mode,

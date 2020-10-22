@@ -26,4 +26,13 @@
 #include "mbedtls/chachapoly.h"
 #include "janetls-options.h"
 
+typedef struct janetls_chachapoly_object {
+  mbedtls_chachapoly_context ctx;
+  janetls_cipher_operation operation;
+} janetls_chachapoly_object;
+
+
+janetls_chachapoly_object * janetls_new_chachapoly();
+JanetAbstractType * janetls_chachapoly_object_type();
+
 #endif

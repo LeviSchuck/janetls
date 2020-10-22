@@ -51,7 +51,6 @@ const janetls_cipher_type * cipher_type_from(
   janetls_cipher_mode mode,
   janetls_cipher_cipher cipher);
 
-JanetBuffer * buffer_from_output(Janet * output, int32_t max_size);
 
 JanetAbstractType cipher_object_type = {
   "janetls/cipher",
@@ -769,22 +768,6 @@ const janetls_cipher_type * cipher_type_from(
     }
   }
   return mapping;
-}
-
-JanetBuffer * buffer_from_output(Janet * output, int32_t max_size)
-{
-  JanetBuffer * buffer;
-  if (janet_checktype(*output, JANET_BUFFER))
-  {
-    buffer = janet_unwrap_buffer(*output);
-  }
-  else
-  {
-    // create a new buffer for the result
-    buffer = janet_buffer(max_size);
-    *output = janet_wrap_buffer(buffer);
-  }
-  return buffer;
 }
 
 static void cipher_setup_options(

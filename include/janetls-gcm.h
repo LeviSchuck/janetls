@@ -26,4 +26,13 @@
 #include "mbedtls/gcm.h"
 #include "janetls-options.h"
 
+typedef struct janetls_gcm_object {
+  mbedtls_gcm_context ctx;
+  janetls_cipher_operation operation;
+} janetls_gcm_object;
+
+
+janetls_gcm_object * janetls_new_gcm();
+JanetAbstractType * janetls_gcm_object_type();
+
 #endif

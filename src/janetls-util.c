@@ -529,3 +529,19 @@ static Janet crc32(int32_t argc, Janet * argv)
   JanetByteView bytes = janet_to_bytes(argv[0]);
   return janet_wrap_number(janetls_crc32(bytes.bytes, bytes.len));
 }
+
+JanetBuffer * buffer_from_output(Janet * output, int32_t max_size)
+{
+  JanetBuffer * buffer;
+  if (janet_checktype(*output, JANET_BUFFER))
+  {
+    buffer = janet_unwrap_buffer(*output);
+  }
+  else
+  {
+    // create a new buffer for the result
+    buffer = janet_buffer(max_size);
+    *output = janet_wrap_buffer(buffer);
+  }
+  return buffer;
+}

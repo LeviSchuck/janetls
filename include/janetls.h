@@ -51,6 +51,7 @@ int janet_byte_cstrcmp_insensitive(JanetByteView str, const char * other);
 int janet_byte_cstrcmp_sensitive(JanetByteView str, const char * other);
 int janetls_constant_compare(Janet x, Janet y);
 uint32_t janetls_crc32(const uint8_t * data, int32_t length);
+JanetBuffer * buffer_from_output(Janet * output, int32_t size);
 
 typedef enum string_type {
   STRING_IS_DIGITS,
@@ -77,6 +78,10 @@ void submod_rsa(JanetTable * env);
 void submod_ecp(JanetTable * env);
 void submod_ecdsa(JanetTable * env);
 void submod_cipher(JanetTable * env);
+void submod_aes(JanetTable * env);
+void submod_chacha(JanetTable * env);
+void submod_chachapoly(JanetTable * env);
+void submod_gcm(JanetTable * env);
 
 #define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
 

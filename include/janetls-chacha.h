@@ -26,4 +26,13 @@
 #include "mbedtls/chacha20.h"
 #include "janetls-options.h"
 
+typedef struct janetls_chacha_object {
+  mbedtls_chacha20_context ctx;
+  janetls_cipher_operation operation;
+} janetls_chacha_object;
+
+
+janetls_chacha_object * janetls_new_chacha();
+JanetAbstractType * janetls_chacha_object_type();
+
 #endif
