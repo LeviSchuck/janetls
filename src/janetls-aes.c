@@ -109,8 +109,94 @@ int janetls_setup_aes(
   janetls_cipher_padding padding
   )
 {
-  return 0;
+  int ret = 0;
+  if (operation == janetls_cipher_operation_decrypt)
+  {
+    retcheck(mbedtls_aes_setkey_dec(&aes_object->ctx, key, key_length * 8));
+  }
+  else
+  {
+    retcheck(mbedtls_aes_setkey_enc(&aes_object->ctx, key, key_length * 8));
+  }
+  aes_object->key_size = key_length;
+
+  aes_object->operation = operation;
+  aes_object->mode = mode;
+  memcpy(aes_object->key, key, key_length);
+  aes_object->key_size = key_length;
+  if (mode == janetls_aes_mode_ecb)
+  {
+    // there is no nonce
+    if (iv_length > 0)
+    {
+      retcheck(JANETLS_ERR_CIPHER_INVALID_IV_SIZE);
+    }
+    aes_object->iv_size = 0;
+  }
+  else
+  {
+    memset(aes_object->iv, 0, 16);
+    if (iv_length == 0)
+    {
+      // generate an iv
+      if (mode == janetls_aes_mode_ctr)
+      {
+        // Typically CTR does 96 bits of nonce and the remaining bits are
+        // incremented for every 16 byte block
+        janetls_random_set(aes_object->nonce, 12);
+        aes_object->nonce_size = 12;
+      }
+      else
+      {
+        janetls_random_set(aes_object->iv, 16);
+        aes_object->iv_size = 16;
+      }
+    }
+    else if (iv_length == 16)
+    {
+      memcpy(aes_object->iv, iv, 16);
+      aes_object->iv_size = 16;
+    }
+    else if (iv_length >= 8 && mode == janetls_aes_mode_ctr)
+    {
+      // AES CTR may supply different sizes for IVs
+      // the remaining bytes are defaulted to zero above.
+      memcpy(aes_object->iv, iv, iv_length);
+      aes_object->iv_size = iv_length;
+    }
+    else
+    {
+      // This is an insecure amount
+      retcheck(JANETLS_ERR_CIPHER_INVALID_IV_SIZE);
+    }
+    // Copy the loaded iv into the working / mutable iv vector
+    memcpy(aes_object->working_iv, aes_object->iv, 16);
+  }
+
+  if (mode == janetls_aes_mode_ctr)
+  {
+    memset(aes_object->stream_block, 0, 16);
+    aes_object->stream_offset = 0;
+  }
+
+  if (mode == janetls_aes_mode_cbc)
+  {
+    aes_object->padding = padding;
+  }
+  else if (padding != janetls_cipher_padding_none)
+  {
+    retcheck(JANETLS_ERR_CIPHER_INVALID_PADDING);
+  }
+
+  // Clear all temporary data
+  memset(aes_object->buffer, 0, 16);
+  aes_object->buffer_length = 0;
+  aes_object->flags = 0;
+
+  end:
+  return ret;
 }
+
 int janetls_aes_update(
   janetls_aes_object * aes_object,
   const uint8_t * data,
@@ -119,6 +205,7 @@ int janetls_aes_update(
 {
   return 0;
 }
+
 int janetls_aes_finish(
   janetls_aes_object * aes_object,
   Janet * output)

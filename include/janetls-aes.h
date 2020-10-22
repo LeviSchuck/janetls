@@ -48,7 +48,12 @@ typedef struct janetls_aes_object {
     size_t iv_offset;
     size_t nonce_offset;
   };
+  union {
+    size_t iv_size;
+    size_t nonce_size;
+  };
   uint8_t stream_block[16];
+  size_t stream_offset;
 } janetls_aes_object;
 
 
