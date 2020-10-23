@@ -31,7 +31,8 @@ static int aes_gcmark(void * data, size_t len);
 static int aes_get_fn(void * data, Janet key, Janet * out);
 
 // Janet functions
-static Janet aes_aes(int32_t argc, Janet * argv);
+static Janet aes_encrypt(int32_t argc, Janet * argv);
+static Janet aes_decrypt(int32_t argc, Janet * argv);
 static Janet aes_update(int32_t argc, Janet * argv);
 
 static JanetAbstractType aes_object_type = {
@@ -53,7 +54,8 @@ static const JanetReg cfuns[] =
     "Provides an tuple of keywords for available aes modes"},
   {"aes/cbc-paddings", janetls_search_cipher_padding_set, "(janetls/aes/cbc-paddings)\n\n"
     "Provides an tuple of keywords for available AES CBC paddings"},
-  {"aes/encrypt", aes_aes, ""},
+  {"aes/encrypt", aes_encrypt, ""},
+  {"aes/decrypt", aes_decrypt, ""},
   {"aes/update", aes_update, ""},
   {NULL, NULL, NULL}
 };
@@ -262,13 +264,30 @@ int janetls_aes_finish(
 * Decryption w/o padding: only cache partial blocks
 */
 
-static Janet aes_aes(int32_t argc, Janet * argv)
+static Janet aes_encrypt(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 0, 1);
   janetls_aes_object * aes_object = janetls_new_aes();
   JanetByteView key = empty_byteview();
   JanetByteView iv = empty_byteview();
   janetls_cipher_operation operation = janetls_cipher_operation_encrypt;
+  janetls_cipher_padding padding = janetls_cipher_padding_none;
+  janetls_aes_mode mode = janetls_aes_mode_ecb;
+  if (argc > 0)
+  {
+    key = janet_to_bytes(argv[0]);
+  }
+  check_result(janetls_setup_aes(aes_object, mode, key.bytes, key.len, iv.bytes, iv.len, operation, padding));
+  return janet_wrap_abstract(aes_object);
+}
+
+static Janet aes_decrypt(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 0, 1);
+  janetls_aes_object * aes_object = janetls_new_aes();
+  JanetByteView key = empty_byteview();
+  JanetByteView iv = empty_byteview();
+  janetls_cipher_operation operation = janetls_cipher_operation_decrypt;
   janetls_cipher_padding padding = janetls_cipher_padding_none;
   janetls_aes_mode mode = janetls_aes_mode_ecb;
   if (argc > 0)
