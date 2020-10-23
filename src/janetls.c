@@ -249,6 +249,8 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "The option input could not be matched";
     case JANETLS_ERR_SEARCH_OPTION_INPUT_INVALID_TYPE:
       return "Invalid input type for search option";
+    case JANETLS_ERR_NOT_IMPLEMENTED:
+      return "Not implemented";
   }
   *unhandled = 1;
   return "An internal error occurred";

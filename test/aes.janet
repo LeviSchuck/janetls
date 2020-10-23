@@ -7,9 +7,9 @@
 (setdyn :pretty-format "%.99N")
 
 (defn ecb [key cipher plain]
-  (def encrypt (aes/encrypt (hex/decode key)))
+  (def encrypt (aes/encrypt :ecb (hex/decode key)))
   (defn ecb-encrypt [plain] (hex/encode (:update encrypt (hex/decode plain))))
-  (def decrypt (aes/decrypt (hex/decode key)))
+  (def decrypt (aes/decrypt :ecb (hex/decode key)))
   (defn ecb-decrypt [plain] (hex/encode (:update decrypt (hex/decode plain))))
   (is (= cipher (ecb-encrypt plain)))
   (is (= plain (ecb-decrypt cipher))))
@@ -36,6 +36,50 @@
   (ecb key "591ccb10d410ed26dc5ba74a31362870" "ae2d8a571e03ac9c9eb76fac45af8e51")
   (ecb key "b6ed21b99ca6f4f9f153e7b1beafed1d" "30c81c46a35ce411e5fbc1191a0a52ef")
   (ecb key "23304b7a39f9f3ff067d8d8f9e24ecc7" "f69f2445df4f9b17ad2b417be66c3710")
+  )
+
+# https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
+# Other test cases produced by using python crpytography.hazmat as reference
+# with code similar to..
+# >>> import cryptography.hazmat
+# >>> from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+# >>> from cryptography.hazmat.backends import default_backend as backend
+# >>> key = bytes.fromhex('2b7e151628aed2a6abf7158809cf4f3c')
+# >>> nonce = bytes.fromhex('f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff')
+# >>> cipher = Cipher(algorithms.AES(key), modes.CTR(nonce), backend())
+# >>> encryptor = cipher.encryptor()
+# >>> buf = bytearray(32)
+# >>> encryptor.update_into(bytes.fromhex('30c81c46a35ce411e5fbc1191a0a52ef'), buf)
+# 16
+# >>> bytes(buf[:16]).hex()
+# 'dc44c3353b3c98a11729d76cf094f30b'
+
+
+
+(defn ctr [key nonce cipher plain]
+  (def encrypt (aes/encrypt :ctr (hex/decode key) (hex/decode nonce)))
+  (defn ctr-encrypt [plain] (hex/encode (:update encrypt (hex/decode plain))))
+  (def decrypt (aes/decrypt :ctr (hex/decode key) (hex/decode nonce)))
+  (defn ctr-decrypt [plain] (hex/encode (:update decrypt (hex/decode plain))))
+  (is (= cipher (ctr-encrypt plain)))
+  (is (= plain (ctr-decrypt cipher))))
+
+(deftest "Simple AES 128 CTR tests"
+  (def key "2b7e151628aed2a6abf7158809cf4f3c")
+  (def nonce "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff")
+  (ctr key nonce
+    "874d6191b620e3261bef6864990db6ce
+9806f66b7970fdff8617187bb9fffdff
+5ae4df3edbd5d35e5b4f09020db03eab
+1e031dda2fbe03d1792170a0f3009cee"
+    "6bc1bee22e409f96e93d7e117393172a
+ae2d8a571e03ac9c9eb76fac45af8e51
+30c81c46a35ce411e5fbc1191a0a52ef
+f69f2445df4f9b17ad2b417be66c3710")
+  (ctr key nonce "874d6191b620e3261bef6864990db6ce" "6bc1bee22e409f96e93d7e117393172a")
+  (ctr key nonce "42a155248663d02c6c6579d9af312fb5" "ae2d8a571e03ac9c9eb76fac45af8e51")
+  (ctr key nonce "dc44c3353b3c98a11729d76cf094f30b" "30c81c46a35ce411e5fbc1191a0a52ef")
+  (ctr key nonce "1a13fb36472fe7a75ff9570e0cf296f4" "f69f2445df4f9b17ad2b417be66c3710")
   )
 
 (run-tests!)
