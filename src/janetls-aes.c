@@ -25,6 +25,8 @@
 #include "janetls-aes.h"
 #include "mbedtls/platform_util.h"
 
+#define FLAG_AES_FINISH 1
+
 // Abstract Object functions
 static int aes_gc_fn(void * data, size_t len);
 static int aes_gcmark(void * data, size_t len);
@@ -35,6 +37,10 @@ static Janet aes_encrypt(int32_t argc, Janet * argv);
 static Janet aes_decrypt(int32_t argc, Janet * argv);
 static Janet aes_update(int32_t argc, Janet * argv);
 static Janet aes_finish(int32_t argc, Janet * argv);
+static Janet aes_key(int32_t argc, Janet * argv);
+static Janet aes_iv(int32_t argc, Janet * argv);
+static Janet aes_mode(int32_t argc, Janet * argv);
+static Janet aes_padding(int32_t argc, Janet * argv);
 
 static JanetAbstractType aes_object_type = {
   "janetls/aes",
@@ -47,6 +53,11 @@ static JanetAbstractType aes_object_type = {
 static JanetMethod aes_methods[] = {
   {"update", aes_update},
   {"finish", aes_finish},
+  {"key", aes_key},
+  {"iv", aes_iv},
+  {"nonce", aes_iv},
+  {"mode", aes_mode},
+  {"padding", aes_padding},
   {NULL, NULL},
 };
 
@@ -60,6 +71,11 @@ static const JanetReg cfuns[] =
   {"aes/decrypt", aes_decrypt, ""},
   {"aes/update", aes_update, ""},
   {"aes/finish", aes_finish, ""},
+  {"aes/key", aes_key, ""},
+  {"aes/iv", aes_iv, ""},
+  {"aes/nonce", aes_iv, ""},
+  {"aes/mode", aes_mode, ""},
+  {"aes/padding", aes_padding, ""},
   {NULL, NULL, NULL}
 };
 
@@ -86,7 +102,7 @@ static int aes_gc_fn(void * data, size_t len)
 {
   janetls_aes_object * aes = (janetls_aes_object *)data;
   mbedtls_aes_free(&aes->ctx);
-  // Ensure the key does not remain in memory
+  // Ensure the key and data does not remain in memory
   mbedtls_platform_zeroize(data, len);
   return 0;
 }
@@ -252,6 +268,10 @@ int janetls_aes_update(
     // Nothing to process.
     goto end;
   }
+  if (aes_object->flags & FLAG_AES_FINISH)
+  {
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
+  }
 
   if (mode == janetls_aes_mode_ecb)
   {
@@ -383,7 +403,7 @@ int janetls_aes_update(
       }
       else
       {
-        janet_buffer_push_bytes(output_buffer, block, remainder);
+        janet_buffer_push_bytes(output_buffer, block, 16);
       }
     }
     else if (block_remaining != 16)
@@ -438,6 +458,10 @@ int janetls_aes_finish(
   Janet * output)
 {
   int ret = 0;
+  if (aes_object->flags & FLAG_AES_FINISH)
+  {
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
+  }
   JanetBuffer * output_buffer = buffer_from_output(output, 16);
   if (aes_object->mode == janetls_aes_mode_cbc
     && aes_object->padding == janetls_cipher_padding_pkcs7)
@@ -461,7 +485,6 @@ int janetls_aes_finish(
         16, aes_object->working_iv, block, output
         ));
       janet_buffer_push_bytes(output_buffer, output, 16);
-      // TODO aes object flag finished
     }
     else if (aes_object->last_decrypted)
     {
@@ -483,6 +506,8 @@ int janetls_aes_finish(
     mbedtls_platform_zeroize(output, 16);
     mbedtls_platform_zeroize(block, 16);
   }
+
+  aes_object->flags |= FLAG_AES_FINISH;
   end:
   return ret;
 }
@@ -578,7 +603,10 @@ static Janet aes_update(int32_t argc, Janet * argv)
   }
   if (argc > 2)
   {
-    // todo type check
+    if (!janet_checktype(argv[2], JANET_BUFFER))
+    {
+      janet_panicf("Expected a buffer, but got %p", argv[2]);
+    }
     output = argv[2];
   }
 
@@ -594,10 +622,45 @@ static Janet aes_finish(int32_t argc, Janet * argv)
   janetls_aes_object * aes_object = janet_getabstract(argv, 0, janetls_aes_object_type());
   if (argc > 1)
   {
-    // todo type check
+    if (!janet_checktype(argv[1], JANET_BUFFER))
+    {
+      janet_panicf("Expected a buffer, but got %p", argv[1]);
+    }
     output = argv[1];
   }
 
   check_result(janetls_aes_finish(aes_object, &output));
   return output;
+}
+
+static Janet aes_key(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_aes_object * aes_object = janet_getabstract(argv, 0, janetls_aes_object_type());
+  return janet_wrap_string(janet_string(aes_object->key, aes_object->key_size));
+}
+
+static Janet aes_iv(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_aes_object * aes_object = janet_getabstract(argv, 0, janetls_aes_object_type());
+  if (aes_object->mode == janetls_aes_mode_ecb)
+  {
+    return janet_wrap_nil();
+  }
+  return janet_wrap_string(janet_string(aes_object->iv, 16));
+}
+
+static Janet aes_mode(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_aes_object * aes_object = janet_getabstract(argv, 0, janetls_aes_object_type());
+  return janetls_search_aes_mode_to_janet(aes_object->mode);
+}
+
+static Janet aes_padding(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_aes_object * aes_object = janet_getabstract(argv, 0, janetls_aes_object_type());
+  return janetls_search_cipher_padding_to_janet(aes_object->padding);
 }
