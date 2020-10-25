@@ -545,3 +545,64 @@ JanetBuffer * buffer_from_output(Janet * output, int32_t max_size)
   }
   return buffer;
 }
+
+int janetls_util_padding_pkcs7(
+  uint8_t * data,
+  uint8_t block_length,
+  uint8_t length
+  )
+{
+  int ret = 0;
+
+  if (length == block_length)
+  {
+    retcheck(JANETLS_ERR_PADDING_BLOCK_FULL);
+  }
+  else if (length > block_length || block_length == 0)
+  {
+    retcheck(JANETLS_ERR_PADDING_INVALID_LENGTH);
+  }
+
+  uint8_t remaining = block_length - length;
+
+  memset(data + length, remaining, remaining);
+
+  end:
+  return ret;
+}
+
+int janetls_util_padding_unpkcs7(
+  const uint8_t * data,
+  uint8_t block_length,
+  uint8_t * length
+  )
+{
+  int ret = 0;
+
+  if (block_length == 0)
+  {
+    retcheck(JANETLS_ERR_PADDING_INVALID_LENGTH);
+  }
+
+  const uint8_t * end = data + block_length - 1;
+  const uint8_t * start = end - *end;
+  uint8_t padding = *end;
+
+  if (padding == 0 || padding > 16)
+  {
+    retcheck(JANETLS_ERR_PADDING_INVALID_BLOCK);
+  }
+
+  for (; end > start; end--)
+  {
+    if (*end != padding)
+    {
+      retcheck(JANETLS_ERR_PADDING_INVALID_BLOCK);
+    }
+  }
+
+  // Output how many bytes in this block were not padding
+  *length = block_length - padding;
+  end:
+  return ret;
+}

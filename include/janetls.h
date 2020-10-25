@@ -53,6 +53,17 @@ int janetls_constant_compare(Janet x, Janet y);
 uint32_t janetls_crc32(const uint8_t * data, int32_t length);
 JanetBuffer * buffer_from_output(Janet * output, int32_t size);
 
+int janetls_util_padding_pkcs7(
+  uint8_t * data,
+  uint8_t block_length,
+  uint8_t length
+  );
+int janetls_util_padding_unpkcs7(
+  const uint8_t * data,
+  uint8_t block_length,
+  uint8_t * length
+  );
+
 typedef enum string_type {
   STRING_IS_DIGITS,
   STRING_IS_OID,

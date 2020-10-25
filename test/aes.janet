@@ -82,4 +82,63 @@ f69f2445df4f9b17ad2b417be66c3710")
   (ctr key nonce "1a13fb36472fe7a75ff9570e0cf296f4" "f69f2445df4f9b17ad2b417be66c3710")
   )
 
+#
+(defn encrypt-cbc [key iv plain] (do
+  (def result (buffer))
+  (def aes (aes/encrypt :cbc (hex/decode key) (hex/decode iv)))
+  (:update aes (hex/decode plain) result)
+  (:finish aes result)
+  (hex/encode result)
+  ))
+(defn decrypt-cbc [key iv cipher] (do
+  (def result (buffer))
+  (def aes (aes/decrypt :cbc (hex/decode key) (hex/decode iv)))
+  (:update aes (hex/decode cipher) result)
+  (:finish aes result)
+  (hex/encode result)
+  ))
+(defn encrypt-cbc-pkcs7 [key iv plain] (do
+  (def result (buffer))
+  (def aes (aes/encrypt :cbc :pkcs7 (hex/decode key) (hex/decode iv)))
+  (:update aes (hex/decode plain) result)
+  (:finish aes result)
+  (hex/encode result)
+  ))
+(defn decrypt-cbc-pkcs7 [key iv cipher] (do
+  (def result (buffer))
+  (def aes (aes/decrypt :cbc :pkcs7 (hex/decode key) (hex/decode iv)))
+  (:update aes (hex/decode cipher) result)
+  (:finish aes result)
+  (hex/encode result)
+  ))
+(defn cbc [key iv cipher plain]
+  (is (= cipher (encrypt-cbc key iv plain)))
+  (is (= plain (decrypt-cbc key iv cipher)))
+  )
+(defn cbc-pkcs7 [key iv cipher plain]
+  (is (= cipher (encrypt-cbc-pkcs7 key iv plain)))
+  (is (= plain (decrypt-cbc-pkcs7 key iv cipher)))
+  )
+
+(deftest "Simple AES 128 CBC tests"
+  (def key "2b7e151628aed2a6abf7158809cf4f3c")
+  (def iv "000102030405060708090a0b0c0d0e0f")
+  (cbc key iv
+    "7649abac8119b246cee98e9b12e9197d
+5086cb9b507219ee95db113a917678b2
+73bed6b8e3c1743b7116e69e22229516
+3ff1caa1681fac09120eca307586e1a7"
+    "6bc1bee22e409f96e93d7e117393172a
+ae2d8a571e03ac9c9eb76fac45af8e51
+30c81c46a35ce411e5fbc1191a0a52ef
+f69f2445df4f9b17ad2b417be66c3710")
+  (cbc-pkcs7 key iv
+    (encrypt-cbc key iv "010203040C0C0C0C0C0C0C0C0C0C0C0C")
+    "01020304")
+  (cbc-pkcs7 key iv
+    (encrypt-cbc key iv "000102030405060708090A0B0C0D0E0F
+10101010101010101010101010101010")
+    "000102030405060708090a0b0c0d0e0f")
+  )
+
 (run-tests!)

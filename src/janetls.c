@@ -187,6 +187,12 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "Cipher invalid operation, encrypt or decrypt is expected";
     case JANETLS_ERR_CIPHER_INVALID_DATA_SIZE:
       return "Cipher can only operate on a fixed size of data or the data is too large or too small.";
+    case JANETLS_ERR_PADDING_INVALID_BLOCK:
+      return "Invalid block while unpadding";
+    case JANETLS_ERR_PADDING_BLOCK_FULL:
+      return "The block is full and cannot be padded";
+    case JANETLS_ERR_PADDING_INVALID_LENGTH:
+      return "Invalid length during padding, can only pad lengths under the block size";
     case JANETLS_ERR_ASN1_INVALID_BIT_STRING_LENGTH:
       return "A bitstring had an invalid length while parsing";
     case JANETLS_ERR_ASN1_EMPTY_INPUT:

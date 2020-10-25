@@ -34,6 +34,7 @@ static int aes_get_fn(void * data, Janet key, Janet * out);
 static Janet aes_encrypt(int32_t argc, Janet * argv);
 static Janet aes_decrypt(int32_t argc, Janet * argv);
 static Janet aes_update(int32_t argc, Janet * argv);
+static Janet aes_finish(int32_t argc, Janet * argv);
 
 static JanetAbstractType aes_object_type = {
   "janetls/aes",
@@ -45,6 +46,7 @@ static JanetAbstractType aes_object_type = {
 
 static JanetMethod aes_methods[] = {
   {"update", aes_update},
+  {"finish", aes_finish},
   {NULL, NULL},
 };
 
@@ -57,6 +59,7 @@ static const JanetReg cfuns[] =
   {"aes/encrypt", aes_encrypt, ""},
   {"aes/decrypt", aes_decrypt, ""},
   {"aes/update", aes_update, ""},
+  {"aes/finish", aes_finish, ""},
   {NULL, NULL, NULL}
 };
 
@@ -137,7 +140,8 @@ int janetls_setup_aes(
     retcheck(JANETLS_ERR_CIPHER_INVALID_KEY_SIZE);
   }
 
-  if (operation == janetls_cipher_operation_decrypt && (mode == janetls_aes_mode_ecb))
+  if (operation == janetls_cipher_operation_decrypt
+    && (mode == janetls_aes_mode_ecb || mode == janetls_aes_mode_cbc))
   {
     retcheck(mbedtls_aes_setkey_dec(&aes_object->ctx, aes_object->key, aes_object->key_size * 8));
   }
@@ -206,6 +210,8 @@ int janetls_setup_aes(
   if (mode == janetls_aes_mode_cbc)
   {
     aes_object->padding = padding;
+    memset(aes_object->last_decrypted_block, 0, 16);
+    aes_object->last_decrypted = 0;
   }
   else if (padding != janetls_cipher_padding_none)
   {
@@ -240,6 +246,12 @@ int janetls_aes_update(
   uint8_t block[16];
   size_t blocks = length / 16;
   size_t remainder = length % 16;
+
+  if (length == 0)
+  {
+    // Nothing to process.
+    goto end;
+  }
 
   if (mode == janetls_aes_mode_ecb)
   {
@@ -328,6 +340,90 @@ int janetls_aes_update(
       janet_buffer_push_bytes(output_buffer, block, remainder);
     }
   }
+  else if (mode == janetls_aes_mode_cbc)
+  {
+    janetls_cipher_padding padding = aes_object->padding;
+    uint32_t buffer_length = aes_object->buffer_length;
+    size_t block_remaining = 16 - buffer_length;
+    size_t length_remaining = length;
+    size_t offset = 0;
+    if (block_remaining < 16)
+    {
+      size_t copy_length = length < block_remaining
+        ? length
+        : block_remaining;
+      memcpy(aes_object->buffer + buffer_length, data, copy_length);
+      block_remaining -= copy_length;
+      length_remaining -= copy_length;
+      offset += copy_length;
+      buffer_length += copy_length;
+      aes_object->buffer_length = buffer_length;
+    }
+    if (length_remaining > 0)
+    {
+      blocks = length_remaining / 16;
+      remainder = length_remaining % 16;
+    }
+    int buffer_block = op == janetls_cipher_operation_decrypt
+      && padding == janetls_cipher_padding_pkcs7;
+    if (block_remaining == 0)
+    {
+      if (buffer_block && aes_object->last_decrypted)
+      {
+        janet_buffer_push_bytes(output_buffer, aes_object->last_decrypted_block, 16);
+        aes_object->last_decrypted = 0;
+      }
+      retcheck(mbedtls_aes_crypt_cbc(&aes_object->ctx, operation,
+        16, aes_object->working_iv, aes_object->buffer, block
+        ));
+      if (buffer_block && blocks == 0 && remainder == 0)
+      {
+        memcpy(aes_object->last_decrypted_block, block, 16);
+        aes_object->last_decrypted = 1;
+      }
+      else
+      {
+        janet_buffer_push_bytes(output_buffer, block, remainder);
+      }
+    }
+    else if (block_remaining != 16)
+    {
+      // then there is no update for this input
+      if (blocks == 0 && buffer_block && aes_object->last_decrypted)
+      {
+        janet_buffer_push_bytes(output_buffer, aes_object->last_decrypted_block, 16);
+        aes_object->last_decrypted = 0;
+      }
+      goto end;
+    }
+    // If we are going to injest blocks, and a block was buffered, then release it.
+    if (blocks > 0 && buffer_block && aes_object->last_decrypted)
+    {
+      janet_buffer_push_bytes(output_buffer, aes_object->last_decrypted_block, 16);
+      aes_object->last_decrypted = 0;
+    }
+    size_t last_block = blocks - 1;
+    for (size_t i = 0; i < blocks; i++, offset += 16)
+    {
+      retcheck(mbedtls_aes_crypt_cbc(&aes_object->ctx, operation,
+        16, aes_object->working_iv, data + offset, block
+        ));
+      if (buffer_block && i == last_block && remainder == 0)
+      {
+        memcpy(aes_object->last_decrypted_block, block, 16);
+        aes_object->last_decrypted = 1;
+      }
+      else
+      {
+        janet_buffer_push_bytes(output_buffer, block, 16);
+      }
+    }
+    if (remainder)
+    {
+      memcpy(aes_object->buffer, data + offset, remainder);
+      aes_object->buffer_length = remainder;
+    }
+  }
   else
   {
     retcheck(JANETLS_ERR_NOT_IMPLEMENTED);
@@ -341,7 +437,54 @@ int janetls_aes_finish(
   janetls_aes_object * aes_object,
   Janet * output)
 {
-  return 0;
+  int ret = 0;
+  JanetBuffer * output_buffer = buffer_from_output(output, 16);
+  if (aes_object->mode == janetls_aes_mode_cbc
+    && aes_object->padding == janetls_cipher_padding_pkcs7)
+  {
+    uint8_t block[16];
+    uint8_t output[16];
+    mbedtls_platform_zeroize(block, 16);
+    if (aes_object->operation == janetls_cipher_operation_encrypt)
+    {
+      uint32_t buffer_length = aes_object->buffer_length;
+      if (buffer_length)
+      {
+        memcpy(block, aes_object->buffer, buffer_length);
+        retcheck(janetls_util_padding_pkcs7(block, 16, buffer_length));
+      }
+      else
+      {
+        memset(block, 16, 16);
+      }
+      retcheck(mbedtls_aes_crypt_cbc(&aes_object->ctx, MBEDTLS_AES_ENCRYPT,
+        16, aes_object->working_iv, block, output
+        ));
+      janet_buffer_push_bytes(output_buffer, output, 16);
+      // TODO aes object flag finished
+    }
+    else if (aes_object->last_decrypted)
+    {
+      if (aes_object->buffer_length)
+      {
+        // Can't finish on partial data
+        retcheck(JANETLS_ERR_CIPHER_INVALID_DATA_SIZE);
+      }
+      memcpy(output, aes_object->last_decrypted_block, 16);
+      uint8_t size = 0;
+      retcheck(janetls_util_padding_unpkcs7(output, 16, &size));
+      janet_buffer_push_bytes(output_buffer, output, size);
+    }
+    else
+    {
+      // Can't finish on no data?
+      retcheck(JANETLS_ERR_CIPHER_INVALID_DATA_SIZE);
+    }
+    mbedtls_platform_zeroize(output, 16);
+    mbedtls_platform_zeroize(block, 16);
+  }
+  end:
+  return ret;
 }
 
 // The following comment was found in mbedtls
@@ -354,22 +497,34 @@ int janetls_aes_finish(
 
 static Janet aes_encrypt(int32_t argc, Janet * argv)
 {
-  janet_arity(argc, 1, 3);
+  janet_arity(argc, 1, 4);
   janetls_aes_object * aes_object = janetls_new_aes();
   JanetByteView key = empty_byteview();
   JanetByteView iv = empty_byteview();
   janetls_cipher_operation operation = janetls_cipher_operation_encrypt;
   janetls_cipher_padding padding = janetls_cipher_padding_none;
   janetls_aes_mode mode = janetls_aes_mode_ecb;
+  int offset = 0;
 
   check_result(janetls_search_aes_mode(argv[0], &mode));
+
   if (argc > 1)
   {
-    key = janet_to_bytes(argv[1]);
+    int pad_ret = janetls_search_cipher_padding(argv[1], &padding);
+    if (pad_ret == 0)
+    {
+      // Found a padding value, all further parameters are offset by 1
+      offset++;
+    }
   }
-  if (argc > 2)
+
+  if (argc > offset + 1)
   {
-    iv = janet_to_bytes(argv[2]);
+    key = janet_to_bytes(argv[offset + 1]);
+  }
+  if (argc > offset + 2)
+  {
+    iv = janet_to_bytes(argv[offset + 2]);
   }
   check_result(janetls_setup_aes(aes_object, mode, key.bytes, key.len, iv.bytes, iv.len, operation, padding));
   return janet_wrap_abstract(aes_object);
@@ -377,21 +532,32 @@ static Janet aes_encrypt(int32_t argc, Janet * argv)
 
 static Janet aes_decrypt(int32_t argc, Janet * argv)
 {
-  janet_arity(argc, 2, 3);
+  janet_arity(argc, 2, 4);
   janetls_aes_object * aes_object = janetls_new_aes();
   JanetByteView key = empty_byteview();
   JanetByteView iv = empty_byteview();
   janetls_cipher_operation operation = janetls_cipher_operation_decrypt;
   janetls_cipher_padding padding = janetls_cipher_padding_none;
   janetls_aes_mode mode = janetls_aes_mode_ecb;
+  int offset = 0;
   check_result(janetls_search_aes_mode(argv[0], &mode));
   if (argc > 1)
   {
-    key = janet_to_bytes(argv[1]);
+    int pad_ret = janetls_search_cipher_padding(argv[1], &padding);
+    if (pad_ret == 0)
+    {
+      // Found a padding value, all further parameters are offset by 1
+      offset++;
+    }
   }
-  if (argc > 2)
+
+  if (argc > offset + 1)
   {
-    iv = janet_to_bytes(argv[2]);
+    key = janet_to_bytes(argv[offset + 1]);
+  }
+  if (argc > offset + 2)
+  {
+    iv = janet_to_bytes(argv[offset + 2]);
   }
   else if (mode != janetls_aes_mode_ecb)
   {
@@ -403,15 +569,35 @@ static Janet aes_decrypt(int32_t argc, Janet * argv)
 
 static Janet aes_update(int32_t argc, Janet * argv)
 {
-  janet_fixarity(argc, 2);
+  janet_arity(argc, 2, 3);
   Janet output = janet_wrap_nil();
   janetls_aes_object * aes_object = janet_getabstract(argv, 0, janetls_aes_object_type());
   if (!janet_is_byte_typed(argv[1]))
   {
     janet_panic("Expected a buffer or string for the second argument");
   }
+  if (argc > 2)
+  {
+    // todo type check
+    output = argv[2];
+  }
 
   JanetByteView data = janet_to_bytes(argv[1]);
   check_result(janetls_aes_update(aes_object, data.bytes, data.len, &output));
+  return output;
+}
+
+static Janet aes_finish(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 1, 2);
+  Janet output = janet_wrap_nil();
+  janetls_aes_object * aes_object = janet_getabstract(argv, 0, janetls_aes_object_type());
+  if (argc > 1)
+  {
+    // todo type check
+    output = argv[1];
+  }
+
+  check_result(janetls_aes_finish(aes_object, &output));
   return output;
 }

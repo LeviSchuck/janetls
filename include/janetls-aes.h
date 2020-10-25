@@ -56,7 +56,10 @@ typedef struct janetls_aes_object {
     uint8_t stream_block[16];
     uint8_t last_decrypted_block[16];
   };
-  size_t stream_offset;
+  union {
+    size_t stream_offset;
+    size_t last_decrypted;
+  };
 } janetls_aes_object;
 
 
