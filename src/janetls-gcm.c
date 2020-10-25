@@ -30,6 +30,16 @@ static int gcm_gc_fn(void * data, size_t len);
 static int gcm_gcmark(void * data, size_t len);
 static int gcm_get_fn(void * data, Janet key, Janet * out);
 
+// Janet functions
+static Janet gcm_encrypt(int32_t argc, Janet * argv);
+static Janet gcm_decrypt(int32_t argc, Janet * argv);
+static Janet gcm_update(int32_t argc, Janet * argv);
+static Janet gcm_finish(int32_t argc, Janet * argv);
+static Janet gcm_key(int32_t argc, Janet * argv);
+static Janet gcm_iv(int32_t argc, Janet * argv);
+static Janet gcm_tag(int32_t argc, Janet * argv);
+static Janet gcm_ad(int32_t argc, Janet * argv);
+
 static JanetAbstractType gcm_object_type = {
   "janetls/gcm",
   gcm_gc_fn,
@@ -39,11 +49,25 @@ static JanetAbstractType gcm_object_type = {
 };
 
 static JanetMethod gcm_methods[] = {
+  {"update", gcm_update},
+  {"finish", gcm_finish},
+  {"key", gcm_key},
+  {"iv", gcm_iv},
+  {"tag", gcm_tag},
+  {"ad", gcm_ad},
   {NULL, NULL},
 };
 
 static const JanetReg cfuns[] =
 {
+  {"encrypt", gcm_encrypt, ""},
+  {"decrypt", gcm_decrypt, ""},
+  {"update", gcm_update, ""},
+  {"finish", gcm_finish, ""},
+  {"key", gcm_key, ""},
+  {"iv", gcm_iv, ""},
+  {"tag", gcm_tag, ""},
+  {"ad", gcm_ad, ""},
   {NULL, NULL, NULL}
 };
 
@@ -58,6 +82,8 @@ janetls_gcm_object * janetls_new_gcm()
   janetls_gcm_object * gcm = janet_abstract(&gcm_object_type, sizeof(janetls_gcm_object));
   memset(gcm, 0, sizeof(janetls_gcm_object));
   mbedtls_gcm_init(&gcm->ctx);
+  gcm->ad = janet_wrap_nil();
+  gcm->iv = janet_wrap_nil();
   return gcm;
 }
 
@@ -77,8 +103,12 @@ static int gcm_gc_fn(void * data, size_t len)
 
 static int gcm_gcmark(void * data, size_t len)
 {
-  (void)data;
+  janetls_gcm_object * gcm = (janetls_gcm_object *)data;
   (void)len;
+
+  janet_mark(gcm->ad);
+  janet_mark(gcm->iv);
+
   return 0;
 }
 
@@ -92,4 +122,88 @@ static int gcm_get_fn(void *data, Janet key, Janet * out)
   }
 
   return janet_getmethod(janet_unwrap_keyword(key), gcm_methods, out);
+}
+
+int janetls_setup_gcm(
+  janetls_gcm_object * gcm_object,
+  const uint8_t * key,
+  size_t key_length,
+  const uint8_t * iv,
+  size_t iv_length,
+  janetls_cipher_operation operation,
+  const uint8_t * ad,
+  size_t ad_length
+  )
+{
+  int ret = 0;
+  end:
+  return ret;
+}
+
+int janetls_gcm_update(
+  janetls_gcm_object * gcm_object,
+  const uint8_t * data,
+  size_t length,
+  Janet * output)
+{
+  int ret = 0;
+  end:
+  return ret;
+}
+
+int janetls_gcm_finish(
+  janetls_gcm_object * gcm_object,
+  Janet * output)
+{
+  int ret = 0;
+  end:
+  return ret;
+}
+
+static Janet gcm_encrypt(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return janet_wrap_nil();
+}
+
+static Janet gcm_decrypt(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return janet_wrap_nil();
+}
+
+static Janet gcm_update(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return janet_wrap_nil();
+}
+
+static Janet gcm_finish(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return janet_wrap_nil();
+}
+
+static Janet gcm_key(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return janet_wrap_nil();
+}
+
+static Janet gcm_iv(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return janet_wrap_nil();
+}
+
+static Janet gcm_tag(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return janet_wrap_nil();
+}
+
+static Janet gcm_ad(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  return janet_wrap_nil();
 }

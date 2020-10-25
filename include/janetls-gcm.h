@@ -29,10 +29,34 @@
 typedef struct janetls_gcm_object {
   mbedtls_gcm_context ctx;
   janetls_cipher_operation operation;
+  uint8_t tag[16];
+  Janet iv;
+  Janet ad;
+  uint32_t flags;
 } janetls_gcm_object;
 
 
 janetls_gcm_object * janetls_new_gcm();
 JanetAbstractType * janetls_gcm_object_type();
+
+int janetls_setup_gcm(
+  janetls_gcm_object * gcm_object,
+  const uint8_t * key,
+  size_t key_length,
+  const uint8_t * iv,
+  size_t iv_length,
+  janetls_cipher_operation operation,
+  const uint8_t * ad,
+  size_t ad_length
+  );
+int janetls_gcm_update(
+  janetls_gcm_object * gcm_object,
+  const uint8_t * data,
+  size_t length,
+  Janet * output);
+int janetls_gcm_finish(
+  janetls_gcm_object * gcm_object,
+  Janet * output);
+
 
 #endif
