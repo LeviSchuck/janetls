@@ -67,15 +67,72 @@ static const JanetReg cfuns[] =
     "Provides an tuple of keywords for available aes modes"},
   {"aes/cbc-paddings", janetls_search_cipher_padding_set, "(janetls/aes/cbc-paddings)\n\n"
     "Provides an tuple of keywords for available AES CBC paddings"},
-  {"aes/encrypt", aes_encrypt, ""},
-  {"aes/decrypt", aes_decrypt, ""},
-  {"aes/update", aes_update, ""},
-  {"aes/finish", aes_finish, ""},
-  {"aes/key", aes_key, ""},
-  {"aes/iv", aes_iv, ""},
-  {"aes/nonce", aes_iv, ""},
-  {"aes/mode", aes_mode, ""},
-  {"aes/padding", aes_padding, ""},
+  {"aes/encrypt", aes_encrypt, "(janetls/aes/encrypt mode padding key iv)\n\n"
+    "Prepares an AES cipher to encrypt data using the update function\n"
+    "Inputs:\n"
+    "mode - required, see (aes/modes) for valid options, such as :cbc\n"
+    "padding - optional, only applies to :cbc mode, skipped if not provided. "
+    "Do not put nil in its place.\n"
+    "key - optional, 128, 192, or 256 bit key as a string or buffer, "
+    "if not provided, then a key will be generated aurtomatically "
+    "at 256 bits. Do not put nil in its place.\n"
+    "iv - optional, or nonce, is a 16 byte string or buffer, will be "
+    "generated automatically if not provided. Do not put nil in its place."
+    },
+  {"aes/decrypt", aes_decrypt, "(janetls/aes/decrypt mode padding key iv)\n\n"
+    "Prepares an AES cipher to encrypt data using the update function\n"
+    "Inputs:\n"
+    "mode - required, see (aes/modes) for valid options, such as :cbc\n"
+    "padding - optional, only applies to :cbc mode, skipped if not provided. "
+    "Do not put nil in its place.\n"
+    "key - required, 128, 192, or 256 bit key as a string or buffer.\n"
+    "iv - required, or nonce, is a 16 byte string or buffer.\n"
+    "Returns an AES cipher object."
+    },
+  {"aes/update", aes_update, "(janetls/aes/update aes data buffer)\n\n"
+    "Updates an AES cipher and produces encrypted or decrypted content.\n"
+    "When using :ecb mode, the data size must be 16 bytes, no more or less.\n"
+    "Inputs:\n"
+    "aes - AES cipher object\n"
+    "data - data to he encrypted or decrypted\n"
+    "buffer - optional output buffer, otherwise a new buffer is allocated.\n"
+    "Returns a buffer with output data, may be empty or unchanged in :cbc mode."
+    },
+  {"aes/finish", aes_finish, "(janetls/aes/finish aes buffer)\n\n"
+    "Updates an AES cipher and produces encrypted or decrypted content.\n"
+    "Will lock the AES cipher object from futher update function calls.\n"
+    "Inputs:\n"
+    "aes - AES cipher object\n"
+    "buffer - optional output buffer, otherwise a new buffer is allocated.\n"
+    "Returns a buffer with output data, may be empty or unchanged."
+    },
+  {"aes/key", aes_key, "(janetls/aes/key aes)\n\n"
+    "Fetches the key content within an AES cipher content, especially needed "
+    "if auotmatically generated\n"
+    "Inputs:\n"
+    "aes - AES cipher object\n"
+    "Returns a string with the symmetric key material."
+    },
+  {"aes/iv", aes_iv, "(janetls/aes/iv aes)\n\n"
+    "Fetches the initialization vector content within an AES cipher "
+    "content, especially needed if auotmatically generated.\n"
+    "Inputs:\n"
+    "aes - AES cipher object\n"
+    "Returns a string with the iv material."
+    },
+  {"aes/nonce", aes_iv, "(janetls/aes/nonce aes)\n\n"
+    "Alias of (janetls/aes/iv)"
+    },
+  {"aes/mode", aes_mode, "(janetls/aes/mode aes)\n\n"
+    "Fetches the cipher mode within an AES cipher context\n"
+    "Inputs:\n"
+    "aes - AES cipher object\n"
+    "Returns a keyword with the mode this context uses."},
+  {"aes/padding", aes_padding, "(janetls/aes/padding aes)\n\n"
+    "Fetches the cbc padding mode within an AES cipher context\n"
+    "Inputs:\n"
+    "aes - AES cipher object\n"
+    "Returns a keyword with the padding this context uses."},
   {NULL, NULL, NULL}
 };
 
