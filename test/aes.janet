@@ -7,9 +7,9 @@
 (setdyn :pretty-format "%.99N")
 
 (defn ecb [key cipher plain]
-  (def encrypt (aes/encrypt :ecb (hex/decode key)))
+  (def encrypt (aes/start :encrypt :ecb (hex/decode key)))
   (defn ecb-encrypt [plain] (hex/encode (:update encrypt (hex/decode plain))))
-  (def decrypt (aes/decrypt :ecb (hex/decode key)))
+  (def decrypt (aes/start :decrypt :ecb (hex/decode key)))
   (defn ecb-decrypt [plain] (hex/encode (:update decrypt (hex/decode plain))))
   (is (= cipher (ecb-encrypt plain)))
   (is (= plain (ecb-decrypt cipher))))
@@ -57,9 +57,9 @@
 
 
 (defn ctr [key nonce cipher plain]
-  (def encrypt (aes/encrypt :ctr (hex/decode key) (hex/decode nonce)))
+  (def encrypt (aes/start :encrypt :ctr (hex/decode key) (hex/decode nonce)))
   (defn ctr-encrypt [plain] (hex/encode (:update encrypt (hex/decode plain))))
-  (def decrypt (aes/decrypt :ctr (hex/decode key) (hex/decode nonce)))
+  (def decrypt (aes/start :decrypt :ctr (hex/decode key) (hex/decode nonce)))
   (defn ctr-decrypt [plain] (hex/encode (:update decrypt (hex/decode plain))))
   (is (= cipher (ctr-encrypt plain)))
   (is (= plain (ctr-decrypt cipher))))
@@ -85,28 +85,28 @@ f69f2445df4f9b17ad2b417be66c3710")
 #
 (defn encrypt-cbc [key iv plain] (do
   (def result (buffer))
-  (def aes (aes/encrypt :cbc (hex/decode key) (hex/decode iv)))
+  (def aes (aes/start :encrypt :cbc (hex/decode key) (hex/decode iv)))
   (:update aes (hex/decode plain) result)
   (:finish aes result)
   (hex/encode result)
   ))
 (defn decrypt-cbc [key iv cipher] (do
   (def result (buffer))
-  (def aes (aes/decrypt :cbc (hex/decode key) (hex/decode iv)))
+  (def aes (aes/start :decrypt :cbc (hex/decode key) (hex/decode iv)))
   (:update aes (hex/decode cipher) result)
   (:finish aes result)
   (hex/encode result)
   ))
 (defn encrypt-cbc-pkcs7 [key iv plain] (do
   (def result (buffer))
-  (def aes (aes/encrypt :cbc :pkcs7 (hex/decode key) (hex/decode iv)))
+  (def aes (aes/start :encrypt :cbc :pkcs7 (hex/decode key) (hex/decode iv)))
   (:update aes (hex/decode plain) result)
   (:finish aes result)
   (hex/encode result)
   ))
 (defn decrypt-cbc-pkcs7 [key iv cipher] (do
   (def result (buffer))
-  (def aes (aes/decrypt :cbc :pkcs7 (hex/decode key) (hex/decode iv)))
+  (def aes (aes/start :decrypt :cbc :pkcs7 (hex/decode key) (hex/decode iv)))
   (:update aes (hex/decode cipher) result)
   (:finish aes result)
   (hex/encode result)

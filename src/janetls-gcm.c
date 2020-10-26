@@ -33,8 +33,7 @@ static int gcm_gcmark(void * data, size_t len);
 static int gcm_get_fn(void * data, Janet key, Janet * out);
 
 // Janet functions
-static Janet gcm_encrypt(int32_t argc, Janet * argv);
-static Janet gcm_decrypt(int32_t argc, Janet * argv);
+static Janet gcm_start(int32_t argc, Janet * argv);
 static Janet gcm_update(int32_t argc, Janet * argv);
 static Janet gcm_finish(int32_t argc, Janet * argv);
 static Janet gcm_key(int32_t argc, Janet * argv);
@@ -62,14 +61,13 @@ static JanetMethod gcm_methods[] = {
 
 static const JanetReg cfuns[] =
 {
-  {"encrypt", gcm_encrypt, ""},
-  {"decrypt", gcm_decrypt, ""},
-  {"update", gcm_update, ""},
-  {"finish", gcm_finish, ""},
-  {"key", gcm_key, ""},
-  {"iv", gcm_iv, ""},
-  {"tag", gcm_tag, ""},
-  {"ad", gcm_ad, ""},
+  {"gcm/start", gcm_start, ""},
+  {"gcm/update", gcm_update, ""},
+  {"gcm/finish", gcm_finish, ""},
+  {"gcm/key", gcm_key, ""},
+  {"gcm/iv", gcm_iv, ""},
+  {"gcm/tag", gcm_tag, ""},
+  {"gcm/ad", gcm_ad, ""},
   {NULL, NULL, NULL}
 };
 
@@ -289,50 +287,155 @@ int janetls_gcm_finish(
   return ret;
 }
 
-static Janet gcm_encrypt(int32_t argc, Janet * argv)
+static Janet gcm_start(int32_t argc, Janet * argv)
 {
-  janet_fixarity(argc, 1);
-  return janet_wrap_nil();
-}
+  janet_arity(argc, 1, 5);
+  janetls_gcm_object * gcm_object = janetls_new_gcm();
+  JanetByteView key = empty_byteview();
+  JanetByteView iv = empty_byteview();
+  JanetByteView ad = empty_byteview();
+  janetls_cipher_operation operation = janetls_cipher_operation_encrypt;
 
-static Janet gcm_decrypt(int32_t argc, Janet * argv)
-{
-  janet_fixarity(argc, 1);
-  return janet_wrap_nil();
+  check_result(janetls_search_cipher_operation(argv[0], &operation));
+
+  if (argc > 1)
+  {
+    Janet potential_key = argv[1];
+    if (!janet_checktype(potential_key, JANET_NIL))
+    {
+      key = janet_to_bytes(potential_key);
+    }
+  }
+
+  if (argc > 2)
+  {
+    Janet potential_iv = argv[2];
+    if (!janet_checktype(potential_iv, JANET_NIL))
+    {
+      iv = janet_to_bytes(potential_iv);
+    }
+  }
+
+  if (argc > 3)
+  {
+    Janet potential_ad = argv[3];
+    if (!janet_checktype(potential_ad, JANET_NIL))
+    {
+      ad = janet_to_bytes(potential_ad);
+    }
+  }
+  check_result(janetls_setup_gcm(gcm_object, key.bytes, key.len, iv.bytes, iv.len, operation, ad.bytes, ad.len));
+  return janet_wrap_abstract(gcm_object);
 }
 
 static Janet gcm_update(int32_t argc, Janet * argv)
 {
-  janet_fixarity(argc, 1);
-  return janet_wrap_nil();
+  janet_arity(argc, 2, 3);
+  Janet output = janet_wrap_nil();
+  janetls_gcm_object * gcm_object = janet_getabstract(argv, 0, janetls_gcm_object_type());
+  if (!janet_is_byte_typed(argv[1]))
+  {
+    janet_panic("Expected a buffer or string for the second argument");
+  }
+  if (argc > 2)
+  {
+    if (!janet_checktype(argv[2], JANET_BUFFER))
+    {
+      janet_panicf("Expected a buffer, but got %p", argv[2]);
+    }
+    output = argv[2];
+  }
+
+  JanetByteView data = janet_to_bytes(argv[1]);
+  check_result(janetls_gcm_update(gcm_object, data.bytes, data.len, &output));
+  return output;
 }
 
 static Janet gcm_finish(int32_t argc, Janet * argv)
 {
-  janet_fixarity(argc, 1);
-  return janet_wrap_nil();
+  janet_arity(argc, 1, 2);
+  Janet output = janet_wrap_nil();
+  janetls_gcm_object * gcm_object = janet_getabstract(argv, 0, janetls_gcm_object_type());
+  if (argc > 1)
+  {
+    if (!janet_checktype(argv[1], JANET_BUFFER))
+    {
+      janet_panicf("Expected a buffer, but got %p", argv[1]);
+    }
+    output = argv[1];
+  }
+
+  check_result(janetls_gcm_finish(gcm_object, &output));
+  return output;
 }
 
 static Janet gcm_key(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  return janet_wrap_nil();
+  janetls_gcm_object * gcm_object = janet_getabstract(argv, 0, janetls_gcm_object_type());
+  return janet_wrap_string(janet_string(gcm_object->key, gcm_object->key_size));
 }
 
 static Janet gcm_iv(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  return janet_wrap_nil();
+  janetls_gcm_object * gcm_object = janet_getabstract(argv, 0, janetls_gcm_object_type());
+  return gcm_object->iv;
 }
 
 static Janet gcm_tag(int32_t argc, Janet * argv)
 {
-  janet_fixarity(argc, 1);
+  janet_arity(argc, 1, 2);
+  janetls_gcm_object * gcm_object = janet_getabstract(argv, 0, janetls_gcm_object_type());
+  if ((gcm_object->flags & FLAG_FINISH) == 0)
+  {
+    return janet_wrap_nil();
+  }
+
+  if (argc == 1)
+  {
+    // Return the tag
+    return janet_wrap_string(janet_string(gcm_object->tag, 16));
+  }
+  else if (argc == 2)
+  {
+    // compare tags
+    if (janet_is_byte_typed(argv[1]))
+    {
+      JanetByteView other_tag = janet_to_bytes(argv[1]);
+      if (other_tag.len < 4 || other_tag.len > 16)
+      {
+        janet_panicf("GCM tags must be at least 4 bytes up to at most "
+          "16 bytes, the length observed is %d bytes. "
+          "It is recommended to use the full length of 16 bytes.",
+          other_tag.len);
+      }
+      uint8_t * tag = gcm_object->tag;
+      // Costant time compare
+      int diff = 0;
+
+      // Constant time, every byte that is valued is compared
+      for (int32_t i = 0; i < other_tag.len; i++)
+      {
+        diff |= other_tag.bytes[i] ^ tag[i];
+      }
+
+      // The result will zero if equal
+      // Will be between 1-255 otherwise, the actual value
+      // carries no meaning.
+      return janet_wrap_boolean(diff == 0);
+    }
+    else
+    {
+      janet_panicf("Expected buffer or string but got %p", argv[1]);
+    }
+  }
   return janet_wrap_nil();
 }
 
 static Janet gcm_ad(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
-  return janet_wrap_nil();
+  janetls_gcm_object * gcm_object = janet_getabstract(argv, 0, janetls_gcm_object_type());
+  return gcm_object->iv;
 }

@@ -33,8 +33,7 @@ static int aes_gcmark(void * data, size_t len);
 static int aes_get_fn(void * data, Janet key, Janet * out);
 
 // Janet functions
-static Janet aes_encrypt(int32_t argc, Janet * argv);
-static Janet aes_decrypt(int32_t argc, Janet * argv);
+static Janet aes_start(int32_t argc, Janet * argv);
 static Janet aes_update(int32_t argc, Janet * argv);
 static Janet aes_finish(int32_t argc, Janet * argv);
 static Janet aes_key(int32_t argc, Janet * argv);
@@ -67,27 +66,23 @@ static const JanetReg cfuns[] =
     "Provides an tuple of keywords for available aes modes"},
   {"aes/cbc-paddings", janetls_search_cipher_padding_set, "(janetls/aes/cbc-paddings)\n\n"
     "Provides an tuple of keywords for available AES CBC paddings"},
-  {"aes/encrypt", aes_encrypt, "(janetls/aes/encrypt mode padding key iv)\n\n"
-    "Prepares an AES cipher to encrypt data using the update function\n"
+  {"aes/start", aes_start, "(janetls/aes/start operation mode padding key iv)\n\n"
+    "Prepares an AES cipher to encrypt or decrypt data using the "
+    "update function\n"
     "Inputs:\n"
+    "operation - required, :encrypt or :decrypt\n"
     "mode - required, see (aes/modes) for valid options, such as :cbc\n"
     "padding - optional, only applies to :cbc mode, skipped if not provided. "
     "Do not put nil in its place.\n"
-    "key - optional, 128, 192, or 256 bit key as a string or buffer, "
+    "key - optional during encryption, required during decryption: "
+    "128, 192, or 256 bit key as a string or buffer, "
     "if not provided, then a key will be generated aurtomatically "
-    "at 256 bits. Do not put nil in its place.\n"
-    "iv - optional, or nonce, is a 16 byte string or buffer, will be "
-    "generated automatically if not provided. Do not put nil in its place."
-    },
-  {"aes/decrypt", aes_decrypt, "(janetls/aes/decrypt mode padding key iv)\n\n"
-    "Prepares an AES cipher to encrypt data using the update function\n"
-    "Inputs:\n"
-    "mode - required, see (aes/modes) for valid options, such as :cbc\n"
-    "padding - optional, only applies to :cbc mode, skipped if not provided. "
-    "Do not put nil in its place.\n"
-    "key - required, 128, 192, or 256 bit key as a string or buffer.\n"
-    "iv - required, or nonce, is a 16 byte string or buffer.\n"
-    "Returns an AES cipher object."
+    "at 256 bits during encryption. "
+    "nil will be interpreted as omitted.\n"
+    "iv - optional during encryption, required during decryption: "
+    "also named nonce for some modes, is a 16 byte string or buffer, will be "
+    "generated automatically if not provided during encryption. "
+    "nil will be interpreted as omitted."
     },
   {"aes/update", aes_update, "(janetls/aes/update aes data buffer)\n\n"
     "Updates an AES cipher and produces encrypted or decrypted content.\n"
@@ -577,9 +572,9 @@ int janetls_aes_finish(
 * Decryption w/o padding: only cache partial blocks
 */
 
-static Janet aes_encrypt(int32_t argc, Janet * argv)
+static Janet aes_start(int32_t argc, Janet * argv)
 {
-  janet_arity(argc, 1, 4);
+  janet_arity(argc, 2, 5);
   janetls_aes_object * aes_object = janetls_new_aes();
   JanetByteView key = empty_byteview();
   JanetByteView iv = empty_byteview();
@@ -588,11 +583,12 @@ static Janet aes_encrypt(int32_t argc, Janet * argv)
   janetls_aes_mode mode = janetls_aes_mode_ecb;
   int offset = 0;
 
-  check_result(janetls_search_aes_mode(argv[0], &mode));
+  check_result(janetls_search_cipher_operation(argv[0], &operation));
+  check_result(janetls_search_aes_mode(argv[1], &mode));
 
-  if (argc > 1)
+  if (argc > 2)
   {
-    int pad_ret = janetls_search_cipher_padding(argv[1], &padding);
+    int pad_ret = janetls_search_cipher_padding(argv[2], &padding);
     if (pad_ret == 0)
     {
       // Found a padding value, all further parameters are offset by 1
@@ -600,51 +596,38 @@ static Janet aes_encrypt(int32_t argc, Janet * argv)
     }
   }
 
-  if (argc > offset + 1)
-  {
-    key = janet_to_bytes(argv[offset + 1]);
-  }
   if (argc > offset + 2)
   {
-    iv = janet_to_bytes(argv[offset + 2]);
-  }
-  check_result(janetls_setup_aes(aes_object, mode, key.bytes, key.len, iv.bytes, iv.len, operation, padding));
-  return janet_wrap_abstract(aes_object);
-}
-
-static Janet aes_decrypt(int32_t argc, Janet * argv)
-{
-  janet_arity(argc, 2, 4);
-  janetls_aes_object * aes_object = janetls_new_aes();
-  JanetByteView key = empty_byteview();
-  JanetByteView iv = empty_byteview();
-  janetls_cipher_operation operation = janetls_cipher_operation_decrypt;
-  janetls_cipher_padding padding = janetls_cipher_padding_none;
-  janetls_aes_mode mode = janetls_aes_mode_ecb;
-  int offset = 0;
-  check_result(janetls_search_aes_mode(argv[0], &mode));
-  if (argc > 1)
-  {
-    int pad_ret = janetls_search_cipher_padding(argv[1], &padding);
-    if (pad_ret == 0)
+    Janet potential_key = argv[offset + 2];
+    if (!janet_checktype(potential_key, JANET_NIL))
     {
-      // Found a padding value, all further parameters are offset by 1
-      offset++;
+      key = janet_to_bytes(potential_key);
     }
   }
 
-  if (argc > offset + 1)
+  if (argc > offset + 3)
   {
-    key = janet_to_bytes(argv[offset + 1]);
+    Janet potential_iv = argv[offset + 3];
+    if (!janet_checktype(potential_iv, JANET_NIL))
+    {
+      iv = janet_to_bytes(potential_iv);
+    }
   }
-  if (argc > offset + 2)
+
+  // Final checks
+  if (operation == janetls_cipher_operation_decrypt)
   {
-    iv = janet_to_bytes(argv[offset + 2]);
+    if (key.len == 0)
+    {
+      janet_panicf("An key is expected for the mode %p during decryption", argv[0]);
+    }
+
+    if (iv.len == 0 && mode != janetls_aes_mode_ecb)
+    {
+      janet_panicf("An IV or nonce is expected for the mode %p during decryption", argv[0]);
+    }
   }
-  else if (mode != janetls_aes_mode_ecb)
-  {
-    janet_panicf("An IV or nonce is expected for the mode %p", argv[0]);
-  }
+
   check_result(janetls_setup_aes(aes_object, mode, key.bytes, key.len, iv.bytes, iv.len, operation, padding));
   return janet_wrap_abstract(aes_object);
 }
