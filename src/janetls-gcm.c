@@ -25,6 +25,8 @@
 #include "janetls-gcm.h"
 #include "mbedtls/platform_util.h"
 
+#define FLAG_FINISH 1
+
 // Abstract Object functions
 static int gcm_gc_fn(void * data, size_t len);
 static int gcm_gcmark(void * data, size_t len);
@@ -96,7 +98,7 @@ static int gcm_gc_fn(void * data, size_t len)
 {
   janetls_gcm_object * gcm = (janetls_gcm_object *)data;
   mbedtls_gcm_free(&gcm->ctx);
-  // Ensure the key does not remain in memory
+  // Ensure the key and other data does not remain in memory
   mbedtls_platform_zeroize(data, len);
   return 0;
 }
@@ -136,7 +138,62 @@ int janetls_setup_gcm(
   )
 {
   int ret = 0;
+  if (key_length == 0)
+  {
+    // Generate a 256 bit key by default
+    janetls_random_set(gcm_object->key, 32);
+    gcm_object->key_size = 32;
+  }
+  else if (key_length == 16 || key_length == 24 || key_length == 32)
+  {
+    // accept 128, 192, and 256 bit keys
+    memcpy(gcm_object->key, key, key_length);
+    gcm_object->key_size = key_length;
+  }
+  else
+  {
+    retcheck(JANETLS_ERR_CIPHER_INVALID_KEY_SIZE);
+  }
+
+  retcheck(mbedtls_gcm_setkey(&gcm_object->ctx, MBEDTLS_CIPHER_ID_AES, gcm_object->key, gcm_object->key_size * 8));
+
+  uint8_t local_iv[12];
+  JanetByteView iv_view = empty_byteview();
+  if (iv_length == 0)
+  {
+    janetls_random_set(local_iv, 12);
+    iv_view.bytes = local_iv;
+    iv_view.len = 12;
+  }
+  else
+  {
+    iv_view.bytes = iv;
+    iv_view.len = iv_length;
+  }
+
+  int op = operation == janetls_cipher_operation_decrypt
+    ? MBEDTLS_GCM_DECRYPT
+    : MBEDTLS_GCM_ENCRYPT;
+
+  retcheck(mbedtls_gcm_starts(&gcm_object->ctx, op, iv_view.bytes, iv_view.len, ad, ad_length));
+
+  // Now that the GCM context is set up, persist the data received so that
+  // it may be retrieved later
+  gcm_object->ad = ad_length
+    ? janet_wrap_string(janet_string(ad, ad_length))
+    : janet_wrap_nil();
+
+  gcm_object->iv = janet_wrap_string(janet_string(iv_view.bytes, iv_view.len));
+  gcm_object->operation = operation;
+
+  // And any other temporary or delayed things
+  gcm_object->flags = 0;
+  gcm_object->buffer_length = 0;
+  mbedtls_platform_zeroize(gcm_object->buffer, 16);
+  mbedtls_platform_zeroize(gcm_object->tag, 16);
+
   end:
+  mbedtls_platform_zeroize(local_iv, 12);
   return ret;
 }
 
@@ -147,7 +204,56 @@ int janetls_gcm_update(
   Janet * output)
 {
   int ret = 0;
+  if (length == 0)
+  {
+    // Nothing to process
+    goto end;
+  }
+
+  if (gcm_object->flags & FLAG_FINISH)
+  {
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
+  }
+
+  JanetBuffer * output_buffer = buffer_from_output(output, length + 16);
+  janet_buffer_extra(output_buffer, length + 16);
+
+  int32_t buffer_used = gcm_object->buffer_length;
+  int32_t buffer_remaining = 16 - buffer_used;
+  int32_t data_offset = buffer_used == 0 ? 0 : buffer_remaining;
+  int32_t blocks_length = length - data_offset;
+  int32_t data_blocks = blocks_length / 16;
+  int32_t data_remainder = blocks_length % 16;
+  uint8_t local_output[16];
+
+  if (data_offset)
+  {
+    memcpy(gcm_object->buffer + buffer_used, data, data_offset);
+    buffer_used += data_offset;
+    if (buffer_used >= 16)
+    {
+      retcheck(mbedtls_gcm_update(&gcm_object->ctx, 16, gcm_object->buffer, local_output));
+      janet_buffer_push_bytes(output_buffer, local_output, 16);
+      gcm_object->buffer_length = 0;
+    }
+    else
+    {
+      gcm_object->buffer_length = buffer_used;
+    }
+  }
+  for (int32_t i = 0; i < data_blocks; i++, data_offset += 16)
+  {
+    retcheck(mbedtls_gcm_update(&gcm_object->ctx, 16, data + data_offset, local_output));
+    janet_buffer_push_bytes(output_buffer, local_output, 16);
+  }
+  if (data_remainder)
+  {
+    memcpy(gcm_object->buffer, data + data_offset, data_remainder);
+    gcm_object->buffer_length = data_remainder;
+  }
+
   end:
+  mbedtls_platform_zeroize(local_output, 16);
   return ret;
 }
 
@@ -156,7 +262,30 @@ int janetls_gcm_finish(
   Janet * output)
 {
   int ret = 0;
+  uint8_t local_output[16];
+
+  if (gcm_object->flags & FLAG_FINISH)
+  {
+    retcheck(JANETLS_ERR_CIPHER_INVALID_STATE);
+  }
+
+  JanetBuffer * output_buffer = buffer_from_output(output, 16);
+
+  uint32_t buffer_length = gcm_object->buffer_length;
+  if (buffer_length)
+  {
+    retcheck(mbedtls_gcm_update(&gcm_object->ctx, buffer_length, gcm_object->buffer, local_output));
+    janet_buffer_push_bytes(output_buffer, local_output, buffer_length);
+    gcm_object->buffer_length = 0;
+    mbedtls_platform_zeroize(gcm_object->buffer, 16);
+  }
+
+  retcheck(mbedtls_gcm_finish(&gcm_object->ctx, gcm_object->tag, 16));
+
+  gcm_object->flags |= FLAG_FINISH;
+
   end:
+  mbedtls_platform_zeroize(local_output, 16);
   return ret;
 }
 

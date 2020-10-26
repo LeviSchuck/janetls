@@ -29,9 +29,13 @@
 typedef struct janetls_gcm_object {
   mbedtls_gcm_context ctx;
   janetls_cipher_operation operation;
+  uint8_t key[32];
   uint8_t tag[16];
+  uint8_t buffer[16];
   Janet iv;
   Janet ad;
+  uint32_t key_size;
+  uint32_t buffer_length;
   uint32_t flags;
 } janetls_gcm_object;
 
