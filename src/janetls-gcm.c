@@ -514,5 +514,5 @@ static Janet gcm_ad(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_gcm_object * gcm_object = janet_getabstract(argv, 0, janetls_gcm_object_type());
-  return gcm_object->iv;
+  return gcm_object->ad;
 }
