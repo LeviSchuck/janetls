@@ -82,7 +82,8 @@ static const JanetReg cfuns[] =
     "iv - optional during encryption, required during decryption: "
     "also named nonce for some modes, is a 16 byte string or buffer, will be "
     "generated automatically if not provided during encryption. "
-    "nil will be interpreted as omitted."
+    "nil will be interpreted as omitted.\n"
+    "Returns an janetls/aes object, which is an AES cipher context."
     },
   {"aes/update", aes_update, "(janetls/aes/update aes data buffer)\n\n"
     "Updates an AES cipher and produces encrypted or decrypted content.\n"

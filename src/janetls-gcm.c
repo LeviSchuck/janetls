@@ -61,13 +61,90 @@ static JanetMethod gcm_methods[] = {
 
 static const JanetReg cfuns[] =
 {
-  {"gcm/start", gcm_start, ""},
-  {"gcm/update", gcm_update, ""},
-  {"gcm/finish", gcm_finish, ""},
-  {"gcm/key", gcm_key, ""},
-  {"gcm/iv", gcm_iv, ""},
-  {"gcm/tag", gcm_tag, ""},
-  {"gcm/ad", gcm_ad, ""},
+  {"gcm/start", gcm_start, "(janetls/gcm/start operation key iv ad)"
+    "Prepares an AES GCM cipher to encrypt or decrypt data using the "
+    "update function.\n"
+    "After calling :finish, it is vital to do the following...\n"
+    "When encrypting, collect the tag with (:tag gcm-object) and include "
+    "the value with the ciphertext somehow.\n"
+    "When decrypting, assert the plaintext is unmodified by executing "
+    "(:tag gcm-object tag). Only when it returns true permit the application "
+    "to process the plaintext.\n"
+    "Inputs:\n"
+    "operation - required, :encrypt or :decrypt\n"
+    "key - optional during encryption, required during decryption: "
+    "128, 192, or 256 bit key as a string or buffer, "
+    "if not provided, then a key will be generated aurtomatically "
+    "at 256 bits during encryption. "
+    "nil will be interpreted as omitted.\n"
+    "iv - optional during encryption, required during decryption: "
+    "is a variable sized string or buffer, 12 bytes is recommended, will be "
+    "generated automatically if not provided during encryption. "
+    "nil will be interpreted as omitted.\n"
+    "ad - optional associated data: "
+    "a string or buffer of data used to prepare the cipher context to provide "
+    "both privacy and authenticity. "
+    "This data must be identical for encryption and decryption to produce "
+    "a valid decryption."
+    "Returns an janetls/gcm object, which is an AES GCM cipher context."
+    },
+  {"gcm/update", gcm_update, "(janetls/gcm/update gcm data buffer)\n\n"
+    "Updates an AES GCM cipher and produces encrypted or decrypted content.\n"
+    "When using :ecb mode, the data size must be 16 bytes, no more or less.\n"
+    "Inputs:\n"
+    "gcm - AES GCM cipher object\n"
+    "data - data to he encrypted or decrypted\n"
+    "buffer - optional output buffer, otherwise a new buffer is allocated.\n"
+    "Returns a buffer with output data, may be empty or unchanged due to "
+    "internal buffering."},
+  {"gcm/finish", gcm_finish, "(janetls/gcm/finish gcm buffer)\n\n"
+    "Updates an AES GCM cipher and produces encrypted or decrypted content.\n"
+    "Will lock the AES GCM cipher object from futher :update function calls.\n"
+    "It is vital to use the :tag function after finish is complete to obtain "
+    "or verify the authentication tag.\n"
+    "Inputs:\n"
+    "gcm - AES GCM cipher object\n"
+    "buffer - optional output buffer, otherwise a new buffer is allocated.\n"
+    "Returns a buffer with output data, may be empty or unchanged."},
+  {"gcm/key", gcm_key, "(janetls/gcm/key gcm)\n\n"
+    "Fetches the key content within an AES cipher content, especially needed "
+    "if auotmatically generated\n"
+    "Inputs:\n"
+    "aes - AES GCM cipher object\n"
+    "Returns a string with the symmetric key material."
+    },
+  {"gcm/iv", gcm_iv, "(janetls/gcm/iv gcm)\n\n"
+    "Fetches the initialization vector content within an AES GCM cipher "
+    "content, especially needed if auotmatically generated.\n"
+    "Inputs:\n"
+    "aes - AES GCM cipher object\n"
+    "Returns a string with the iv material."
+    },
+  {"gcm/tag", gcm_tag, "(janetls/gcm/tag gcm &opt tag)\n\n"
+    "Either fetches the authentication tag from a finished AES GCM context or "
+    "compares the input tag with the authentication tag calculated from a "
+    "decrypted ciphertext. This functionality must be used to correctly use "
+    "AES GCM. The plaintext should not be processed until the authentication "
+    "tag is verified.\n"
+    "Inputs:\n"
+    "gcm - AES GCM cipher object\n"
+    "tag - optional, an authentication tag to verify\n"
+    "When a tag is not provided, the tag is returned if the AES GCM context "
+    "is not finished. Otherwise it will return nil when there is no "
+    "authentication tag.\n"
+    "When a tag is provided, true is returned when the input tag matches "
+    "the calculated authentication tag in constant time. Otherwise false is "
+    "returned.\n"
+    "Note that if the input tag is not the full 16 bytes, per GCM "
+    "specification, it may still be accepted down to 4 bytes, but this is not "
+    "a recommended practice."
+    },
+  {"gcm/ad", gcm_ad, "(janetls/gcm/ad gcm)\n\n"
+    "Fetches the associated date applied to an AES GCM cipher context\n"
+    "Inputs:\n"
+    "gcm - AES GCM cipher object\n"
+    "Returns nil or a string of data used to set up this context."
+    },
   {NULL, NULL, NULL}
 };
 
