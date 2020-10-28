@@ -110,7 +110,7 @@ static const JanetReg cfuns[] =
     "chacha - AES GCM cipher object\n"
     "Returns a string with the symmetric key material."
     },
-  {"chacha/iv", chacha_nonce, "(janetls/chacha/iv chacha)\n\n"
+  {"chacha/nonce", chacha_nonce, "(janetls/chacha/nonce chacha)\n\n"
     "Fetches the nonce content within a Chacha20 cipher "
     "content, especially needed if auotmatically generated.\n"
     "Inputs:\n"
@@ -397,7 +397,7 @@ static Janet chacha_nonce(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
   janetls_chacha_object * chacha_object = janet_getabstract(argv, 0, janetls_chacha_object_type());
-  return janet_wrap_string(janet_string(chacha_object->key, 12));
+  return janet_wrap_string(janet_string(chacha_object->nonce, 12));
 }
 
 static Janet chacha_initial_counter(int32_t argc, Janet * argv)
