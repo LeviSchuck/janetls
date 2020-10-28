@@ -85,7 +85,7 @@ static const JanetReg cfuns[] =
     "a string or buffer of data used to prepare the cipher context to provide "
     "both privacy and authenticity. "
     "This data must be identical for encryption and decryption to produce "
-    "a valid decryption."
+    "a valid decryption.\n"
     "Returns an janetls/gcm object, which is an AES GCM cipher context."
     },
   {"gcm/update", gcm_update, "(janetls/gcm/update gcm data buffer)\n\n"
@@ -366,7 +366,7 @@ int janetls_gcm_finish(
 
 static Janet gcm_start(int32_t argc, Janet * argv)
 {
-  janet_arity(argc, 1, 5);
+  janet_arity(argc, 1, 4);
   janetls_gcm_object * gcm_object = janetls_new_gcm();
   JanetByteView key = empty_byteview();
   JanetByteView iv = empty_byteview();

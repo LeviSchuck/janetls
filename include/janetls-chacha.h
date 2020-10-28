@@ -29,10 +29,32 @@
 typedef struct janetls_chacha_object {
   mbedtls_chacha20_context ctx;
   janetls_cipher_operation operation;
+  uint8_t key[32];
+  uint8_t nonce[12];
+  size_t initial_counter;
+  uint32_t flags;
 } janetls_chacha_object;
 
 
 janetls_chacha_object * janetls_new_chacha();
 JanetAbstractType * janetls_chacha_object_type();
+
+int janetls_setup_chacha(
+  janetls_chacha_object * chacha_object,
+  const uint8_t * key,
+  size_t key_length,
+  const uint8_t * nonce,
+  size_t nonce_length,
+  size_t initial_counter,
+  janetls_cipher_operation operation
+  );
+int janetls_chacha_update(
+  janetls_chacha_object * chacha_object,
+  const uint8_t * data,
+  size_t length,
+  Janet * output);
+int janetls_chacha_finish(
+  janetls_chacha_object * chacha_object,
+  Janet * output);
 
 #endif
