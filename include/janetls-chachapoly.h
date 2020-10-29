@@ -29,10 +29,35 @@
 typedef struct janetls_chachapoly_object {
   mbedtls_chachapoly_context ctx;
   janetls_cipher_operation operation;
+  uint8_t key[32];
+  uint8_t nonce[12];
+  uint8_t tag[16];
+  Janet ad;
+  uint32_t flags;
 } janetls_chachapoly_object;
 
 
 janetls_chachapoly_object * janetls_new_chachapoly();
 JanetAbstractType * janetls_chachapoly_object_type();
+
+int janetls_setup_chachapoly(
+  janetls_chachapoly_object * chachapoly_object,
+  const uint8_t * key,
+  size_t key_length,
+  const uint8_t * iv,
+  size_t iv_length,
+  janetls_cipher_operation operation,
+  const uint8_t * ad,
+  size_t ad_length
+  );
+int janetls_chachapoly_update(
+  janetls_chachapoly_object * chachapoly_object,
+  const uint8_t * data,
+  size_t length,
+  Janet * output);
+int janetls_chachapoly_finish(
+  janetls_chachapoly_object * chachapoly_object,
+  Janet * output);
+
 
 #endif

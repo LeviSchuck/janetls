@@ -65,10 +65,10 @@ static const JanetReg cfuns[] =
     "Prepares an AES GCM cipher to encrypt or decrypt data using the "
     "update function.\n"
     "After calling :finish, it is vital to do the following...\n"
-    "When encrypting, collect the tag with (:tag gcm-object) and include "
+    "When encrypting, collect the tag with (:tag gcm) and include "
     "the value with the ciphertext somehow.\n"
     "When decrypting, assert the plaintext is unmodified by executing "
-    "(:tag gcm-object tag). Only when it returns true permit the application "
+    "(:tag gcm tag). Only when it returns true permit the application "
     "to process the plaintext.\n"
     "Inputs:\n"
     "operation - required, :encrypt or :decrypt\n"
@@ -90,7 +90,6 @@ static const JanetReg cfuns[] =
     },
   {"gcm/update", gcm_update, "(janetls/gcm/update gcm data buffer)\n\n"
     "Updates an AES GCM cipher and produces encrypted or decrypted content.\n"
-    "When using :ecb mode, the data size must be 16 bytes, no more or less.\n"
     "Inputs:\n"
     "gcm - AES GCM cipher object\n"
     "data - data to he encrypted or decrypted\n"
@@ -401,7 +400,13 @@ static Janet gcm_start(int32_t argc, Janet * argv)
       ad = janet_to_bytes(potential_ad);
     }
   }
-  check_result(janetls_setup_gcm(gcm_object, key.bytes, key.len, iv.bytes, iv.len, operation, ad.bytes, ad.len));
+  check_result(janetls_setup_gcm(
+    gcm_object,
+    key.bytes, key.len,
+    iv.bytes, iv.len,
+    operation,
+    ad.bytes, ad.len
+    ));
   return janet_wrap_abstract(gcm_object);
 }
 

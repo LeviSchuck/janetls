@@ -85,7 +85,6 @@ static const JanetReg cfuns[] =
     },
   {"chacha/update", chacha_update, "(janetls/chacha/update chacha data buffer)\n\n"
     "Updates a Chacha20 cipher and produces encrypted or decrypted content.\n"
-    "When using :ecb mode, the data size must be 16 bytes, no more or less.\n"
     "Inputs:\n"
     "chacha - Chacha20 cipher object\n"
     "data - data to he encrypted or decrypted\n"
@@ -107,7 +106,7 @@ static const JanetReg cfuns[] =
     "Fetches the key content within an Chacha20 cipher content, especially needed "
     "if auotmatically generated\n"
     "Inputs:\n"
-    "chacha - AES GCM cipher object\n"
+    "chacha - Chacha20 cipher object\n"
     "Returns a string with the symmetric key material."
     },
   {"chacha/nonce", chacha_nonce, "(janetls/chacha/nonce chacha)\n\n"
