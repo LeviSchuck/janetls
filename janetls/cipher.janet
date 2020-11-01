@@ -37,13 +37,6 @@
     :algorithm :aes
     :mode :cbc
     }
-  :aes-ebc {
-    :aead false
-    :key-sizes [128 192 256]
-    :iv-minimum 0 :iv-maximum 0
-    :algorithm :aes
-    :mode :ebc
-    }
   :aes-ctr {
     :aead false
     :key-sizes [128 192 256]
@@ -69,7 +62,102 @@
 #
 (defn cipher/start
   "
-  TODO
+  Create a new cipher object, this wraps the underlying algorithm
+  and provides a unified interface to authenticated and unauthenticated
+  ciphers.\n
+  \n
+  For authenticated ciphers, a restriction is that the associated additional
+  data must be known anead of time.
+  Further, to correctly use a cipher object, during encryption the tag must
+  be retrieved after finishing, during decryption, the tag must be compared
+  to the tag emitted during encryption. Consequently, when the tag comparison
+  fails, the plaintext decrypted should not be used.\n
+  \n
+  This function takes an operation parameter, which is to encrypt or decrypt.
+  \n
+  For encryption and decryption, a series of :update calls are made, followed
+  by a :finish call. Each call should supply a buffer. Only after the :finish
+  call is performed is the ciphertext complete. Note that input to :update
+  calls be buffered, ideally the same buffer is reused across calls to produce
+  a coherent ciphertext.\n
+  \n
+  The cipher should be a keyword as seen in the struct provided by
+  janetls/cipher/ciphers. If nil, the cipher :chacha20-poly1305 will be used.\n
+  \n
+  The key should have a bit length suitable for the cipher, when nil and the
+  operation is :encrypt, then a new key will be generated automatically.
+  This key should then be retrieved by the :key function.\n
+  \n
+  The iv (or nonce) may be provided for encryption, but unless verifying a
+  known vector or implementing a higher level protocol, the iv (or nonce)
+  should be nil for encryption.
+  An iv (or nonce) will be generated automatically.
+  An iv (or nonce) must be provided for decryption when the cipher
+  uses an iv or nonce.\n
+  \n
+  The parameter ad may be may be nil, or \"\", or a populated string or buffer.
+  When the cipher is not authenticated, ad must be nil and the tag value
+  returned is nil.
+  \n
+  Examples:\n
+  (def key (hex/decode \"00000000000000000000000000000000\"))\n
+  (def cipher (cipher/start :aes-cbc :encrypt key nil nil))\n
+  (def ciphertext (buffer))\n
+  > @{:cipher :aes-cbc ... }\n
+  (:update cipher \"hello\" ciphertext)\n
+  > @\"\"\n
+  (:update cipher \" \" ciphertext)\n
+  > @\"\"\n
+  (:update cipher \"world\" ciphertext)\n
+  > @\"\"\n
+  (:update cipher \"1234567890\" ciphertext)\n
+  > @\"...\"\n
+  (:finish cipher ciphertext)\n
+  > @\"......\"\n
+  \n
+  (def key (hex/decode \"00000000000000000000000000000000\"))\n
+  (def cipher (cipher/start :aes-ctr :encrypt key nil nil))\n
+  (def ciphertext (buffer))\n
+  > @{:cipher :aes-ctr ... }\n
+  (:update cipher \"hello\" ciphertext)\n
+  > @\".....\"\n
+  (:update cipher \" \" ciphertext)\n
+  > @\"......\"\n
+  (:update cipher \"world\" ciphertext)\n
+  > @\"...........\"\n
+  (:finish cipher ciphertext)\n
+  > @\"...........\"\n
+  (def decipher (cipher/start :aes-ctr :decrypt key (:iv cipher) nil))\n
+  (def plaintext (buffer))\n
+  (:update decipher (buffer/slice ciphertext 0 3) plaintext)\n
+  > @\"hel\"\n
+  (:update decipher (buffer/slice ciphertext 3 8) plaintext)\n
+  > @\"hello wo\"\n
+  (:update decipher (buffer/slice ciphertext 8) plaintext)\n
+  > @\"hello world\"\n
+  (:finish decipher plaintext)\n
+  > @\"hello world\"\n
+  \n
+  (def key (hex/decode \"00000000000000000000000000000000\"))\n
+  (def ad \"data\")\n
+  (def cipher (cipher/start :aes-gcm :encrypt key nil ad))\n
+  (def ciphertext (buffer))\n
+  (:update cipher \"hello world\" ciphertext)\n
+  > @\"\"\n
+  (:finish cipher ciphertext)\n
+  > @\"...\"\n
+  (def tag (:tag cipher))\n
+  > @\"...\"\n
+  (def decipher (cipher/start :aes-ctr :decrypt key (:iv cipher) ad))\n
+  (def plaintext (buffer))\n
+  (:update decipher ciphertext plaintext)\n
+  > @\"\"\n
+  (:finish decipher plaintext)\n
+  > @\"hello world\"\n
+  (:tag decipher tag)\n
+  > true\n
+  \n
+  Returns a cipher object ready to process plaintext or ciphertext.
   "
   [cipher operation &opt key iv ad] (do
   (default cipher :chacha20-poly1305)
@@ -89,7 +177,7 @@
     :mode mode
     } cipher-data)
   # Check that additional data is only supplied on AEAD supported ciphers
-  (if (and ad (not aead)) (errorf "The cipher %p does not support additional data"))
+  (if (and ad (not aead)) (errorf "The cipher %p does not support additional data" cipher))
   # Check that during decryption required (but seemingly optional) parameters are included
   (if (= :decryption operation) (do
     (if (not key) (error "A key is required when using the :decryption operation"))
@@ -164,15 +252,59 @@
 (defn cipher/key-bits [object] (get object :key-bits))
 (defn cipher/aead [object] (get object :aead))
 
-(defn cipher/encrypt [cipher key iv ad plaintext] (do
+(defn cipher/encrypt
+  "
+  Encrypt a plaintext with a known key, an iv or nonce is supplied
+  automatically when nil (recommended).
+  Supports both authenticated ciphers and unauthenticated ciphers.\n
+  \n
+  Note that for authenticated ciphers, ad may be may be nil, or \"\", or
+  a populated string or buffer.
+  When the cipher is not authenticated, ad must be nil and the tag value
+  returned is nil.
+  \n
+  For proper usage, it is recommended to supply nil for the iv or nonce.\n
+  Only provide an iv or nonce if testing a known vector or implementing a
+  higher level protocol which involves a predetermined iv or nonce.\n
+  \n
+  Examples:\n
+  (def key (hex/decode \"00000000000000000000000000000000\"))\n
+  (def [iv ciphertext tag] (cipher/encrypt :aes-gcm key nil nil \"hello world\"))\n
+  > [\"...\" @\"...\" \"...\"]\n
+  (cipher/decrypt :aes-gcm key iv nil ciphertext tag)
+  > @\"hello world\"\n
+  \n
+  Returns a tuple of the [iv ciphertext tag]
+  "
+  [cipher key iv ad plaintext] (do
+  (if (not cipher) (error "A cipher is required"))
+  (if (or (not key) (= 0 (length key))) (error "A key is required"))
   (def result (buffer))
   (def object (cipher/start cipher :encrypt key iv ad))
   (:update object plaintext result)
   (:finish object result)
-  [result (:tag object)]
+  [(:iv object) result (:tag object)]
   ))
 
-(defn cipher/new-encrypt [cipher ad plaintext] (do
+(defn cipher/new-encrypt
+  "
+  Quickly encrypt a ciphertext, supports both authenticated ciphers
+  and unauthenticated ciphers.\n
+  \n
+  Note that for authenticated ciphers, ad may be nil, or \"\", or a populated
+  string or buffer.
+  When the cipher is not authenticated, ad must be nil and the tag value
+  returned is nil.
+  \n
+  Examples:\n
+  (def [cipher key nonce ciphertext tag] (cipher/new-encrypt nil nil \"hello world\"))\n
+  > [:chacha20-poly1305 \"...\" \"...\" @\"...\" \"...\"]\n
+  (def [cipher key nonce ciphertext tag] (cipher/new-encrypt :aes-ctr nil \"hello world\"))\n
+  > [:aes-ctr \"...\" \"...\" @\"...\" nil]\n
+  \n
+  Returns a tuple of [cipher key nonce ciphertext tag]
+  "
+  [cipher ad plaintext] (do
   (def object (cipher/start cipher :encrypt nil nil ad))
   (def result (buffer))
   (:update object plaintext result)
@@ -180,7 +312,29 @@
   [(object :cipher) (:key object) (:iv object) result (:tag object)]
   ))
 
-(defn cipher/decrypt [cipher key iv ad ciphertext tag] (do
+(defn cipher/decrypt
+  "
+  Decrypt a ciphertext, supports both authenticated ciphers
+  and unauthenticated ciphers.\n
+  \n
+  Note that for authenticated ciphers, ad may be nil, or \"\", or a populated
+  string or buffer; but there will always be a tag.
+  The tag will be checked automatically prior to returning the plaintext.\n
+  \n
+  Examples:\n
+  (def [cipher key nonce ciphertext tag] (cipher/new-encrypt nil nil \"hello world\"))\n
+  (cipher/decrypt cipher key nonce nil ciphertext tag)\n
+  > @\"hello world\"
+  \n
+  (def additional-data \"associated additional data\")\n
+  (def [cipher key nonce ciphertext tag] (cipher/new-encrypt :aes-gcm additional-data \"hello world\"))\n
+  (cipher/decrypt cipher key nonce additional-data ciphertext tag)
+  > @\"hello world\"\n
+  \n
+  Returns a buffer of the output plaintext or nil upon authentication failure
+  "
+  [cipher key iv ad ciphertext &opt tag]
+  (do
   (def result (buffer))
   (def object (cipher/start cipher :decrypt key iv ad))
   (if (and (object :aead) (or (not tag) (and tag (= 0 (length tag)))))
