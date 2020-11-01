@@ -54,7 +54,6 @@ static JanetMethod aes_methods[] = {
   {"finish", aes_finish},
   {"key", aes_key},
   {"iv", aes_iv},
-  {"nonce", aes_iv},
   {"mode", aes_mode},
   {"padding", aes_padding},
   {NULL, NULL},
@@ -115,9 +114,6 @@ static const JanetReg cfuns[] =
     "Inputs:\n"
     "aes - AES cipher object\n"
     "Returns a string with the iv material."
-    },
-  {"aes/nonce", aes_iv, "(janetls/aes/nonce aes)\n\n"
-    "Alias of (janetls/aes/iv)"
     },
   {"aes/mode", aes_mode, "(janetls/aes/mode aes)\n\n"
     "Fetches the cipher mode within an AES cipher context\n"

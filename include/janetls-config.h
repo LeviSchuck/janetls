@@ -64,6 +64,8 @@
 #define MBEDTLS_GCM_C
 #define MBEDTLS_CHACHAPOLY_C
 // #define MBEDTLS_CCM_C
+// Cipher is used in GCM and is therefore necessary
+// Further, a companion object cipher_wrap.c is necessary for cipher.c
 #define MBEDTLS_CIPHER_C
 // #define MBEDTLS_BLOWFISH_C
 // #define MBEDTLS_CAMELLIA_C
