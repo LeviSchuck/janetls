@@ -118,7 +118,7 @@ static const JanetReg cfuns[] =
     "Fetches the key content within an Chacha20-Poly1305 cipher content, "
     "especially needed if auotmatically generated\n"
     "Inputs:\n"
-    "chachapoly - AES GCM cipher object\n"
+    "chachapoly - Chacha20-Poly1305 cipher object\n"
     "Returns a string with the symmetric key material."
     },
   {"chachapoly/nonce", chachapoly_nonce,
