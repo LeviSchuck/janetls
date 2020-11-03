@@ -238,19 +238,128 @@
     }
   ))
 #
-(defn cipher/update [object data &opt buf] (:update object data ;(if buf [buf] [])))
-(defn cipher/finish [object &opt buf] (:finish object ;(if buf [buf] [])))
-(defn cipher/key [object] (:key object))
-(defn cipher/iv [object] (:iv object))
-(defn cipher/nonce [object] (:nonce object))
-(defn cipher/ad [object] (:ad object))
-(defn cipher/tag [object &opt tag] (:tag object ;(if tag [tag] [])))
-(defn cipher/padding [object] (get object :padding))
-(defn cipher/operation [object] (get object :operation))
-(defn cipher/algorithm [object] (get object :algorithm))
-(defn cipher/mode [object] (get object :mode))
-(defn cipher/key-bits [object] (get object :key-bits))
-(defn cipher/aead [object] (get object :aead))
+(defn cipher/update
+  "Update the cipher with additional plaintext or ciphertext
+  (depending on the operation). This may be called multiple times.
+  It is not guaranteed that the output will be equal in length as the input
+  due to internal buffering on some ciphers.\n
+  \n
+  It is recommended to use a single buffer for encrypting or decrypting,
+  if a buffer is not supplied, a new buffer will be allocated and returned.\n
+  \n
+  Note that cipher/finish must be called to get the last block of plaintext or
+  ciphertext, and to calculate the tag (if AEAD).\n
+  \n
+  Additional Associated Data (AAD or AD) must be passed during cipher/start
+  and cannot be fed iteratively through update.
+  \n
+  Examples:\n
+  (def key (hex/decode \"00000000000000000000000000000000\"))\n
+  (def cipher (cipher/start :aes-cbc :encrypt key nil nil))\n
+  (def ciphertext (buffer))\n
+  > @{:cipher :aes-cbc ... }\n
+  (:update cipher \"hello\" ciphertext)\n
+  > @\"\"\n
+  (:update cipher \" \" ciphertext)\n
+  > @\"\"\n
+  (:update cipher \"world\" ciphertext)\n
+  > @\"\"\n
+  (:finish cipher ciphertext)\n
+  > @\"...\"\n
+  \n
+  Returns the input buffer or a new buffer with the processed data
+  "
+  [object data &opt buf] (:update object data ;(if buf [buf] [])))
+(defn cipher/finish
+  "Finish the cipher's process and return the final block of ciphertext or
+  plaintext, also calculate the tag if aead.\n
+  This must be called to properly process an encryption or decryption
+  operation.\n
+  \n
+  Examples:\n
+  (def key (hex/decode \"00000000000000000000000000000000\"))\n
+  (def cipher (cipher/start :aes-cbc :encrypt key nil nil))\n
+  (def ciphertext (buffer))\n
+  > @{:cipher :aes-cbc ... }\n
+  (:update cipher \"hello world\" ciphertext)\n
+  > @\"\"\n
+  (:finish cipher ciphertext)\n
+  > @\"...\"\n
+  \n
+  Returns the input buffer or a new buffer with the processed data
+  "
+  [object &opt buf] (:finish object ;(if buf [buf] [])))
+(defn cipher/key
+  "Returns the key material used on this cipher, treat this carefully."
+  [object] (:key object))
+(defn cipher/iv
+  "Returns the IV used on this cipher, this must be provided with the
+  ciphertext for decryption to be possible. This is the same as cipher/nonce."
+  [object] (:iv object))
+(defn cipher/nonce
+  "Returns the nonce used on this cipher, this must be provided with the
+  ciphertext for decryption to be possible. This is the same as cipher/iv."
+  [object] (:nonce object))
+(defn cipher/ad
+  "Returns the additional associated data used on this cipher, 
+  please review AEAD encryption on how to properly communicate this data
+  or derive this data."
+  [object] (:ad object))
+(defn cipher/tag
+  "Either fetches the authentication tag from a finished cipher
+  context or compares the input tag with the authentication tag calculated
+  from a decrypted ciphertext.\n
+  Note that a tag only applies if the cipher is an AEAD cipher, this may be
+  determined by (cipher/aead cipher-object-here).\n
+  This functionality must be used to correctly use AEAD ciphers.
+  The plaintext should not be processed until the authentication tag is
+  verified.\n
+  Inputs:\n
+  object - cipher object\n
+  tag - optional, an authentication tag to verify\n
+  When a tag is not provided, the tag is returned if the cipher
+  context is not finished.
+  Otherwise it will return nil when there is no
+  authentication tag.\n
+  When a tag is provided, true is returned when the input tag matches
+  the calculated authentication tag in constant time. Otherwise false is
+  returned.\n
+  For GCM, the tag length may vary between 4 to 16 bytes,
+  but for chacha20-poly1305 the tag length must be 16 bytes.
+  "
+  [object &opt tag] (:tag object ;(if tag [tag] [])))
+(defn cipher/padding
+  "Returns the padding, for unpadded ciphers, :none will be returned.
+  CBC will likely return :pkcs7."
+  [object] (get object :padding))
+(defn cipher/operation
+  "Returns which operation this cipher is operating, be it :encrypt or 
+  :decrypt"
+  [object] (get object :operation))
+(defn cipher/algorithm
+  "Returns the algorithm this cipher is operating, values may be
+  :aes or :chacha20"
+  [object] (get object :algorithm))
+(defn cipher/mode
+  "Returns the mode this cipher is operating, values are specific to the
+  algorithm. AES may be :cbc, :ctr, :gcm; while Chacha20 may be :stream
+  or :chacha20-poly1305."
+  [object] (get object :mode))
+(defn cipher/key-bits
+  "Returns the key bit count for this cipher, for example, an AES key with 32
+  bytes of key material would be AES 256, thus the return value is 256.
+  "
+  [object] (get object :key-bits))
+(defn cipher/aead
+  "Returns true if the cipher is an AEAD cipher, such as :aes-gcm 
+  or :chacha20-poly1305."
+  [object] (get object :aead))
+(defn cipher/cipher
+  "Returns the cipher keyword associated with this cipher object.
+  Available ciphers (by key) and their meta data (values) can be observed in
+  janetls/cipher/ciphers
+  "
+  [object] (get object :cipher))
 
 (defn cipher/encrypt
   "

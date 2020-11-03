@@ -147,9 +147,7 @@ static const JanetReg cfuns[] =
     "When a tag is provided, true is returned when the input tag matches "
     "the calculated authentication tag in constant time. Otherwise false is "
     "returned.\n"
-    "Note that if the input tag is not the full 16 bytes, per GCM "
-    "specification, it may still be accepted down to 4 bytes, but this is not "
-    "a recommended practice."
+    "Note that the tag must be the full length of 16 bytes"
     },
   {"chachapoly/ad", chachapoly_ad,
     "(janetls/chachapoly/ad chachapoly)\n\n"
