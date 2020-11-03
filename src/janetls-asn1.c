@@ -506,7 +506,7 @@ static int parse_header(asn1_parser * parser, asn1_parsed_tag * parsed)
   janetls_asn1_class class;
   janetls_asn1_universal_type universal_type;
   const uint8_t * value_start;
-  size_t value_length;
+  uint64_t value_length;
 
   if (base_tag == 0x1F)
   {

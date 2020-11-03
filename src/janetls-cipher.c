@@ -20,23 +20,19 @@
  * SOFTWARE.
  */
 
-#ifndef JANETLS_RANDOM_H
-#define JANETLS_RANDOM_H
-#include <janet.h>
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
-typedef struct janetls_random_object {
-  // Access to the outside world, like /dev/random or via syscall
-  mbedtls_entropy_context entropy;
-  // Hint: DRBG: Deterministic Random Bit Generator
-  mbedtls_ctr_drbg_context drbg;
-  uint8_t flags;
-} janetls_random_object;
+#include "janetls.h"
+#include "janetls-options.h"
 
-// This will wrap around janetls_random_object for use elsewhere
-int janetls_random_rng(void *, unsigned char *, size_t);
-int janetls_random_set(uint8_t *, size_t);
-janetls_random_object * janetls_get_random();
-JanetAbstractType * janetls_random_object_type();
+static const JanetReg cfuns[] =
+{
+  {"cipher/algorithms", janetls_search_cipher_algorithm_set, "(janetls/cipher/algorithms)\n\n"
+    "Provides an tuple of keywords for available cipher algorithms"},
+  {"cipher/operations", janetls_search_cipher_operation_set, "(janetls/cipher/operations)\n\n"
+    "Provides an tuple of keywords for available cipher operations"},
+  {NULL, NULL, NULL}
+};
 
-#endif
+void submod_cipher(JanetTable * env)
+{
+  janet_cfuns(env, "janetls", cfuns);
+}

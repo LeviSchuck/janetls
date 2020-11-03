@@ -27,6 +27,11 @@ Janet hex_encoder(int argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
 
+  if (janet_checktype(argv[0], JANET_NIL))
+  {
+    return janet_wrap_string(janet_string(NULL, 0));
+  }
+
   JanetByteView data = janet_getbytes(argv, 0);
   return hex_encode(data.bytes, data.len);
 }
@@ -34,6 +39,11 @@ Janet hex_encoder(int argc, Janet * argv)
 Janet hex_decoder(int argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
+
+  if (janet_checktype(argv[0], JANET_NIL))
+  {
+    return janet_wrap_string(janet_string(NULL, 0));
+  }
 
   JanetByteView data = janet_getbytes(argv, 0);
   return hex_decode(data.bytes, data.len);

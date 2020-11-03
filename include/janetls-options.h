@@ -221,4 +221,49 @@ typedef enum janetls_ecp_curve_group
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(ecp_curve_group, janetls_ecp_curve_group)
 
+typedef enum janetls_cipher_algorithm
+{
+  janetls_cipher_algorithm_none = 0,
+  janetls_cipher_algorithm_aes,
+  janetls_cipher_algorithm_chacha20,
+  // janetls_cipher_algorithm_blowfish,
+  // janetls_cipher_algorithm_camellia,
+  // janetls_cipher_algorithm_des,
+} janetls_cipher_algorithm;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_algorithm, janetls_cipher_algorithm)
+
+typedef enum janetls_cipher_padding
+{
+  janetls_cipher_padding_none = 0,
+  janetls_cipher_padding_pkcs7,
+  // janetls_cipher_padding_one_and_zeros,
+  // janetls_cipher_padding_zeros_and_len,
+  // janetls_cipher_padding_zeros,
+} janetls_cipher_padding;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_padding, janetls_cipher_padding)
+
+typedef enum janetls_cipher_operation
+{
+  janetls_cipher_operation_none = 0,
+  janetls_cipher_operation_encrypt,
+  janetls_cipher_operation_decrypt,
+} janetls_cipher_operation;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(cipher_operation, janetls_cipher_operation)
+
+typedef enum janetls_aes_mode
+{
+  janetls_aes_mode_none = 0,
+  janetls_aes_mode_ecb,
+  janetls_aes_mode_cbc,
+  janetls_aes_mode_ctr,
+  janetls_aes_mode_cfb8,
+  janetls_aes_mode_cfb128,
+  janetls_aes_mode_ofb,
+} janetls_aes_mode;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(aes_mode, janetls_aes_mode)
+
 #endif

@@ -30,6 +30,10 @@
 #include "mbedtls/rsa.h"
 #include "mbedtls/ecp.h"
 #include "mbedtls/ecdsa.h"
+#include "mbedtls/cipher.h"
+#include "mbedtls/aes.h"
+#include "mbedtls/gcm.h"
+#include "mbedtls/chacha20.h"
 
 JANET_MODULE_ENTRY(JanetTable *env)
 {
@@ -44,6 +48,11 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_rsa(env);
   submod_ecp(env);
   submod_ecdsa(env);
+  submod_cipher(env);
+  submod_aes(env);
+  submod_chacha(env);
+  submod_chachapoly(env);
+  submod_gcm(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)
@@ -64,6 +73,7 @@ const char * result_error_message(int result, uint8_t * unhandled)
     case MBEDTLS_ERR_MPI_ALLOC_FAILED:
     case JANETLS_ERR_ALLOCATION_FAILED:
     case MBEDTLS_ERR_ECP_ALLOC_FAILED:
+    case MBEDTLS_ERR_CIPHER_ALLOC_FAILED:
       return "Ran out of memory";
     case MBEDTLS_ERR_MD_BAD_INPUT_DATA:
     case MBEDTLS_ERR_MPI_BAD_INPUT_DATA:
@@ -115,6 +125,37 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "ECP: Invalid public or private key";
     case MBEDTLS_ERR_ECP_SIG_LEN_MISMATCH:
       return "ECP: The signature is the wrong length";
+    case MBEDTLS_ERR_CIPHER_AUTH_FAILED:
+      return "CIPHER: Auth tag failed";
+    case MBEDTLS_ERR_CIPHER_BAD_INPUT_DATA:
+      return "CIPHER: Bad input data";
+    case MBEDTLS_ERR_CIPHER_FULL_BLOCK_EXPECTED:
+      return "CIPHER: Full block expected";
+    case MBEDTLS_ERR_CIPHER_INVALID_CONTEXT:
+      return "CIPHER: Invalid context";
+    case MBEDTLS_ERR_CIPHER_INVALID_PADDING:
+      return "CIPHER: Invalid padding";
+    case MBEDTLS_ERR_AES_BAD_INPUT_DATA:
+      return "AES Bad input data";
+    case MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH:
+      return "AES: Invalid input length";
+    case MBEDTLS_ERR_AES_INVALID_KEY_LENGTH:
+      return "AES: Invalid key length";
+    case MBEDTLS_ERR_GCM_AUTH_FAILED:
+      return "GCM: Auth tag failed";
+    case MBEDTLS_ERR_GCM_BAD_INPUT:
+      return "GCM: Bad input data";
+    case MBEDTLS_ERR_CHACHA20_BAD_INPUT_DATA:
+      return "Chacha20: Bad input data";
+    case MBEDTLS_ERR_CIPHER_FEATURE_UNAVAILABLE:
+    case MBEDTLS_ERR_AES_FEATURE_UNAVAILABLE:
+    case MBEDTLS_ERR_CHACHA20_FEATURE_UNAVAILABLE:
+      return "CIPHER: Feature Unavailable";
+    case MBEDTLS_ERR_CIPHER_HW_ACCEL_FAILED:
+    case MBEDTLS_ERR_GCM_HW_ACCEL_FAILED:
+    case MBEDTLS_ERR_AES_HW_ACCEL_FAILED:
+    case MBEDTLS_ERR_CHACHA20_HW_ACCEL_FAILED:
+      return "CIPHER: Hardware accelleration failure";
     // -------------- JANETLS ERRORS ------------------
     case JANETLS_ERR_ENCODING_INVALID_CHARACTER:
       return "Invalid character found during decoding";
@@ -126,6 +167,32 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "Invalid input type, should be string or buffer";
     case JANETLS_ERR_MD_INVALID_ALGORITHM:
       return "Invalid algorithm";
+    case JANETLS_ERR_CIPHER_INVALID_CIPHER:
+      return "Invalid cipher";
+    case JANETLS_ERR_CIPHER_INVALID_MODE:
+      return "Invalid cipher mode";
+    case JANETLS_ERR_CIPHER_INVALID_ALGORITHM:
+      return "Invalid cipher algorithm";
+    case JANETLS_ERR_CIPHER_INVALID_KEY_SIZE:
+      return "Invalid cipher key size";
+    case JANETLS_ERR_CIPHER_INVALID_IV_SIZE:
+      return "Invalid IV / nonce size";
+    case JANETLS_ERR_CIPHER_INVALID_STATE:
+      return "Cipher is in a state where this operation cannot be performed";
+    case JANETLS_ERR_CIPHER_INVALID_PADDING:
+      return "Cipher padding is invalid";
+    case JANETLS_ERR_CIPHER_INVALID_TAG_SIZE:
+      return "Cipher tag size is different from what is requested, cannot get tag of this size";
+    case JANETLS_ERR_CIPHER_INVALID_OPERATION:
+      return "Cipher invalid operation, encrypt or decrypt is expected";
+    case JANETLS_ERR_CIPHER_INVALID_DATA_SIZE:
+      return "Cipher can only operate on a fixed size of data or the data is too large or too small.";
+    case JANETLS_ERR_PADDING_INVALID_BLOCK:
+      return "Invalid block while unpadding";
+    case JANETLS_ERR_PADDING_BLOCK_FULL:
+      return "The block is full and cannot be padded";
+    case JANETLS_ERR_PADDING_INVALID_LENGTH:
+      return "Invalid length during padding, can only pad lengths under the block size";
     case JANETLS_ERR_ASN1_INVALID_BIT_STRING_LENGTH:
       return "A bitstring had an invalid length while parsing";
     case JANETLS_ERR_ASN1_EMPTY_INPUT:
@@ -188,6 +255,8 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "The option input could not be matched";
     case JANETLS_ERR_SEARCH_OPTION_INPUT_INVALID_TYPE:
       return "Invalid input type for search option";
+    case JANETLS_ERR_NOT_IMPLEMENTED:
+      return "Not implemented";
   }
   *unhandled = 1;
   return "An internal error occurred";

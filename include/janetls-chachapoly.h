@@ -20,23 +20,44 @@
  * SOFTWARE.
  */
 
-#ifndef JANETLS_RANDOM_H
-#define JANETLS_RANDOM_H
+#ifndef JANETLS_CHACHAPOLY_H
+#define JANETLS_CHACHAPOLY_H
 #include <janet.h>
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
-typedef struct janetls_random_object {
-  // Access to the outside world, like /dev/random or via syscall
-  mbedtls_entropy_context entropy;
-  // Hint: DRBG: Deterministic Random Bit Generator
-  mbedtls_ctr_drbg_context drbg;
-  uint8_t flags;
-} janetls_random_object;
+#include "mbedtls/chachapoly.h"
+#include "janetls-options.h"
 
-// This will wrap around janetls_random_object for use elsewhere
-int janetls_random_rng(void *, unsigned char *, size_t);
-int janetls_random_set(uint8_t *, size_t);
-janetls_random_object * janetls_get_random();
-JanetAbstractType * janetls_random_object_type();
+typedef struct janetls_chachapoly_object {
+  mbedtls_chachapoly_context ctx;
+  janetls_cipher_operation operation;
+  uint8_t key[32];
+  uint8_t nonce[12];
+  uint8_t tag[16];
+  Janet ad;
+  uint32_t flags;
+} janetls_chachapoly_object;
+
+
+janetls_chachapoly_object * janetls_new_chachapoly();
+JanetAbstractType * janetls_chachapoly_object_type();
+
+int janetls_setup_chachapoly(
+  janetls_chachapoly_object * chachapoly_object,
+  const uint8_t * key,
+  size_t key_length,
+  const uint8_t * iv,
+  size_t iv_length,
+  janetls_cipher_operation operation,
+  const uint8_t * ad,
+  size_t ad_length
+  );
+int janetls_chachapoly_update(
+  janetls_chachapoly_object * chachapoly_object,
+  const uint8_t * data,
+  size_t length,
+  Janet * output);
+int janetls_chachapoly_finish(
+  janetls_chachapoly_object * chachapoly_object,
+  Janet * output);
+
 
 #endif

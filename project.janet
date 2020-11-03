@@ -65,14 +65,26 @@
     "src/janetls-rsa.c"
     "src/janetls-ecp.c"
     "src/janetls-ecdsa.c"
+    "src/janetls-cipher.c"
+    "src/janetls-aes.c"
+    "src/janetls-chacha.c"
+    "src/janetls-gcm.c"
+    "src/janetls-chachapoly.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
     "mbedtls/library/sha1.c"
     "mbedtls/library/sha256.c"
     "mbedtls/library/sha512.c"
-    # For randomness, AES is used. It'll be in its own section later.
+    # For Cipher
     "mbedtls/library/aes.c"
+    "mbedtls/library/chacha20.c"
+    "mbedtls/library/poly1305.c"
+    "mbedtls/library/chachapoly.c"
+    "mbedtls/library/gcm.c"
+    "mbedtls/library/cipher.c"
+    "mbedtls/library/cipher_wrap.c"
+    # For randomness, AES is used. It'll be in its own section later.
     "mbedtls/library/ctr_drbg.c"
     "mbedtls/library/entropy.c"
     "mbedtls/library/entropy_poll.c"

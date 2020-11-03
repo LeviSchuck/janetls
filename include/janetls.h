@@ -42,6 +42,7 @@ const char * value_to_option_text(option_list_entry * list, int size, int value)
 
 // Byte view helpers
 JanetByteView janet_to_bytes(Janet x);
+JanetByteView empty_byteview();
 int janet_is_byte_typed(Janet x);
 void check_result(int return_code);
 const char * result_error_message(int result, uint8_t * unhandled);
@@ -50,6 +51,18 @@ int janet_byte_cstrcmp_insensitive(JanetByteView str, const char * other);
 int janet_byte_cstrcmp_sensitive(JanetByteView str, const char * other);
 int janetls_constant_compare(Janet x, Janet y);
 uint32_t janetls_crc32(const uint8_t * data, int32_t length);
+JanetBuffer * buffer_from_output(Janet * output, int32_t size);
+
+int janetls_util_padding_pkcs7(
+  uint8_t * data,
+  uint8_t block_length,
+  uint8_t length
+  );
+int janetls_util_padding_unpkcs7(
+  const uint8_t * data,
+  uint8_t block_length,
+  uint8_t * length
+  );
 
 typedef enum string_type {
   STRING_IS_DIGITS,
@@ -75,6 +88,11 @@ void submod_asn1(JanetTable * env);
 void submod_rsa(JanetTable * env);
 void submod_ecp(JanetTable * env);
 void submod_ecdsa(JanetTable * env);
+void submod_cipher(JanetTable * env);
+void submod_aes(JanetTable * env);
+void submod_chacha(JanetTable * env);
+void submod_chachapoly(JanetTable * env);
+void submod_gcm(JanetTable * env);
 
 #define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
 

@@ -58,10 +58,10 @@ int janetls_hex_decode(Janet * result, const uint8_t * str, unsigned int length)
 
 static const unsigned char hex_dec_map[128] =
 {
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 254, //
+    254, 255, 255, 254, 255, 255, 255, 255, 255, 255, //
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
-    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, //
+    255, 255, 254, 255, 255, 255, 255, 255, 255, 255, //
     255, 255, 255, 255, 255, 255, 255, 255,   0,   1, // 0 1
       2,   3,   4,   5,   6,   7,   8,   9, 255, 255, // 2 3 4 5 6 7 8 9
     255, 255, 255, 255, 255,  10,  11,  12,  13,  14, // A B C D E
@@ -104,25 +104,16 @@ int janetls_hex_decode_internal(Janet * result, const uint8_t * str, unsigned in
   unsigned int hex_length = length / 2;
   JanetBuffer * buffer = janet_buffer(hex_length);
   unsigned int offset;
-
-  if (length & 1)
-  {
-    if (panic)
-    {
-      janet_panicf("Could not decode hex string, the input length should be a "
-        "multiple of two, it is %d", length);
-    }
-    else
-    {
-      ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
-      goto end;
-    }
-  }
+  unsigned int digits = 0;
+  int odd = 0;
 
   for(offset = 0; offset < length; offset+= 2)
   {
-    uint8_t higher = str[offset];
-    uint8_t lower = str[offset + 1];
+    uint8_t higher;
+    uint8_t lower;
+    higher_get:
+    higher = str[offset];
+
     if (higher & 0x80)
     {
       if (panic)
@@ -133,6 +124,21 @@ int janetls_hex_decode_internal(Janet * result, const uint8_t * str, unsigned in
       ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
       goto end;
     }
+    uint8_t higher_map = hex_dec_map[higher];
+    if (higher_map == 254)
+    {
+      if (offset + 2 >= length)
+      {
+        break;
+      }
+      offset++;
+      goto higher_get;
+    }
+    digits++;
+
+    lower_get:
+    lower = str[offset + 1];
+
     if (lower & 0x80)
     {
       if (panic)
@@ -144,21 +150,46 @@ int janetls_hex_decode_internal(Janet * result, const uint8_t * str, unsigned in
       goto end;
     }
 
-    uint8_t higher_map = hex_dec_map[higher];
     uint8_t lower_map = hex_dec_map[lower];
+    if (lower_map == 254)
+    {
+      if (offset + 1 >= length)
+      {
+        odd = 1;
+        break;
+      }
+      offset++;
+      goto lower_get;
+    }
+    digits++;
+
     if (higher_map == 255 || lower_map == 255)
     {
       if (panic)
       {
         char pair[3] = {higher, lower, 0};
         janet_panicf("Could not decode hex string at position %d, characters "
-          "must not be hex: %s", offset, pair);
+          "must not be hex: '%s' (%d, %d)", offset, pair, higher, lower);
       }
       ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
       goto end;
     }
     uint8_t result = (higher_map << 4) | lower_map;
     janet_buffer_push_u8(buffer, result);
+  }
+
+  if (odd)
+  {
+    if (panic)
+    {
+      janet_panicf("Could not decode hex string, the input of digis should be a "
+        "multiple of two, it is %d", digits);
+    }
+    else
+    {
+      ret = JANETLS_ERR_ENCODING_INVALID_CHARACTER;
+      goto end;
+    }
   }
 
   // from buffer, does a copy.

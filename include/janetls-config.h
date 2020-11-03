@@ -52,6 +52,25 @@
 // SHA512 and SHA384
 #define MBEDTLS_SHA512_C
 
+// For Cipher
+#define MBEDTLS_CIPHER_MODE_CBC
+#define MBEDTLS_CIPHER_MODE_CFB
+#define MBEDTLS_CIPHER_MODE_OFB
+#define MBEDTLS_CIPHER_MODE_CTR
+// #define MBEDTLS_CIPHER_MODE_XTS
+#define MBEDTLS_CHACHA20_C
+#define MBEDTLS_POLY1305_C
+#define MBEDTLS_AES_C
+#define MBEDTLS_GCM_C
+#define MBEDTLS_CHACHAPOLY_C
+// #define MBEDTLS_CCM_C
+// Cipher is used in GCM and is therefore necessary
+// Further, a companion object cipher_wrap.c is necessary for cipher.c
+#define MBEDTLS_CIPHER_C
+// #define MBEDTLS_BLOWFISH_C
+// #define MBEDTLS_CAMELLIA_C
+// #define MBEDTLS_DES_C
+
 // For randomness, entropy gives access to using a random syscall
 // However in testing, it was not sufficient for generating 4096 bit primes
 // So other Deterministic Random Bit Generators (DRBGs) will be used
@@ -59,7 +78,6 @@
 // The HMAC DRBG is capable of generating primes but is not sufficient.
 #define MBEDTLS_ENTROPY_C
 #define MBEDTLS_CTR_DRBG_C
-#define MBEDTLS_AES_C
 // #define MBEDTLS_HMAC_DRBG_C
 
 // To enable big-number stuff, required for RSA and ECC
