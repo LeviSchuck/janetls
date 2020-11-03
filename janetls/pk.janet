@@ -339,7 +339,7 @@
   settings for encoding will be reversed prior to decryption.
   \n
   Examples:\n
-  (pk/decrypt key ciphertext)
+  (pk/decrypt key ciphertext)\n
   (:decrypt key ciphertext {:encoding :hex})\n
   (:decrypt key ciphertext {:encoding :base64 :encoding-variant :url-unpadded})\n
   \n
