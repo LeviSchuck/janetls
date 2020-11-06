@@ -737,9 +737,7 @@ static Janet bignum_to_bytes(int32_t argc, Janet * argv)
     janet_panicf("Could not encode bignum to bytes while marshalling %x", (long)ret);
   }
 
-  Janet value = janet_wrap_string(janet_string(bytes, size));
-  janet_sfree(bytes);
-  return value;
+  return janet_wrap_string(janet_string(bytes, size));
 }
 
 static Janet bignum_to_number(int32_t argc, Janet * argv)

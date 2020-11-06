@@ -93,9 +93,6 @@ void submod_aes(JanetTable * env);
 void submod_chacha(JanetTable * env);
 void submod_chachapoly(JanetTable * env);
 void submod_gcm(JanetTable * env);
-void submod_ecdh(JanetTable * env);
-void submod_hkdf(JanetTable * env);
-void submod_nistkw(JanetTable * env);
 
 #define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
 

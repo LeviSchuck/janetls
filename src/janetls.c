@@ -53,9 +53,6 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_chacha(env);
   submod_chachapoly(env);
   submod_gcm(env);
-  submod_ecdh(env);
-  submod_nistkw(env);
-  submod_hkdf(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)
