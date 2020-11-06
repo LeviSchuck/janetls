@@ -260,6 +260,7 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "Invalid input type for search option";
     case JANETLS_ERR_NOT_IMPLEMENTED:
       return "Not implemented";
+      // TODO ECDH, nistkw, and hkdf errors
   }
   *unhandled = 1;
   return "An internal error occurred";
