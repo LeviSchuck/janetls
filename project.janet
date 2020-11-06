@@ -70,6 +70,9 @@
     "src/janetls-chacha.c"
     "src/janetls-gcm.c"
     "src/janetls-chachapoly.c"
+    "src/janetls-ecdh.c"
+    "src/janetls-nistkw.c"
+    "src/janetls-hkdf.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
@@ -98,6 +101,10 @@
     "mbedtls/library/ecp.c"
     "mbedtls/library/ecp_curves.c"
     "mbedtls/library/ecdsa.c"
+    # Accessories
+    "mbedtls/library/hkdf.c"
+    "mbedtls/library/nist_kw.c"
+    "mbedtls/library/ecdh.c"
     # ECDSA requires ASN.1
     "mbedtls/library/asn1parse.c"
     "mbedtls/library/asn1write.c"

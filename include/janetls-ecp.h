@@ -75,4 +75,7 @@ janetls_ecp_keypair_object * janetls_ecp_load_keypair_object(janetls_ecp_group_o
 janetls_ecp_point_object * janetls_ecp_load_point_binary(janetls_ecp_group_object * group, Janet coordinate);
 janetls_ecp_point_object * janetls_ecp_load_point_object(janetls_ecp_group_object * group, janetls_bignum_object * x, janetls_bignum_object * y);
 
+janetls_ecp_point_object * point_from_janet(Janet value, int panic);
+janetls_ecp_group_object * group_from_janet(Janet value, int panic);
+
 #endif
