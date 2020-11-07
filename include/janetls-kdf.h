@@ -20,10 +20,11 @@
  * SOFTWARE.
  */
 
-#ifndef JANETLS_HKDF_H
-#define JANETLS_HKDF_H
+#ifndef JANETLS_KDF_H
+#define JANETLS_KDF_H
 #include <janet.h>
 #include "mbedtls/hkdf.h"
+#include "mbedtls/pkcs5.h"
 #include "janetls-options.h"
 
 #endif

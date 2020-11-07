@@ -21,23 +21,25 @@
  */
 
 #include "janetls.h"
-#include "janetls-hkdf.h"
+#include "janetls-kdf.h"
 #include "janetls-md.h"
 
-static Janet derive(int32_t argc, Janet * argv);
+static Janet hkdf(int32_t argc, Janet * argv);
+static Janet pbkdf2(int32_t argc, Janet * argv);
 
 static const JanetReg cfuns[] =
 {
-  {"hkdf/derive", derive, ""},
+  {"kdf/hkdf", hkdf, ""},
+  {"kdf/pbkdf2", pbkdf2, ""},
   {NULL, NULL, NULL}
 };
 
-void submod_hkdf(JanetTable * env)
+void submod_kdf(JanetTable * env)
 {
   janet_cfuns(env, "janetls", cfuns);
 }
 
-static Janet derive(int32_t argc, Janet * argv)
+static Janet hkdf(int32_t argc, Janet * argv)
 {
   janet_arity(argc, 2, 5);
   mbedtls_md_type_t alg = symbol_to_alg(argv[0]);
@@ -87,5 +89,60 @@ static Janet derive(int32_t argc, Janet * argv)
   janet_sfree(output);
   check_result(ret);
 
+  return result;
+}
+
+static Janet pbkdf2(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 2, 5);
+  mbedtls_md_type_t alg = symbol_to_alg(argv[0]);
+  JanetByteView key = janet_to_bytes(argv[1]);
+  const mbedtls_md_info_t * md_info = mbedtls_md_info_from_type(alg);
+  size_t md_length = mbedtls_md_get_size(md_info);
+  size_t length = md_length;
+  size_t iterations = 10000;
+  mbedtls_md_context_t md_ctx;
+  JanetByteView salt = empty_byteview();
+  int ret = 0;
+  Janet result = janet_wrap_nil();
+
+  if (argc > 2)
+  {
+    salt = janet_to_bytes(argv[2]);
+  }
+
+  if (argc > 3)
+  {
+    length = janet_getinteger(argv, 3);
+  }
+
+  if (argc > 4)
+  {
+    iterations = janet_getinteger(argv, 4);
+  }
+
+  mbedtls_md_init(&md_ctx);
+  mbedtls_md_setup(&md_ctx, md_info, 1);
+
+  uint8_t * output = janet_smalloc(length);
+  if (output == NULL)
+  {
+    janet_panic("Could not allocate memory");
+  }
+
+  ret = mbedtls_pkcs5_pbkdf2_hmac(
+    &md_ctx,
+    key.bytes, key.len,
+    salt.bytes, salt.len,
+    iterations,
+    length, output);
+
+  if (ret == 0)
+  {
+    result = janet_wrap_string(janet_string(output, length));
+  }
+  mbedtls_md_free(&md_ctx);
+  janet_sfree(output);
+  check_result(ret);
   return result;
 }

@@ -59,8 +59,7 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_gcm(env);
   submod_ecdh(env);
   submod_nistkw(env);
-  submod_hkdf(env);
-  submod_pkcs5(env);
+  submod_kdf(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)
