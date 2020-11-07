@@ -73,6 +73,7 @@
     "src/janetls-ecdh.c"
     "src/janetls-nistkw.c"
     "src/janetls-hkdf.c"
+    "src/janetls-pkcs5.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
