@@ -22,6 +22,7 @@
 
 #include "janetls.h"
 #include "janetls-ecp.h"
+#include "janetls-ecdsa.h"
 #include <inttypes.h>
 
 #define ECP_KEYPAIR_HAS_PUBLIC 1
@@ -631,9 +632,31 @@ static Janet ecp_keypair_import(int32_t argc, Janet * argv)
   return janet_wrap_abstract(keypair);
 }
 
+janetls_ecp_keypair_object * keypair_from_janet(Janet value, int panic)
+{
+  janetls_ecp_keypair_object * keypair = janet_checkabstract(value, &ecp_keypair_object_type);
+
+  if (keypair == NULL)
+  {
+    janetls_ecdsa_object * ecdsa_object = janet_checkabstract(value, janetls_ecdsa_object_type());
+    if (ecdsa_object != NULL)
+    {
+      keypair = ecdsa_object->keypair;
+    }
+  }
+
+  if (keypair == NULL && panic)
+  {
+    janet_panicf("Expected a keypair or ecdsa object");
+  }
+
+  return keypair;
+}
+
 janetls_ecp_point_object * point_from_janet(Janet value, int panic)
 {
   janetls_ecp_point_object * point = janet_checkabstract(value, &ecp_point_object_type);
+
   if (point == NULL)
   {
     janetls_ecp_keypair_object * keypair = janet_checkabstract(value, &ecp_keypair_object_type);
@@ -642,10 +665,29 @@ janetls_ecp_point_object * point_from_janet(Janet value, int panic)
       point = janetls_ecp_keypair_get_public_coordinate(keypair);
     }
   }
+  if (point == NULL)
+  {
+    janetls_ecdsa_object * ecdsa_object = janet_checkabstract(value, janetls_ecdsa_object_type());
+    janetls_ecp_keypair_object * keypair;
+    if (ecdsa_object != NULL)
+    {
+      point = ecdsa_object->public_coordinate;
+      keypair = ecdsa_object->keypair;
+      // ECDSA objects can exist with a secret and not a public point set
+      // Calculate it and attach it to the ecdsa object
+      if (point == NULL && keypair != NULL)
+      {
+        point = janetls_ecp_keypair_get_public_coordinate(keypair);
+        ecdsa_object->public_coordinate = point;
+      }
+    }
+  }
+
   if (point == NULL && panic)
   {
-    janet_panicf("Expected a point or keypair");
+    janet_panicf("Expected a point or keypair or ecdsa object");
   }
+
   return point;
 }
 
@@ -666,16 +708,22 @@ janetls_ecp_group_object * group_from_janet(Janet value, int panic)
     }
   }
 
-  janetls_ecp_point_object * point_object = janet_checkabstract(value, &ecp_group_object_type);
+  janetls_ecp_point_object * point_object = janet_checkabstract(value, &ecp_point_object_type);
   if (point_object != NULL && point_object->group != NULL)
   {
     return point_object->group;
   }
 
-  janetls_ecp_keypair_object * keypair_object = janet_checkabstract(value, &ecp_group_object_type);
+  janetls_ecp_keypair_object * keypair_object = janet_checkabstract(value, &ecp_keypair_object_type);
   if (keypair_object != NULL && keypair_object->group != NULL)
   {
     return keypair_object->group;
+  }
+
+  janetls_ecdsa_object * ecdsa_object = janet_checkabstract(value, janetls_ecdsa_object_type());
+  if (ecdsa_object != NULL && ecdsa_object->group != NULL)
+  {
+    return ecdsa_object->group;
   }
 
   if (panic)
@@ -872,7 +920,7 @@ static int32_t ecp_group_hash(void * data, size_t len)
   return (int32_t)hash;
 }
 
-#define MAX_BIGINT_TO_STRING_SUPPORTED 256
+#define MAX_BIGINT_TO_STRING_SUPPORTED 512
 
 static void mbedtls_ecp_point_to_janet_buffer(mbedtls_ecp_point * point, JanetBuffer * buffer)
 {
@@ -1052,6 +1100,7 @@ janetls_ecp_keypair_object * janetls_ecp_generate_keypair_object(janetls_ecp_gro
 
   janetls_random_object * random = random_from_group(group);
   janetls_ecp_keypair_object * keypair = janetls_new_ecp_keypair_object();
+  uint8_t buf[MBEDTLS_ECP_MAX_BYTES];
   keypair->group = group;
 
   // It also so happens that keypairs are also the "ctx" used in ecdsa,
@@ -1065,7 +1114,7 @@ janetls_ecp_keypair_object * janetls_ecp_generate_keypair_object(janetls_ecp_gro
     janetls_random_rng,
     random
     ));
-  uint8_t buf[MBEDTLS_ECP_MAX_BYTES];
+
   size_t length = (keypair->group->ecp_group.nbits + 7) / 8;
   if (length > MBEDTLS_ECP_MAX_BYTES)
   {
