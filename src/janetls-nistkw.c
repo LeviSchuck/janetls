@@ -28,8 +28,38 @@ static Janet unwrap(int32_t argc, Janet * argv);
 
 static const JanetReg cfuns[] =
 {
-  {"nistkw/wrap", wrap, "e"},
-  {"nistkw/unwrap", unwrap, "e"},
+  {"nistkw/wrap", wrap,
+    "(janetls/nistkw/wrap kek wrapped-cek &opt padding)\n\n"
+    "Wraps a key, which has been wrapped using the NIST key wrapping method (RFC 3394)\n"
+    "\nInputs:\n"
+    "kek - Key Encryption Key, the key used to encrypt the other key\n"
+    "cek - The content encryption key to be wrapped\n"
+    "padding - optional, by default false. "
+    "If true uses the padding key wrapping mode as specified in NIST SP 800-38F section 6.2. "
+    "If false uses the key wrapping mode as specified in NIST SP 800-38F section 6.3.\n"
+    "\nExamples:\n"
+    "(def cek (hex/decode \"01010101010101010101010101010101\"))\n"
+    "(def kek (hex/decode \"11111111111111111111111111111111\"))\n"
+    "(def wrapped (nistkw/wrap kek cek))\n"
+    "(def unwrapped (nistkw/unwrap kek wrapped))\n"
+    "\nReturns a raw byte string of the wrapped key if successful"
+    },
+  {"nistkw/unwrap", unwrap,
+    "(janetls/nistkw/unwrap kek wrapped-cek &opt padding)\n\n"
+    "Unwraps a key, which has been wrapped using the NIST key wrapping method (RFC 3394)\n"
+    "\nInputs:\n"
+    "kek - Key Encryption Key, the key used to encrypt the other key\n"
+    "wrapped-cek - The wrapped content encryption key to be unwrapped\n"
+    "padding - optional, by default false. "
+    "If true uses the padding key wrapping mode as specified in NIST SP 800-38F section 6.2. "
+    "If false uses the key wrapping mode as specified in NIST SP 800-38F section 6.3.\n"
+    "\nExamples:\n"
+    "(def cek (hex/decode \"00000000000000000000000000000000\"))\n"
+    "(def kek (hex/decode \"11111111111111111111111111111111\"))\n"
+    "(def wrapped (nistkw/wrap kek cek))\n"
+    "(def unwrapped (nistkw/unwrap kek wrapped))\n"
+    "\nReturns a raw byte string of the unwrapped key if successful"
+    },
   {NULL, NULL, NULL}
 };
 
