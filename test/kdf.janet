@@ -63,10 +63,13 @@
 # https://tools.ietf.org/html/rfc5869#appendix-A.1
 (deftest "HKDF HMAC"
   # Test vector
-  (def result (hex/encode (kdf/hkdf :sha256 (hex/decode "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b") 42 (hex/decode "000102030405060708090a0b0c") (hex/decode "f0f1f2f3f4f5f6f7f8f9"))))
+  (def input (hex/decode "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"))
+  (def test-otherinfo (hex/decode "f0f1f2f3f4f5f6f7f8f9"))
+  (def test-salt (hex/decode "000102030405060708090a0b0c"))
+  (def result (hex/encode (kdf/hkdf :sha256 input 42 test-otherinfo test-salt)))
   (is (= "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865" result))
   # Reference
-  (def result (hex/encode (kdf/hkdf :sha256 password 32 salt otherinfo)))
+  (def result (hex/encode (kdf/hkdf :sha256 password 32 otherinfo salt)))
   (is (= "a18935eeefb1276cfa7968be32755e52fea28e562ab1a8cc71a11177e460e6ff" result))
   )
 
@@ -74,10 +77,10 @@
 # https://www.ietf.org/rfc/rfc6070.html
 (deftest "PBKDF2 HMAC"
   # Test vector
-  (def result (hex/encode (kdf/pbkdf2 :sha1 "password" "salt" 20 2)))
+  (def result (hex/encode (kdf/pbkdf2 :sha1 "password" 20 "salt" 2)))
   (is (= "ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957" result))
   # Reference
-  (def result (hex/encode (kdf/pbkdf2 :sha256 password salt 32 100000)))
+  (def result (hex/encode (kdf/pbkdf2 :sha256 password 32 salt 100000)))
   (is (= "a452e899dec18f48c8ca16a759357ba4d459812e65078ebbcb3b00288f776fa4" result))
   )
 
@@ -85,13 +88,13 @@
 
 (deftest "Concat KDF Hash"
   # Reference
-  (def result (hex/encode (kdf/concatkdf :sha256 password otherinfo "" 32 false)))
+  (def result (hex/encode (kdf/concatkdf :sha256 password 32 otherinfo)))
   (is (= "47912f4a88de7541bc94ad7ab4d414c3d0640287ab75466bcedbeb66a80ef532" result))
   )
 
 (deftest "Concat KDF HMAC"
   # Reference
-  (def result (hex/encode (kdf/concatkdf :sha256 password otherinfo salt 32 true)))
+  (def result (hex/encode (kdf/concatkdf :sha256 password 32 otherinfo salt)))
   (is (= "1c44744def7499522273d8629287e3ef00789bf3e89b81ab0b702c928277827b" result))
   )
 

@@ -31,9 +31,58 @@ static Janet concatkdf(int32_t argc, Janet * argv);
 
 static const JanetReg cfuns[] =
 {
-  {"kdf/hkdf", hkdf, ""},
-  {"kdf/pbkdf2", pbkdf2, ""},
-  {"kdf/concatkdf", concatkdf, ""},
+  {"kdf/hkdf", hkdf,
+    "(janetls/kdf/hkdf alg input &opt length otherinfo salt)\n\n"
+    "\nInputs:\n"
+    "alg - digest algorithm keyword, options listed in janetls/md/algorithms\n"
+    "input - input material to derive a key\n"
+    "length - optional output material length, by default as long as the digest algorithm size\n"
+    "otherinfo - optional application specific context information\n"
+    "salt - optional but highly recommended cryptographic salt\n"
+    "\nExamples:\n"
+    "(def salt (util/random 16))\n"
+    "(def otherinfo \"AlgorithmID || PartyUInfo || PartyVInfo\")\n"
+    "(def input \"computed value\")\n"
+    "(kdf/hkdf :sha256 input)\n"
+    "(kdf/hkdf :sha256 input 32 otherinfo salt)\n"
+    "\nReturns a byte string suitable for use as key material"
+    },
+  {"kdf/pbkdf2", pbkdf2,
+    "(janetls/kdf/pbkdf2 alg input length salt rounds)\n\n"
+    "\nInputs:\n"
+    "alg - digest algorithm keyword, options listed in janetls/md/algorithms\n"
+    "input - input material to derive a key\n"
+    "length - optional output material length, by default as long as the digest algorithm size\n"
+    "salt - optional but highly recommended cryptographic salt\n"
+    "rounds - optional iterations count, by default 10000\n"
+    "\nExamples:\n"
+    "(def salt (util/random 16))\n"
+    "(def input \"computed value\")\n"
+    "(kdf/pbkdf2 :sha256 input)\n"
+    "(kdf/pbkdf2 :sha256 input 32 salt)\n"
+    "(kdf/pbkdf2 :sha256 input 32 salt 1000)\n"
+    "\nReturns a byte string suitable for use as key material"
+    },
+  {"kdf/concatkdf", concatkdf,
+    "(janetls/kdf/concatkdf alg input length otherinfo salt)\n\n"
+    "\nInputs:\n"
+    "alg - digest algorithm keyword, options listed in janetls/md/algorithms\n"
+    "input - input material to derive a key\n"
+    "length - optional output material length, by default as long as the digest algorithm size\n"
+    "otherinfo - optional application specific context information\n"
+    "salt - optional but highly recommended cryptographic salt\n"
+    "\nExamples:\n"
+    "(def salt (util/random 16))\n"
+    "(def otherinfo \"AlgorithmID || PartyUInfo || PartyVInfo\")\n"
+    "(def input \"computed value\")\n"
+    "(kdf/concatkdf :sha256 input)\n"
+    "(kdf/concatkdf :sha256 input 32 otherinfo)\n"
+    "(kdf/concatkdf :sha256 input 32 otherinfo \"\")\n"
+    "(kdf/concatkdf :sha256 input 32 otherinfo salt)\n"
+    "(kdf/concatkdf :sha256 input 32 \"\" salt)\n"
+    "(kdf/concatkdf :sha256 input 32 \"\" \"\")\n"
+    "\nReturns a byte string suitable for use as key material"
+    },
   {NULL, NULL, NULL}
 };
 
@@ -54,6 +103,7 @@ static Janet hkdf(int32_t argc, Janet * argv)
   JanetByteView info = empty_byteview();
   int ret = 0;
   Janet result = janet_wrap_nil();
+  uint8_t * output = NULL;
 
   if (argc > 2)
   {
@@ -68,15 +118,15 @@ static Janet hkdf(int32_t argc, Janet * argv)
 
   if (argc > 3)
   {
-    salt = janet_to_bytes(argv[3]);
+    info = janet_to_bytes(argv[3]);
   }
 
   if (argc > 4)
   {
-    info = janet_to_bytes(argv[4]);
+    salt = janet_to_bytes(argv[4]);
   }
 
-  uint8_t * output = janet_smalloc(length);
+  output = janet_smalloc(length);
   if (output == NULL)
   {
     janet_panic("Could not allocate memory");
@@ -111,12 +161,12 @@ static Janet pbkdf2(int32_t argc, Janet * argv)
 
   if (argc > 2)
   {
-    salt = janet_to_bytes(argv[2]);
+    length = janet_getinteger(argv, 2);
   }
 
   if (argc > 3)
   {
-    length = janet_getinteger(argv, 3);
+    salt = janet_to_bytes(argv[3]);
   }
 
   if (argc > 4)
@@ -165,13 +215,13 @@ static Janet pbkdf2(int32_t argc, Janet * argv)
 
 static Janet concatkdf(int32_t argc, Janet * argv)
 {
-  janet_arity(argc, 2, 6);
+  janet_arity(argc, 2, 5);
   mbedtls_md_type_t alg = symbol_to_alg(argv[0]);
   JanetByteView key = janet_to_bytes(argv[1]);
   const mbedtls_md_info_t * md_info = mbedtls_md_info_from_type(alg);
   size_t md_length = mbedtls_md_get_size(md_info);
   size_t length = md_length;
-  int hmac = 1;
+  int hmac = 0;
   mbedtls_md_context_t md_ctx;
   JanetByteView salt = empty_byteview();
   JanetByteView otherinfo = empty_byteview();
@@ -186,33 +236,25 @@ static Janet concatkdf(int32_t argc, Janet * argv)
 
   if (argc > 2)
   {
-    otherinfo = janet_to_bytes(argv[2]);
+    length = janet_getinteger(argv, 2);
   }
 
   if (argc > 3)
   {
-    salt = janet_to_bytes(argv[3]);
+    otherinfo = janet_to_bytes(argv[3]);
   }
 
   if (argc > 4)
   {
-    length = janet_getinteger(argv, 4);
-  }
+    salt = janet_to_bytes(argv[4]);
+    hmac = 1;
 
-  if (argc > 5)
-  {
-    hmac = janet_getboolean(argv, 5);
-  }
-
-  if (salt.len == 0 && hmac)
-  {
-    salt.bytes = zeros;
-    salt.len = md_length;
-    mbedtls_platform_zeroize(zeros, md_length);
-  }
-  else if (salt.len > 0 && !hmac)
-  {
-    janet_panic("A salt value can only be used with an hmac");
+    if (salt.len == 0)
+    {
+      salt.bytes = zeros;
+      salt.len = md_length;
+      mbedtls_platform_zeroize(zeros, md_length);
+    }
   }
 
   buf = janet_smalloc(length);
