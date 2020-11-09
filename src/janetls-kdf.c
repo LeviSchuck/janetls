@@ -152,6 +152,16 @@ static Janet pbkdf2(int32_t argc, Janet * argv)
 
 // A reference implementation
 // https://github.com/pyca/cryptography/blob/master/src/cryptography/hazmat/primitives/kdf/concatkdf.py
+// Another
+// https://github.com/patrickfav/singlestep-kdf/blob/master/src/main/java/at/favre/lib/crypto/singlstepkdf/SingleStepKdf.java
+// https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-56ar.pdf
+// Section 5.8.1 (page 46-48)
+// OR
+// https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar3.pdf
+// Section 5.8.2.1 (page 55)
+// PLUS "one-step key-derivation"
+// https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr1.pdf
+// Section 4.1 (page 11-14)
 
 static Janet concatkdf(int32_t argc, Janet * argv)
 {
@@ -214,7 +224,7 @@ static Janet concatkdf(int32_t argc, Janet * argv)
   }
 
   length_remaining = length;
-  mbedtls_platform_zeroize(working, MBEDTLS_MD_MAX_SIZE);
+  mbedtls_platform_zeroize(buf, length);
   mbedtls_md_init(&md_ctx);
 
   retcheck(mbedtls_md_setup(&md_ctx, md_info, hmac));
@@ -224,14 +234,19 @@ static Janet concatkdf(int32_t argc, Janet * argv)
     retcheck(mbedtls_md_hmac_starts(&md_ctx, salt.bytes, salt.len));
   }
 
+  uint32_t reps = length / md_length;
+  if ((length % md_length) > 0)
+  {
+    reps++;
+  }
 
-  while (length_remaining > 0)
+  for (counter = 1; counter <= reps; counter++, working_buf += md_length)
   {
     uint8_t big_endian_counter[4];
-    big_endian_counter[0] = counter & 0x000000ff;
-    big_endian_counter[1] = counter & 0x0000ff00;
-    big_endian_counter[2] = counter & 0x00ff0000;
-    big_endian_counter[3] = counter & 0xff000000;
+    big_endian_counter[3] = counter & 0xff;
+    big_endian_counter[2] = (counter >> 8) & 0xff;
+    big_endian_counter[1] = (counter >> 16) & 0xff;
+    big_endian_counter[0] = (counter >> 24) & 0xff;
 
     if (hmac)
     {
@@ -254,7 +269,7 @@ static Janet concatkdf(int32_t argc, Janet * argv)
       retcheck(mbedtls_md_finish(&md_ctx, working));
     }
 
-    if (length_remaining >= md_length)
+    if (length_remaining > md_length)
     {
       memcpy(working_buf, working, md_length);
       length_remaining -= md_length;
@@ -263,10 +278,8 @@ static Janet concatkdf(int32_t argc, Janet * argv)
     {
       memcpy(working_buf, working, length_remaining);
       length_remaining = 0;
+      break;
     }
-
-    counter++;
-    working_buf += md_length;
   }
 
   if (ret == 0)
@@ -276,6 +289,7 @@ static Janet concatkdf(int32_t argc, Janet * argv)
 
 end:
   mbedtls_platform_zeroize(buf, length);
+  mbedtls_platform_zeroize(working, MBEDTLS_MD_MAX_SIZE);
   janet_sfree(buf);
   mbedtls_md_free(&md_ctx);
   check_result(ret);
