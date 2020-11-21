@@ -58,6 +58,8 @@ static Janet ecp_keypair_export(int32_t argc, Janet * argv);
 static Janet ecp_keypair_import(int32_t argc, Janet * argv);
 static Janet ecp_keypair_compare(int32_t argc, Janet * argv);
 
+static Janet ecp_information_class(int32_t argc, Janet * argv);
+
 static janetls_random_object * random_from_group(janetls_ecp_group_object * group);
 
 static int compare_group(Janet a, Janet b);
@@ -138,6 +140,7 @@ static JanetMethod ecp_point_methods[] = {
   {"zero?", ecp_point_is_zero},
   {"export", ecp_point_export},
   {"compare", ecp_point_compare},
+  {"information-class", ecp_information_class},
   {NULL, NULL}
 };
 
@@ -147,6 +150,7 @@ static JanetMethod ecp_keypair_methods[] = {
   {"point", ecp_keypair_get_point},
   {"secret", ecp_keypair_get_secret},
   {"compare", ecp_keypair_compare},
+  {"information-class", ecp_information_class},
   {NULL, NULL}
 };
 
@@ -204,7 +208,7 @@ static const JanetReg cfuns[] =
     "Using compressed points is discouraged, they cannot be imported by this "
     "library, and are deprecated in RFC 8422 for TLS"
     },
-  {"ecp/import-point", ecp_point_import, "(janetls/ecp/import group binary)\n\n"
+  {"ecp/import-point", ecp_point_import, "(janetls/ecp/import-point group binary)\n\n"
     "Imports binary exported coordinate within the group curve.\n"
     "Essentially, this only imports the public component of a keypair."
     },
@@ -212,7 +216,7 @@ static const JanetReg cfuns[] =
     "Exports the secret component keypair to binary. "
     "The exact format depends on the curve in use.\n"
     },
-  {"ecp/import-keypair", ecp_keypair_import, "(janetls/ecp/import group binary)\n\n"
+  {"ecp/import-keypair", ecp_keypair_import, "(janetls/ecp/import-keypair group binary)\n\n"
     "Imports the private component from a binary into a keypair.\n"
     "The public coordinate will be calculated during validation."
     },
@@ -1254,4 +1258,26 @@ Janet janetls_ecp_point_get_encoded(janetls_ecp_point_object * point, janetls_ec
     sizeof(output)
     ));
   return janet_wrap_string(janet_string(output, length));
+}
+
+static Janet ecp_information_class(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+
+  janetls_ecp_keypair_object * keypair = keypair_from_janet(argv[0], 0);
+
+  if (keypair != NULL)
+  {
+    return janetls_search_pk_information_class_to_janet(janetls_pk_information_class_private);
+  }
+
+  janetls_ecp_point_object * point = point_from_janet(argv[0], 0);
+
+  if (point != NULL)
+  {
+    return janetls_search_pk_information_class_to_janet(janetls_pk_information_class_public);
+  }
+
+  janet_panicf("Expected an ecp/keypair or ecp/point but received %p", argv[0]);
+  return janet_wrap_nil();
 }

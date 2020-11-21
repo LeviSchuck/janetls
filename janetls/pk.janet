@@ -591,6 +591,22 @@
   components
   ))
 
+(defn- pk/import-ecdh [components] (do
+  (def {
+    :curve-group curve-group
+    :p public
+    :d private
+    :information-class information-class
+    } components)
+    (if (not information-class) (errorf "Expected an :information-class in components %p" components))
+    (if (not curve-group) (errorf "Expected a :curve-group in components %p" components))
+    (case information-class
+      :public (ecp/import-point curve-group public)
+      :private (ecp/import-keypair curve-group private)
+      (errorf "Information class not the expected value, should be :public or :private but got %p" information-class)
+      )
+  ))
+
 (defn pk/import
   "Import a private or public key.\n
   Supported types are RSA and ECDSA.\n
@@ -637,22 +653,23 @@
     ))
   (def kind (if kind kind (components :type)))
   (if (not kind) (errorf "Could not determine type (%p) from components, see %p" kind components))
+  # (printf "Components %p" components)
   (def imported (case kind
     :rsa (rsa/import components)
     :ecdsa (ecdsa/import components)
-    # TODO handle ecdh
+    :ecdh (pk/import-ecdh components)
     (errorf "Could not determine type, should be :rsa, :ecdsa, :der, or :pem but got %p" kind)
   ))
-  (def kind (if (cfunction? (imported :type)) (:type imported) (imported :type)))
-  # TODO consider ecdh
-  (def information-class (if (cfunction?
-    (imported :information-class))
+  (def information-class (if
+    (cfunction? (imported :information-class))
     (:information-class imported)
     (imported :information-class)))
   (def result @{:key imported :type kind :information-class information-class})
   (if (= :rsa kind) (put result :version (:version imported)))
-  (if (= :ecdsa kind) (put result :curve-group (:curve-group imported)))
-  # TODO handle ecdh
+  (if (or
+    (= :ecdsa kind)
+    (= :ecdh kind))
+    (put result :curve-group (:curve-group imported)))
   (table/setproto result PK-Prototype)
   )
 
@@ -664,15 +681,34 @@
   Examples:\n
   (pk/wrap (rsa/generate {:bits 2048 :version :pkcs1-v2.1
     :mgf1 :sha256 :digest :sha256}))
+  (pk/wrap (ecp/generate :secp256r1) :ecdh)
   "
-  [key]
-  (def kind (:type key))
-  (case (type key)
-    :janetls/rsa nil
-    :janetls/ecdsa nil
-    # TODO handle ecdh
-    (errorf "Could not determine type, should be janetls/rsa or janetls/ecdsa but got %p" (type key)))
-  (table/setproto @{:key key :type kind :information-class (:information-class key)} PK-Prototype)
+  [key &opt pk-type]
+  (def key-type (type key))
+  (def kind (if pk-type
+    (case pk-type
+      :rsa (if
+        (= :janetls/rsa key-type)
+        :rsa
+        (errorf "Expected type should be :janetls/rsa but is %p" key-type))
+      :ecdsa (if
+        (= :janetls/ecdsa key-type)
+        :ecdsa
+        (errorf "Expected type should be :janetls/ecdsa but is %p" key-type))
+      :ecdh (if
+        (or (= :janetls/ecp/keypair key-type) (= :janetls/ecp/point key-type))
+        :ecdh
+        (errorf "Expected type should be :janetls/ecp/keypair or :janetls/ecp/point but is %p" key-type))
+      (errorf "The type %p is not supported" pk-type))
+    (case key-type
+      :janetls/rsa :rsa
+      :janetls/ecdsa :ecdsa
+      (errorf "The key type could not be determined from the wrapped object %p
+, consider using the optional parameter pk-type on the function pk/wrap" key-type)
+    )))
+  (def information-class (:information-class key))
+  (def pk @{:key key :type kind :information-class information-class})
+  (table/setproto pk PK-Prototype)
   )
 
 (defn pk/unwrap
@@ -712,6 +748,9 @@
       (default option :secp256r1)
       (pk/wrap (ecdsa/generate option))
       )
-    # TODO ecdh
+    :ecdh (do
+      (default option :secp256r1)
+      (pk/wrap (ecp/generate option) :ecdh)
+      )
     (errorf "Expected :rsa or :ecdsa but got %p" kind)
     ))
