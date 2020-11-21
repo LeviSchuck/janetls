@@ -353,4 +353,32 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
   (assert-thrown (pk/generate :ecdsa :secp521k1))
   )
 
+
+#
+(def pubkey `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAENP9hG3V3eIhxysDOmbinYfiqZwNr
+Jvqi+Ue6Jvit1FEBWSScTQFkLzpTBElN5bbqmqY+HGVnAEKyqfjQDu4ITg==
+-----END PUBLIC KEY-----`)
+(def privkey `-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIIkAJAmmXzzzqgVZf1TntxEz+uSeYCKa+Hdk6Mc5D9pkoAoGCCqGSM49
+AwEHoUQDQgAE2IQXKtLi5gYga/sYXEazBo4r0VRcsr37iX0gt3Ackrd3tNUotrbQ
+F6oCMuD6tdAINYl/dJEHgly39U71K2poww==
+-----END EC PRIVATE KEY-----`)
+
+
+
+(def expected "4522afc823e522f6f280f1bb5d16b63995e219662345ac60e62dcb8726a2e0dc")
+
+(deftest "Matches openssl (via python) implementation"
+  (def priv (pk/import {:pem privkey :type :ecdh}))
+  (def pub (pk/import {:pem pubkey :type :ecdh}))
+  (is (= expected (hex/encode (pk/key-agreement priv pub))))
+  )
+
+(deftest "Same result with newly generated keys"
+  (def key1 (pk/generate :ecdh :secp256r1))
+  (def key2 (pk/generate :ecdh :secp256r1))
+  (is (= (hex/encode (pk/key-agreement key1 key2)) (hex/encode (pk/key-agreement key2 key1))))
+  )
+
 (run-tests!)

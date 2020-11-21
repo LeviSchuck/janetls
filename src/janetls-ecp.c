@@ -135,6 +135,7 @@ static JanetMethod ecp_group_methods[] = {
 
 static JanetMethod ecp_point_methods[] = {
   {"group", ecp_group_get_group},
+  {"curve-group", ecp_group_get_curve_group},
   {"x", ecp_point_get_x},
   {"y", ecp_point_get_y},
   {"zero?", ecp_point_is_zero},
@@ -146,6 +147,7 @@ static JanetMethod ecp_point_methods[] = {
 
 static JanetMethod ecp_keypair_methods[] = {
   {"group", ecp_group_get_group},
+  {"curve-group", ecp_group_get_curve_group},
   {"export", ecp_keypair_export},
   {"point", ecp_keypair_get_point},
   {"secret", ecp_keypair_get_secret},
