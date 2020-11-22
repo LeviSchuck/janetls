@@ -28,6 +28,7 @@
 static Janet hkdf(int32_t argc, Janet * argv);
 static Janet pbkdf2(int32_t argc, Janet * argv);
 static Janet concatkdf(int32_t argc, Janet * argv);
+static Janet ansi_x963(int32_t argc, Janet * argv);
 
 static const JanetReg cfuns[] =
 {
@@ -82,6 +83,23 @@ static const JanetReg cfuns[] =
     "(kdf/concatkdf :sha256 input 32 \"\" salt)\n"
     "(kdf/concatkdf :sha256 input 32 \"\" \"\")\n"
     "\nReturns a byte string suitable for use as key material"
+    },
+  {"kdf/ansi-x963", ansi_x963,
+    "(janetls/kdf/ansi-x963 alg input length otherinfo)\n\n"
+    "ANSI X9.63 Key Derivation\n"
+    "\nInputs:\n"
+    "alg - digest algorithm keyword, options listed in janetls/md/algorithms\n"
+    "input - input material to derive a key\n"
+    "length - optional output material length, by default as long as the digest algorithm size\n"
+    "otherinfo - optional application specific context information\n"
+    "\nExamples:\n"
+    "(def otherinfo \"AlgorithmID || PartyUInfo || PartyVInfo\")\n"
+    "(def input \"computed value\")\n"
+    "(kdf/ansi-x963 :sha256 input)\n"
+    "(kdf/ansi-x963 :sha256 input 32)\n"
+    "(kdf/ansi-x963 :sha256 input 32 otherinfo)\n"
+    "\nReturns a byte string suitable for use as key material\n"
+    "\nNote: do not use this KDF unless an existing specification requires it."
     },
   {NULL, NULL, NULL}
 };
@@ -310,6 +328,100 @@ static Janet concatkdf(int32_t argc, Janet * argv)
       }
       retcheck(mbedtls_md_finish(&md_ctx, working));
     }
+
+    if (length_remaining > md_length)
+    {
+      memcpy(working_buf, working, md_length);
+      length_remaining -= md_length;
+    }
+    else
+    {
+      memcpy(working_buf, working, length_remaining);
+      length_remaining = 0;
+      break;
+    }
+  }
+
+  if (ret == 0)
+  {
+    result = janet_wrap_string(janet_string(buf, length));
+  }
+
+end:
+  mbedtls_platform_zeroize(buf, length);
+  mbedtls_platform_zeroize(working, MBEDTLS_MD_MAX_SIZE);
+  janet_sfree(buf);
+  mbedtls_md_free(&md_ctx);
+  check_result(ret);
+
+  return result;
+}
+
+
+static Janet ansi_x963(int32_t argc, Janet * argv)
+{
+  janet_arity(argc, 2, 4);
+  mbedtls_md_type_t alg = symbol_to_alg(argv[0]);
+  JanetByteView key = janet_to_bytes(argv[1]);
+  const mbedtls_md_info_t * md_info = mbedtls_md_info_from_type(alg);
+  size_t md_length = mbedtls_md_get_size(md_info);
+  size_t length = md_length;
+  mbedtls_md_context_t md_ctx;
+  JanetByteView otherinfo = empty_byteview();
+  uint8_t working[MBEDTLS_MD_MAX_SIZE];
+  Janet result = janet_wrap_nil();
+  int ret = 0;
+  uint8_t * buf = NULL;
+  uint8_t * working_buf = NULL;
+  size_t length_remaining = 0;
+  uint32_t counter = 1;
+
+  if (argc > 2)
+  {
+    length = janet_getinteger(argv, 2);
+  }
+
+  if (argc > 3)
+  {
+    otherinfo = janet_to_bytes(argv[3]);
+  }
+
+  buf = janet_smalloc(length);
+  working_buf = buf;
+
+  if (buf == NULL)
+  {
+    janet_panic("Could not allocate memory");
+  }
+
+  length_remaining = length;
+  mbedtls_platform_zeroize(buf, length);
+  mbedtls_md_init(&md_ctx);
+
+  retcheck(mbedtls_md_setup(&md_ctx, md_info, 0));
+
+  uint32_t reps = length / md_length;
+  if ((length % md_length) > 0)
+  {
+    reps++;
+  }
+
+  for (counter = 1; counter <= reps; counter++, working_buf += md_length)
+  {
+    uint8_t big_endian_counter[4];
+    big_endian_counter[3] = counter & 0xff;
+    big_endian_counter[2] = (counter >> 8) & 0xff;
+    big_endian_counter[1] = (counter >> 16) & 0xff;
+    big_endian_counter[0] = (counter >> 24) & 0xff;
+
+    retcheck(mbedtls_md_starts(&md_ctx));
+    retcheck(mbedtls_md_update(&md_ctx, key.bytes, key.len));
+    retcheck(mbedtls_md_update(&md_ctx, big_endian_counter, 4));
+
+    if (otherinfo.len) {
+      retcheck(mbedtls_md_update(&md_ctx, otherinfo.bytes, otherinfo.len));
+    }
+    retcheck(mbedtls_md_finish(&md_ctx, working));
 
     if (length_remaining > md_length)
     {
