@@ -30,6 +30,16 @@ mbed TLS is added as a submodule to this repository.
 As of August 31, 2020, the submodule points to the latest release v2.24.0
 Releases can be found on: https://github.com/ARMmbed/mbedtls/releases
 
+## Security Audits
+
+This project has not undergone a security audit.
+Please contact me if you would like to fund or perform a security audit.
+Use of this library is at your own risk.
+
+Security advisories for dependencies are available at
+
+* mbedtls: https://tls.mbed.org/security
+
 ## License - MIT
 
 ```
