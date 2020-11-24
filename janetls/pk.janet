@@ -369,7 +369,7 @@
   Examples:\n
   (def private (pk/generate :ecdh :public))\n
   (def public (pk/generate :ecdh :private))\n
-  (pk/ecdh-ss private public)\n
+  (pk/key-agreement private public)\n
   \n
   Returns a byte string\n
   \n

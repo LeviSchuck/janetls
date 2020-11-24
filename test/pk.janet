@@ -365,8 +365,6 @@ AwEHoUQDQgAE2IQXKtLi5gYga/sYXEazBo4r0VRcsr37iX0gt3Ackrd3tNUotrbQ
 F6oCMuD6tdAINYl/dJEHgly39U71K2poww==
 -----END EC PRIVATE KEY-----`)
 
-
-
 (def expected "4522afc823e522f6f280f1bb5d16b63995e219662345ac60e62dcb8726a2e0dc")
 
 (deftest "Matches openssl (via python) implementation"
