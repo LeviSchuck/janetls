@@ -21,9 +21,9 @@
  */
 
 #include "janetls.h"
-#include "janetls-ecdh.h"
 #include "janetls-ecp.h"
 #include "janetls-bignum.h"
+#include "mbedtls/ecdh.h"
 #include "mbedtls/platform_util.h"
 
 static Janet ecdh_generate_key(int32_t argc, Janet * argv);

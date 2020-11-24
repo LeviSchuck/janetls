@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef JANETLS_NIST_KW_H
-#define JANETLS_NIST_KW_H
+#ifndef JANETLS_NISTKW_H
+#define JANETLS_NISTKW_H
 #include <janet.h>
 #include "mbedtls/nist_kw.h"
 #include "janetls-options.h"

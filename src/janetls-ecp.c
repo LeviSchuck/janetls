@@ -59,7 +59,6 @@ static Janet ecp_keypair_import(int32_t argc, Janet * argv);
 static Janet ecp_keypair_compare(int32_t argc, Janet * argv);
 
 static Janet ecp_information_class(int32_t argc, Janet * argv);
-
 static janetls_random_object * random_from_group(janetls_ecp_group_object * group);
 
 static int compare_group(Janet a, Janet b);
