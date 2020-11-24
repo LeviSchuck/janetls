@@ -42,6 +42,8 @@ static Janet ecdsa_get_digest(int32_t argc, Janet * argv);
 static Janet ecdsa_get_sizebits(int32_t argc, Janet * argv);
 static Janet ecdsa_get_sizebytes(int32_t argc, Janet * argv);
 static Janet ecdsa_get_curve_group(int32_t argc, Janet * argv);
+static Janet ecdsa_get_public_point(int32_t argc, Janet * argv);
+static Janet ecdsa_get_private_secret(int32_t argc, Janet * argv);
 static Janet ecdsa_import(int32_t argc, Janet * argv);
 static Janet ecdsa_generate(int32_t argc, Janet * argv);
 
@@ -65,6 +67,8 @@ static JanetMethod ecdsa_methods[] = {
   {"information-class", ecdsa_information_class},
   {"type", ecdsa_type},
   {"curve-group", ecdsa_get_curve_group},
+  {"public-point", ecdsa_get_public_point},
+  {"private-secret", ecdsa_get_private_secret},
   {"digest", ecdsa_get_digest},
   {"bits", ecdsa_get_sizebits},
   {"bytes", ecdsa_get_sizebytes},
@@ -127,6 +131,12 @@ static const JanetReg cfuns[] =
     },
   {"ecdsa/curve-group", ecdsa_get_curve_group, "(janetls/ecdsa/curve-group ecdsa)\n\n"
     "Returns a keyword found in janetls/ecp/curve-groups."
+    },
+  {"ecdsa/public-point", ecdsa_get_public_point, "(janetls/ecdsa/public-point ecdsa)\n\n"
+    "Returns an ecp/point object"
+    },
+  {"ecdsa/private-secret", ecdsa_get_private_secret, "(janetls/ecdsa/private-secret ecdsa)\n\n"
+    "Returns an ecp/keypair object or nil"
     },
   {"ecdsa/digest", ecdsa_get_digest, "(janetls/ecdsa/group ecdsa)\n\n"
     "Returns an keyword from janetls/md/algorithms for the digest used in "
@@ -557,6 +567,37 @@ static Janet ecdsa_get_curve_group(int32_t argc, Janet * argv)
   janet_fixarity(argc, 1);
   janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
   return janetls_search_ecp_curve_group_to_janet(ecdsa->group->group);
+}
+
+static Janet ecdsa_get_public_point(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
+  janetls_ecp_point_object * point = ecdsa->public_coordinate;
+  if (point == NULL)
+  {
+    if (ecdsa->keypair == NULL)
+    {
+      janet_panic("Internal error, the keypair appears to be null, and there is no public coordinate");
+    }
+    point = janetls_ecp_keypair_get_public_coordinate(ecdsa->keypair);
+    ecdsa->public_coordinate = point;
+  }
+  return janet_wrap_abstract(point);
+}
+
+static Janet ecdsa_get_private_secret(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  janetls_ecdsa_object * ecdsa = janet_getabstract(argv, 0, &ecdsa_object_type);
+  janetls_ecp_keypair_object * keypair = ecdsa->keypair;
+
+  if (keypair == NULL)
+  {
+    return janet_wrap_nil();
+  }
+
+  return janet_wrap_abstract(keypair);
 }
 
 static janetls_bignum_object * bignum_from_kv(const JanetKV * kv)

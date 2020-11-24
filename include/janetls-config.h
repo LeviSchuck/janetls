@@ -113,6 +113,12 @@
 // ECC - ECDSA
 #define MBEDTLS_ECDSA_C
 
+// Accessories
+#define MBEDTLS_HKDF_C
+#define MBEDTLS_NIST_KW_C
+#define MBEDTLS_ECDH_C
+#define MBEDTLS_PKCS5_C
+
 // ASN1, although I don't use it directly
 #define MBEDTLS_ASN1_PARSE_C
 #define MBEDTLS_ASN1_WRITE_C

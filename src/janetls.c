@@ -34,6 +34,10 @@
 #include "mbedtls/aes.h"
 #include "mbedtls/gcm.h"
 #include "mbedtls/chacha20.h"
+#include "mbedtls/nist_kw.h"
+#include "mbedtls/ecdh.h"
+#include "mbedtls/hkdf.h"
+#include "mbedtls/pkcs5.h"
 
 JANET_MODULE_ENTRY(JanetTable *env)
 {
@@ -53,6 +57,9 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_chacha(env);
   submod_chachapoly(env);
   submod_gcm(env);
+  submod_ecdh(env);
+  submod_nistkw(env);
+  submod_kdf(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)
@@ -156,6 +163,16 @@ const char * result_error_message(int result, uint8_t * unhandled)
     case MBEDTLS_ERR_AES_HW_ACCEL_FAILED:
     case MBEDTLS_ERR_CHACHA20_HW_ACCEL_FAILED:
       return "CIPHER: Hardware accelleration failure";
+    case MBEDTLS_ERR_HKDF_BAD_INPUT_DATA:
+      return "HKDF: Bad Input data";
+    case MBEDTLS_ERR_PKCS5_BAD_INPUT_DATA:
+      return "PKCS5: Bad Input data";
+    case MBEDTLS_ERR_PKCS5_INVALID_FORMAT:
+      return "PKCS5: Invalid ASN.1 header";
+    case MBEDTLS_ERR_PKCS5_FEATURE_UNAVAILABLE:
+      return "PKCS5: Feature unavailable";
+    case MBEDTLS_ERR_PKCS5_PASSWORD_MISMATCH:
+      return "PKCS5: Password mismatch";
     // -------------- JANETLS ERRORS ------------------
     case JANETLS_ERR_ENCODING_INVALID_CHARACTER:
       return "Invalid character found during decoding";

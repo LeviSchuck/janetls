@@ -9,19 +9,21 @@
 
 # Using a python lib to verify behiavor and values
 # https://cryptography.io/en/latest/hazmat/primitives/asymmetric/ec/
-# >>> x = """-----BEGIN EC PRIVATE KEY-----
+# from cryptography.hazmat.primitives import serialization
+# from cryptography.hazmat.primitives.asymmetric import ec
+# from cryptography.hazmat.backends import default_backend
+# x = """-----BEGIN EC PRIVATE KEY-----
 # MHcCAQEEIIkAJAmmXzzzqgVZf1TntxEz+uSeYCKa+Hdk6Mc5D9pkoAoGCCqGSM49
 # AwEHoUQDQgAE2IQXKtLi5gYga/sYXEazBo4r0VRcsr37iX0gt3Ackrd3tNUotrbQ
 # F6oCMuD6tdAINYl/dJEHgly39U71K2poww==
 # -----END EC PRIVATE KEY-----"""
-# >>> x = str.encode(x)
-# >>> k = serialization.load_pem_private_key(x, password=None)
-# >>> k2 = k.public_key()
-# >>> k2.public_numbers()
-# <EllipticCurvePublicNumbers(curve=secp256r1, x=97932959001228944715530423801310881484445799714271353323835471892332318331575, y=54144732622680584404553551109381818697054152464078391517485354706964507683011>
-# >>> k3 = k.private_numbers()
-# >>> k3.private_value
-# 61967108978936518767801664883965821004203860727145275278412563824610481527396
+# k = serialization.load_pem_private_key(str.encode(x), password=None, backend=default_backend())
+# k2 = k.public_key()
+# print(k2.public_numbers())
+# # <EllipticCurvePublicNumbers(curve=secp256r1, x=97932959001228944715530423801310881484445799714271353323835471892332318331575, y=54144732622680584404553551109381818697054152464078391517485354706964507683011>
+# k3 = k.private_numbers()
+# print(k3.private_value)
+# # 61967108978936518767801664883965821004203860727145275278412563824610481527396
 
 (def point-x (bignum/parse                       "97932959001228944715530423801310881484445799714271353323835471892332318331575"))
 (def point-y (bignum/parse                       "54144732622680584404553551109381818697054152464078391517485354706964507683011"))

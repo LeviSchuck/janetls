@@ -359,6 +359,35 @@
   (def plaintext (:decrypt key ciphertext))
   plaintext)
 
+(defn pk/key-agreement
+  "Performs key agreement, such as ECDH for EC keys\n
+  \n
+  Options:\n
+  private - The private key\n
+  public - The private or public key\n
+  \n
+  Examples:\n
+  (def private (pk/generate :ecdh :public))\n
+  (def public (pk/generate :ecdh :private))\n
+  (pk/key-agreement private public)\n
+  \n
+  Returns a byte string\n
+  \n
+  Note: The return value should be used with a key derivation
+  function as found in the janetls/kdf module, refer to the
+  protocol specification on correct use of key agreement.\n
+  \n
+  Note: Although this API tolerates :ecdsa keys, keys used for sign
+  and verify operations should not be reused for key agreement.
+  "
+  [private public]
+  (only-type :ecdh (private :type) "cannot do key agreement")
+  (only-type :ecdh (private :type) "cannot do key agreement")
+  (def priv (private :key))
+  (def pub (public :key))
+  (ecdh/compute priv pub)
+  )
+
 (defn pk/digest
   "Retrieves the digest used for signatures on this private key"
   [key]
@@ -393,6 +422,7 @@
   :digest pk/digest
   :mask pk/mask
   :version pk/version
+  :key-agreement pk/key-agreement
   })
 
 (def- zero (bignum/parse 0))
@@ -537,6 +567,46 @@
   (pk/match-sec1-private asn1)
   ))
 
+(defn- pk/import-der [der] (do
+  (def asn1 (asn1/decode der :eager-parse))
+  (def components (pk/asn1-to-components asn1))
+  (if (not components) (error "Could not decode DER into a known key type"))
+  components
+  ))
+(defn- pk/import-pem [pem] (do
+  (def pem (pem/decode pem))
+  (if (not pem) (error "PEM could not be decoded"))
+  (def [pem] pem)
+  (def {:name name :body body} pem)
+  (def asn1 (asn1/decode body))
+  (def components (case name
+    "RSA PRIVATE KEY" (pk/match-pkcs1-private asn1)
+    "RSA PUBLIC KEY" (pk/match-pkcs1-public asn1)
+    "PRIVATE KEY" (pk/match-pcks8-private asn1)
+    "PUBLIC KEY" (pk/match-pcks8-public asn1)
+    "EC PRIVATE KEY" (pk/match-sec1-private asn1)
+    (errorf "Pem type %p not supported" name)
+    ))
+  (if (not components) (errorf "PEM %p did not match expected ASN.1 structure" name))
+  components
+  ))
+
+(defn- pk/import-ecdh [components] (do
+  (def {
+    :curve-group curve-group
+    :p public
+    :d private
+    :information-class information-class
+    } components)
+    (if (not information-class) (errorf "Expected an :information-class in components %p" components))
+    (if (not curve-group) (errorf "Expected a :curve-group in components %p" components))
+    (case information-class
+      :public (ecp/import-point curve-group public)
+      :private (ecp/import-keypair curve-group private)
+      (errorf "Information class not the expected value, should be :public or :private but got %p" information-class)
+      )
+  ))
+
 (defn pk/import
   "Import a private or public key.\n
   Supported types are RSA and ECDSA.\n
@@ -570,52 +640,36 @@
   (def kind (key :type))
   # only used in der and pem
   (def body (or (key :der) (key :pem)))
-  (def kind (if kind
+  (if kind
     (case kind
       :rsa :rsa
       :ecdsa :ecdsa
-      (errorf ":type %p is not supported" kind))
-    (cond
-      (key :der) :der
-      (key :pem) :pem
-      (error "No :type was found, could not find :der or :pem either.")
-      )))
+      :ecdh :ecdh
+      (errorf ":type %p is not supported" kind)))
+  (def components (cond
+    (key :pem) (pk/import-pem (key :pem))
+    (key :der) (pk/import-der (key :der))
+    key
+    ))
+  (def kind (if kind kind (components :type)))
+  (if (not kind) (errorf "Could not determine type (%p) from components, see %p" kind components))
+  # (printf "Components %p" components)
   (def imported (case kind
-    :rsa (rsa/import key)
-    :ecdsa (ecdsa/import key)
-    :der (do
-      (def asn1 (asn1/decode (key :der) :eager-parse))
-      (def components (pk/asn1-to-components asn1))
-      (if (not components) (error "Could not decode DER into a known key type"))
-      ((pk/import components) :key)
-      )
-    :pem (do
-      (def pem (pem/decode (key :pem)))
-      (if (not pem) (error "PEM could not be decoded"))
-      (def [pem] pem)
-      (def {:name name :body body} pem)
-      (def asn1 (asn1/decode body))
-      (def components (case name
-        "RSA PRIVATE KEY" (pk/match-pkcs1-private asn1)
-        "RSA PUBLIC KEY" (pk/match-pkcs1-public asn1)
-        "PRIVATE KEY" (pk/match-pcks8-private asn1)
-        "PUBLIC KEY" (pk/match-pcks8-public asn1)
-        "EC PRIVATE KEY" (pk/match-sec1-private asn1)
-        (errorf "Pem type %p not supported" name)
-        ))
-      (if (not components) (errorf "PEM %p did not match expected ASN.1 structure" name))
-      ((pk/import components) :key)
-      )
+    :rsa (rsa/import components)
+    :ecdsa (ecdsa/import components)
+    :ecdh (pk/import-ecdh components)
     (errorf "Could not determine type, should be :rsa, :ecdsa, :der, or :pem but got %p" kind)
   ))
-  (def kind (if (cfunction? (imported :type)) (:type imported) (imported :type)))
-  (def information-class (if (cfunction?
-    (imported :information-class))
+  (def information-class (if
+    (cfunction? (imported :information-class))
     (:information-class imported)
     (imported :information-class)))
   (def result @{:key imported :type kind :information-class information-class})
   (if (= :rsa kind) (put result :version (:version imported)))
-  (if (= :ecdsa kind) (put result :curve-group (:curve-group imported)))
+  (if (or
+    (= :ecdsa kind)
+    (= :ecdh kind))
+    (put result :curve-group (:curve-group imported)))
   (table/setproto result PK-Prototype)
   )
 
@@ -627,14 +681,34 @@
   Examples:\n
   (pk/wrap (rsa/generate {:bits 2048 :version :pkcs1-v2.1
     :mgf1 :sha256 :digest :sha256}))
+  (pk/wrap (ecp/generate :secp256r1) :ecdh)
   "
-  [key]
-  (def kind (:type key))
-  (case (type key)
-    :janetls/rsa nil
-    :janetls/ecdsa nil
-    (errorf "Could not determine type, should be janetls/rsa or janetls/ecdsa but got %p" (type key)))
-  (table/setproto @{:key key :type kind :information-class (:information-class key)} PK-Prototype)
+  [key &opt pk-type]
+  (def key-type (type key))
+  (def kind (if pk-type
+    (case pk-type
+      :rsa (if
+        (= :janetls/rsa key-type)
+        :rsa
+        (errorf "Expected type should be :janetls/rsa but is %p" key-type))
+      :ecdsa (if
+        (= :janetls/ecdsa key-type)
+        :ecdsa
+        (errorf "Expected type should be :janetls/ecdsa but is %p" key-type))
+      :ecdh (if
+        (or (= :janetls/ecp/keypair key-type) (= :janetls/ecp/point key-type))
+        :ecdh
+        (errorf "Expected type should be :janetls/ecp/keypair or :janetls/ecp/point but is %p" key-type))
+      (errorf "The type %p is not supported" pk-type))
+    (case key-type
+      :janetls/rsa :rsa
+      :janetls/ecdsa :ecdsa
+      (errorf "The key type could not be determined from the wrapped object %p
+, consider using the optional parameter pk-type on the function pk/wrap" key-type)
+    )))
+  (def information-class (:information-class key))
+  (def pk @{:key key :type kind :information-class information-class})
+  (table/setproto pk PK-Prototype)
   )
 
 (defn pk/unwrap
@@ -651,13 +725,16 @@
 (defn pk/generate
   "Generate a private keypair. By default will generate an RSA 2048 key.\n
   When generating an ECDSA key, by default the curve :secp256r1 will be used.\n
+  When generating an ECDH key, by default the curve :secp256r1 will be used.\n
   \n
   Examples:\n
   (pk/generate)\n
   (pk/generate :rsa)\n
   (pk/generate :rsa 4096) - note the bit size is a parameter\n
   (pk/generate :ecdsa)\n
-  (pk/generate :ecdsa :secp521r1) - note the curve group is a parameter
+  (pk/generate :ecdsa :secp521r1) - note the curve group is a parameter\n
+  (pk/generate :ecdh)\n
+  (pk/generate :ecdh :secp521r1) - note the curve group is a parameter\n
   available curve options are enumerated in (ecp/curve-groups).
   "
   [&opt kind option]
@@ -670,6 +747,10 @@
     :ecdsa (do
       (default option :secp256r1)
       (pk/wrap (ecdsa/generate option))
+      )
+    :ecdh (do
+      (default option :secp256r1)
+      (pk/wrap (ecp/generate option) :ecdh)
       )
     (errorf "Expected :rsa or :ecdsa but got %p" kind)
     ))
