@@ -252,13 +252,14 @@ JanetAbstractType * janetls_ecp_keypair_object_type()
   return &ecp_keypair_object_type;
 }
 
-static int ecp_group_get_fn(void *data, Janet key, Janet * out)
+static int ecp_group_get_fn(void * data, Janet key, Janet * out)
 {
   (void)data;
 
   if (!janet_checktype(key, JANET_KEYWORD))
   {
-    janet_panicf("expected keyword, got %p", key);
+    // Unexpected type, not found.
+    return 0;
   }
 
   return janet_getmethod(janet_unwrap_keyword(key), ecp_group_methods, out);
@@ -292,13 +293,14 @@ static int ecp_group_gcmark(void *data, size_t len)
   return 0;
 }
 
-static int ecp_point_get_fn(void *data, Janet key, Janet * out)
+static int ecp_point_get_fn(void * data, Janet key, Janet * out)
 {
   (void)data;
 
   if (!janet_checktype(key, JANET_KEYWORD))
   {
-    janet_panicf("expected keyword, got %p", key);
+    // Unexpected type, not found.
+    return 0;
   }
 
   return janet_getmethod(janet_unwrap_keyword(key), ecp_point_methods, out);
@@ -334,13 +336,14 @@ static int ecp_point_gcmark(void *data, size_t len)
   return 0;
 }
 
-static int ecp_keypair_get_fn(void *data, Janet key, Janet * out)
+static int ecp_keypair_get_fn(void * data, Janet key, Janet * out)
 {
   (void)data;
 
   if (!janet_checktype(key, JANET_KEYWORD))
   {
-    janet_panicf("expected keyword, got %p", key);
+    // Unexpected type, not found.
+    return 0;
   }
 
   return janet_getmethod(janet_unwrap_keyword(key), ecp_keypair_methods, out);

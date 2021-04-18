@@ -103,13 +103,14 @@ static JanetMethod bignum_methods[] = {
 // janet_checkint64range and janet_checkintrange will check that the conversion
 // poses no loss, in that there is no fractional portion.
 
-static int bignum_get_fn(void *data, Janet key, Janet * out)
+static int bignum_get_fn(void * data, Janet key, Janet * out)
 {
   (void)data;
 
   if (!janet_checktype(key, JANET_KEYWORD))
   {
-    janet_panicf("expected keyword, got %p", key);
+    // Unexpected type, not found.
+    return 0;
   }
 
   return janet_getmethod(janet_unwrap_keyword(key), bignum_methods, out);

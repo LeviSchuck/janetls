@@ -188,13 +188,14 @@ static int gcm_gcmark(void * data, size_t len)
   return 0;
 }
 
-static int gcm_get_fn(void *data, Janet key, Janet * out)
+static int gcm_get_fn(void * data, Janet key, Janet * out)
 {
   (void)data;
 
   if (!janet_checktype(key, JANET_KEYWORD))
   {
-    janet_panicf("expected keyword, got %p", key);
+    // Unexpected type, not found.
+    return 0;
   }
 
   return janet_getmethod(janet_unwrap_keyword(key), gcm_methods, out);
