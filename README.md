@@ -27,7 +27,7 @@ active support.
 ## mbed TLS version
 
 mbed TLS is added as a submodule to this repository.
-As of August 31, 2020, the submodule points to the latest release v2.24.0
+As of March 12, 2021, the submodule points to the latest release v2.26.0
 Releases can be found on: https://github.com/ARMmbed/mbedtls/releases
 
 ## Security Audits
@@ -43,7 +43,7 @@ Security advisories for dependencies are available at
 ## License - MIT
 
 ```
-Copyright (c) 2020 Levi Schuck
+Copyright (c) 2020-2021 Levi Schuck
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
