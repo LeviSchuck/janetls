@@ -167,7 +167,8 @@ static int md_get_fn(void * data, Janet key, Janet * out)
 
   if (!janet_checktype(key, JANET_KEYWORD))
   {
-    janet_panicf("expected keyword, got %p", key);
+    // Unexpected type, not found.
+    return 0;
   }
 
   JanetKeyword method = janet_unwrap_keyword(key);

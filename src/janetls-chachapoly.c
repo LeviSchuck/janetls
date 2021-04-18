@@ -197,14 +197,15 @@ static int chachapoly_gcmark(void * data, size_t len)
   return 0;
 }
 
-static int chachapoly_get_fn(void *data, Janet key, Janet * out)
+static int chachapoly_get_fn(void * data, Janet key, Janet * out)
 {
   (void)data;
 
   if (!janet_checktype(key, JANET_KEYWORD))
   {
-    janet_panicf("expected keyword, got %p", key);
-  }
+    // Unexpected type, not found.
+    return 0;
+  } 
 
   return janet_getmethod(janet_unwrap_keyword(key), chachapoly_methods, out);
 }
