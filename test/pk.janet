@@ -441,9 +441,18 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
   (ck (pk/generate :ecdsa :secp256r1))
   (ck (pk/generate :ecdsa :secp384r1))
   (ck (pk/generate :ecdsa :secp521r1))
+
   (assert-thrown (pk/generate :rsa "hello"))
   (assert-thrown (pk/generate :rsa 1025))
   (assert-thrown (pk/generate :ecdsa :secp521k1))
+  (def rsakey (pk/generate :rsa))
+  (def ecdsakey (pk/generate :ecdsa))
+  (is (= :private (rsakey :information-class)))
+  (is (= :private (ecdsakey :information-class)))
+  (is (= :rsa (rsakey :type)))
+  (is (= :ecdsa (ecdsakey :type)))
+  (is (= :pkcs1-v1.5 (rsakey :version)))
+  (is (= :secp256r1 (ecdsakey :curve-group)))
   )
 
 
