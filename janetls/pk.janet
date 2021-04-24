@@ -297,7 +297,7 @@
   [key data signature &opt options]
   (def {:key key} key)
   (def options (pk/options options))
-  (def signature (encoding/decode signature (options :encoding ;(semi (options :encoding-variant)))))
+  (def signature (encoding/decode signature (options :encoding) ;(semi (options :encoding-variant))))
   (:verify key data signature ;(semi (options :digest)))
   )
 
