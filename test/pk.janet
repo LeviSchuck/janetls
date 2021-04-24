@@ -472,5 +472,4 @@ F6oCMuD6tdAINYl/dJEHgly39U71K2poww==
   (is (= (hex/encode (pk/key-agreement key1 key2)) (hex/encode (pk/key-agreement key2 key1))))
   )
 
-
 (run-tests!)
