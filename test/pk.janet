@@ -392,6 +392,39 @@ wEYF/pxNtkoMO4CzC+XtZWhRVMsgtfPaOgcCb5EamDXYV68Ius9v7VZ9jQ==\n
   (is (= ec-public-pkcs8-pem pem))
 )
 
+(deftest "pem import export is identical"
+  # RSA
+  (def priv (pk/import {:pem rsa-private-pkcs8-pem}))
+  (def {:pem pem} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :pem}))
+  (is (= rsa-private-pkcs8-pem pem))
+
+  (def priv (pk/import {:pem rsa-private-pkcs1-pem}))
+  (def {:pem pem} (pk/export-private priv {:export-standard :pkcs1 :export-format :encoded :export-encoding :pem}))
+  (is (= rsa-private-pkcs1-pem pem))
+
+  (def pub (pk/import {:pem rsa-public-pkcs8-pem}))
+  (def {:pem pem} (pk/export-public pub {:export-standard :pkcs8 :export-format :encoded :export-encoding :pem}))
+  (is (= rsa-public-pkcs8-pem pem))
+
+  (def pub (pk/import {:pem rsa-public-pkcs1-pem}))
+  (def {:pem pem} (pk/export-public pub {:export-standard :pkcs1 :export-format :encoded :export-encoding :pem}))
+  (is (= rsa-public-pkcs1-pem pem))
+
+  # EC
+
+  (def priv (pk/import {:pem ec-private-pkcs8-pem}))
+  (def {:pem pem} (pk/export-private priv {:export-standard :pkcs8 :export-format :encoded :export-encoding :pem}))
+  (is (= ec-private-pkcs8-pem pem))
+
+  (def priv (pk/import {:pem ec-private-pkcs8-pem}))
+  (def {:pem pem} (pk/export-private priv {:export-standard :sec1 :export-format :encoded :export-encoding :pem}))
+  (is (= ec-private-sec1-pem pem))
+
+  (def pub (pk/import {:pem ec-public-pkcs8-pem}))
+  (def {:pem pem} (pk/export-public pub {:export-standard :pkcs8 :export-format :encoded :export-encoding :pem}))
+  (is (= ec-public-pkcs8-pem pem))
+)
+
 (defn ck [key]
   (def sig (:sign key data))
   (is sig)
@@ -438,5 +471,6 @@ F6oCMuD6tdAINYl/dJEHgly39U71K2poww==
   (def key2 (pk/generate :ecdh :secp256r1))
   (is (= (hex/encode (pk/key-agreement key1 key2)) (hex/encode (pk/key-agreement key2 key1))))
   )
+
 
 (run-tests!)
