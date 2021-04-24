@@ -578,7 +578,7 @@
   (if (not pem) (error "PEM could not be decoded"))
   (def [pem] pem)
   (def {:name name :body body} pem)
-  (def asn1 (asn1/decode body))
+  (def asn1 (asn1/decode body :eager-parse))
   (def components (case name
     "RSA PRIVATE KEY" (pk/match-pkcs1-private asn1)
     "RSA PUBLIC KEY" (pk/match-pkcs1-public asn1)
