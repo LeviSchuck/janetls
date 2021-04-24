@@ -707,7 +707,9 @@
 , consider using the optional parameter pk-type on the function pk/wrap" key-type)
     )))
   (def information-class (:information-class key))
-  (def pk @{:key key :type kind :information-class information-class})
+  (def curve-group (if (= kind :ecdsa) (:curve-group key)))
+  (def version (if (= kind :rsa) (:version key)))
+  (def pk @{:key key :type kind :information-class information-class :curve-group curve-group :version version})
   (table/setproto pk PK-Prototype)
   )
 
