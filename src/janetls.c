@@ -76,6 +76,8 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "MPI: Cannot parse, an invalid character was found";
     case MBEDTLS_ERR_MPI_DIVISION_BY_ZERO:
       return "MPI: Division by zero";
+    case MBEDTLS_ERR_MPI_BUFFER_TOO_SMALL:
+      return "MPI: Allocated buffer is too small, this is an internal error";
     case MBEDTLS_ERR_MD_ALLOC_FAILED:
     case MBEDTLS_ERR_MPI_ALLOC_FAILED:
     case JANETLS_ERR_ALLOCATION_FAILED:
