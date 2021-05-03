@@ -30,5 +30,6 @@ typedef struct byteslice_object {
   int32_t length;
 } byteslice_object;
 byteslice_object * gen_byteslice(Janet value, int position, int length);
-extern JanetAbstractType byteslice_object_type;
+JanetAbstractType * janetls_byteslice_object_type();
+JanetByteView view_byteslice(byteslice_object * byteslice);
 #endif
