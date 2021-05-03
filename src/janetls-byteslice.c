@@ -25,21 +25,37 @@
 
 static int byteslice_get_fn(void * data, Janet key, Janet * out);
 static int byteslice_gcmark(void * data, size_t len);
+static void byteslice_to_string_untyped(void * byteslice, JanetBuffer * buffer);
 static Janet byteslice_start(int32_t argc, Janet * argv);
 static Janet byteslice_get_bytes(int32_t argc, Janet * argv);
+static Janet byteslice_length(int32_t argc, Janet * argv);
+
+static const uint8_t * EMPTY_BYTES = {0};
+static const char * EMPTY_STRING = "";
 
 JanetAbstractType byteslice_object_type = {
   "janetls/byteslice",
   NULL,
   byteslice_gcmark,
   byteslice_get_fn,
-  JANET_ATEND_GET
+  NULL,
+  NULL,
+  NULL,
+  byteslice_to_string_untyped,
+  NULL,
+  NULL,
+  JANET_ATEND_HASH
 };
 
 static JanetMethod byteslice_methods[] = {
   {"get", byteslice_get_bytes},
+  {"length", byteslice_length},
   {NULL, NULL}
 };
+
+JanetAbstractType * janetls_byteslice_object_type() {
+  return &byteslice_object_type;
+}
 
 static int byteslice_get_fn(void * data, Janet key, Janet * out)
 {
@@ -102,17 +118,27 @@ byteslice_object * gen_byteslice(Janet value, int position, int length)
 
 static Janet byteslice_start(int32_t argc, Janet * argv)
 {
-  janet_arity(argc, 2, 3);
+  janet_arity(argc, 1, 3);
   if (!janet_is_byte_typed(argv[0]))
   {
     janet_panicf("Expected a byte type for which bytes could be sliced from, but got %p", argv[0]);
   }
-  int position = janet_getinteger(argv, 1);
+  int position = 0;
   int length = INT32_MAX;
+
+  if (argc > 1) {
+    position = janet_getinteger(argv, 1);
+  }
 
   if (argc > 2)
   {
     length = janet_getinteger(argv, 2);
+  } else {
+    length = janet_length(argv[0]);
+    length -= position;
+    if (length < 0) {
+      length = 0;
+    }
   }
 
   if (position < 0)
@@ -129,6 +155,13 @@ static Janet byteslice_start(int32_t argc, Janet * argv)
   return janet_wrap_abstract(gen_byteslice(argv[0], position, length));
 }
 
+static Janet byteslice_length(int32_t argc, Janet * argv)
+{
+  janet_fixarity(argc, 1);
+  byteslice_object * byteslice = janet_getabstract(argv, 0, &byteslice_object_type);
+  return janet_wrap_number(byteslice->length);
+}
+
 static Janet byteslice_get_bytes(int32_t argc, Janet * argv)
 {
   janet_fixarity(argc, 1);
@@ -140,15 +173,32 @@ static Janet byteslice_get_bytes(int32_t argc, Janet * argv)
     return byteslice->cached;
   }
 
-  JanetByteView view = janet_to_bytes(byteslice->reference);
+  JanetByteView view = view_byteslice(byteslice);
+  if (view.len <= 0) {
+    byteslice->cached = janet_cstringv(EMPTY_STRING);
+    byteslice->reference = janet_wrap_nil();
+    return byteslice->cached;
+  }
+
+  Janet value = janet_wrap_string(janet_string(view.bytes, view.len));
+  byteslice->cached = value;
+  byteslice->reference = janet_wrap_nil();
+  return value;
+}
+
+JanetByteView view_byteslice(byteslice_object * byteslice) {
+  JanetByteView view;
+  if (!janet_bytes_view(byteslice->reference, &view.bytes, &view.len)) {
+    janet_panicf("Expected a %T for %p", JANET_TFLAG_BYTES, byteslice->reference);
+  }
   int position = byteslice->position;
   int length = byteslice->length;
 
   if (position >= view.len)
   {
-    byteslice->cached = janet_cstringv("");
-    byteslice->reference = janet_wrap_nil();
-    return byteslice->cached;
+    view.bytes = EMPTY_BYTES;
+    view.len = 0;
+    return view;
   }
 
   if ((length == INT32_MAX) || ((position + length) >= view.len))
@@ -159,16 +209,28 @@ static Janet byteslice_get_bytes(int32_t argc, Janet * argv)
 
   if (length <= 0)
   {
-    byteslice->cached = janet_cstringv("");
-    byteslice->reference = janet_wrap_nil();
-    return byteslice->cached;
+    view.bytes = EMPTY_BYTES;
+    view.len = 0;
+    return view;
   }
 
   // Viewing it lazily produces a value for the slice.
   // No need to keep the original around now that we've duplicated the contents.
-  Janet value = janet_wrap_string(janet_string(view.bytes + position, length));
-  byteslice->cached = value;
-  byteslice->reference = janet_wrap_nil();
-  return value;
+  view.bytes += position;
+  view.len = length;
+  return view;
 }
 
+static void byteslice_to_string_untyped(void * byteslice, JanetBuffer * buffer)
+{
+  JanetByteView view = view_byteslice(byteslice);
+  for(int32_t offset = 0; offset < view.len; offset++)
+  {
+    // sprintf doesn't like unsigned chars, but we are fully within the
+    // signed and unsigned overlap.
+    char out[3];
+    sprintf(out, "%02x", view.bytes[offset] & 0xff);
+    janet_buffer_push_u8(buffer, out[0]);
+    janet_buffer_push_u8(buffer, out[1]);
+  }
+}

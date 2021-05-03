@@ -22,6 +22,7 @@
 
 #include <ctype.h>
 #include "janetls.h"
+#include "janetls-byteslice.h"
 
 static Janet constant_equals(int32_t argc, Janet * argv);
 static Janet crc32(int32_t argc, Janet * argv);
@@ -70,7 +71,10 @@ int janet_byte_cstrcmp_insensitive(JanetByteView str, const char * other) {
 
 JanetByteView janet_to_bytes(Janet x) {
     JanetByteView view;
-    if (!janet_bytes_view(x, &view.bytes, &view.len)) {
+    byteslice_object * byteslice = janet_checkabstract(x, janetls_byteslice_object_type());
+    if (byteslice) {
+      return view_byteslice(byteslice);
+    } else if (!janet_bytes_view(x, &view.bytes, &view.len)) {
         janet_panicf("Expected a %T for %p", JANET_TFLAG_BYTES, x);
     }
     return view;
@@ -85,10 +89,12 @@ JanetByteView empty_byteview() {
 
 int janet_is_byte_typed(Janet x)
 {
+  byteslice_object * byteslice = janet_checkabstract(x, janetls_byteslice_object_type());
   return janet_checktype(x, JANET_STRING)  ||
          janet_checktype(x, JANET_SYMBOL)  ||
          janet_checktype(x, JANET_KEYWORD) ||
-         janet_checktype(x, JANET_BUFFER);
+         janet_checktype(x, JANET_BUFFER)  ||
+         byteslice != NULL;
 }
 
 int search_option_list(option_list_entry * list, int list_size, JanetByteView str, int * destination)
