@@ -21,7 +21,29 @@
 
 (import ./native :prefix "")
 
-(defn passwd/scrypt [password &opt options]
+(defn passwd/scrypt
+  "The scrypt key derivation function is designed to be far more
+  secure against hardware brute-force attacks than alternative
+  functions such as PBKDF2 or bcrypt.\n
+  This function is meant for use with storing and later validating
+  passwords for authentication.\n
+  \nExamples:\n
+  (def pass (passwd/scrypt \"Password Here\"))\n
+  (passwd/verify-scrypt pass \"Password Here\")\n
+  \nTo set custom parameters such as general work factor :n,
+  rounds :r usually 8, 
+  or parallelism :p usually 1 (and won't actually be parallel),
+  set them in a table or struct after the password.\n
+  Additionally, a :salt can be provided or will be generated automatically
+  based on the :salt-size usually 12.\n
+  (passwd/scrypt \"Password Here\" {:n 65536 :r 16 :p 8 :salt-size 32})\n
+  (passwd/scrypt \"Password Here\" {:n 1024 :r 8 :p 1 :salt \"salty\"})\n
+  \n
+  The output will look something like $scrypt$$...$<base64>$<base64>
+  using the modular crypt format as specified by the
+  Password Hashing Competition String format.
+  "
+  [password &opt options]
   (default options {})
   (def {:n n :r r :p p :length length :salt-size salt-size :salt salt} options)
   (default n 16384)
@@ -39,7 +61,17 @@
     "$" (base64/encode hash :standard-unpadded)
     ))
 
-(defn passwd/verify-scrypt [mcf password]
+(defn passwd/verify-scrypt
+  "Verify scrypt password hashes.\n
+  The parameters will be extracted from the input modular crypt format string (mcf)
+  and verified against input password.\n
+  \nExamples:\n
+  (def pass (passwd/scrypt \"Password Here\"))\n
+  (passwd/verify-scrypt pass \"Password Here\")\n
+  \n
+  Will return true on success, otherwise false
+  "
+  [mcf password]
   (var n 16384)
   (var r 8)
   (var p 1)
