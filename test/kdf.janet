@@ -114,4 +114,16 @@
   (is (= "82d346004fc090f784b3dfe876110fb33f29dd39cf0c90285d1f06e2cf084b7a" result))
   )
 
+(deftest "Scrypt"
+  # Reference https://tools.ietf.org/html/rfc7914#section-12
+  (def result (hex/encode (kdf/scrypt "" "" 64 16 1 1)))
+  (is (= "77d6576238657b203b19ca42c18a0497f16b4844e3074ae8dfdffa3fede21442fcd0069ded0948f8326a753a0fc81f17e8d3e0fb2e0d3628cf35e20c38d18906" result))
+  (def result (hex/encode (kdf/scrypt "password" "NaCl" 64 1024 8 16)))
+  (is (= "fdbabe1c9d3472007856e7190d01e9fe7c6ad7cbc8237830e77376634b3731622eaf30d92e22a3886ff109279d9830dac727afb94a83ee6d8360cbdfa2cc0640" result))
+  (def result (hex/encode (kdf/scrypt "pleaseletmein" "SodiumChloride" 64 16384 8 1)))
+  (is (= "7023bdcb3afd7348461c06cd81fd38ebfda8fbba904f8e3ea9b543f6545da1f2d5432955613f0fcf62d49705242a9af9e61e85dc0d651e40dfcf017b45575887" result))
+  (def result (hex/encode (kdf/scrypt "pleaseletmein" "SodiumChloride" 64  1048576 8 1)))
+  (is (= "2101cb9b6a511aaeaddbbe09cf70f881ec568d574a2ffd4dabe5ee9820adaa478e56fd8f4ba5d09ffa1c6d927c40f4c337304049e8a952fbcbf45c6fa77a41a4" result))
+  )
+
 (run-tests!)

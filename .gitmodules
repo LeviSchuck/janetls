@@ -2,3 +2,6 @@
 	path = mbedtls
 	url = https://github.com/ARMmbed/mbedtls.git
 	branch = development
+[submodule "libscrypt"]
+	path = libscrypt
+	url = git@github.com:LeviSchuck/libscrypt.git
