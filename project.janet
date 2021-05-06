@@ -38,6 +38,7 @@
   :cflags [
     ;default-cflags
     "-Imbedtls/include/"
+    "-Ilibscrypt/"
     "-Iinclude/"
     ;debug-flags
     ;(if is-win [] ["-Wno-unused-parameter"])
@@ -113,6 +114,8 @@
     "mbedtls/library/error.c"
     "mbedtls/library/platform.c"
     "mbedtls/library/platform_util.c"
+    # Scrypt
+    "libscrypt/crypto_scrypt-nosse.c"
     ])
 
 (declare-source

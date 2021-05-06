@@ -11,3 +11,5 @@
   (is (= {:digest "1.2.840.113549.2.5"} (oid/from :md5)))
   (is (= {:curve "1.2.840.10045.3.1.7"} (oid/from :secp256r1)))
   )
+
+(run-tests!)

@@ -25,3 +25,4 @@
 (import ./pk :prefix "" :export true)
 (import ./oid :prefix "" :export true)
 (import ./cipher :prefix "" :export true)
+(import ./passwd :prefix "" :export true)
