@@ -110,7 +110,7 @@ static const JanetReg cfuns[] =
     "\ninput - input material to derive a key\n"
     "\nsalt - optional but highly recommended cryptographic salt\n"
     "\nlength - optional output material length, by default it is 64 bytes\n"
-    "\niterations - optional general work factor, by default it is 16384\n"
+    "\niterations - optional general work factor, by default it is 16384, this must be a power of 2\n"
     "\nblocksize - optional memory cost facter, by default 8\n"
     "\nparallelism - optional computation cost, by default 1\n"
     "\nExamples:\n\n"

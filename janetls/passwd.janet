@@ -41,7 +41,8 @@
   \n
   The output will look something like $scrypt$$...$<base64>$<base64>
   using the modular crypt format as specified by the
-  Password Hashing Competition String format.
+  Password Hashing Competition String format.\n
+  \nNote: when :n is provided, it must be a power of 2
   "
   [password &opt options]
   (default options {})
