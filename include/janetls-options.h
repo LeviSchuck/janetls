@@ -75,6 +75,7 @@ typedef enum janetls_encoding_type
   janetls_encoding_type_raw = 0,
   janetls_encoding_type_hex,
   janetls_encoding_type_base64,
+  janetls_encoding_type_base32,
 } janetls_encoding_type;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(encoding_type, janetls_encoding_type)
@@ -92,6 +93,17 @@ typedef enum janetls_encoding_base64_variant
 } janetls_encoding_base64_variant;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(encoding_base64_variant, janetls_encoding_base64_variant)
+
+typedef enum janetls_encoding_base32_variant
+{
+  janetls_encoding_base32_variant_standard = 0,
+  janetls_encoding_base32_variant_standard_unpadded,
+  janetls_encoding_base32_variant_z_base,
+  janetls_encoding_base32_variant_hex,
+  janetls_encoding_base32_variant_hex_unpadded,
+} janetls_encoding_base32_variant;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(encoding_base32_variant, janetls_encoding_base32_variant)
 
 typedef enum janetls_asn1_number_type
 {

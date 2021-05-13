@@ -34,6 +34,11 @@ Janet base64_decode(const uint8_t * data, unsigned int length, janetls_encoding_
 int janetls_base64_encode(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant);
 int janetls_base64_decode(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base64_variant variant);
 int get_base64_variant(int argc, Janet * argv, int index, uint8_t panic, janetls_encoding_base64_variant * variant);
+Janet base32_encode(const uint8_t * data, unsigned int length, janetls_encoding_base32_variant variant);
+Janet base32_decode(const uint8_t * data, unsigned int length, janetls_encoding_base32_variant variant);
+int janetls_base32_encode(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base32_variant variant);
+int janetls_base32_decode(Janet * result, const uint8_t * data, unsigned int length, janetls_encoding_base32_variant variant);
+int get_base32_variant(int argc, Janet * argv, int index, uint8_t panic, janetls_encoding_base32_variant * variant);
 int get_content_encoding(int argc, Janet * argv, int index, uint8_t panic, janetls_encoding_type* encoding);
 Janet content_to_encoding(const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant);
 Janet content_from_encoding(const uint8_t * str, unsigned int length, janetls_encoding_type encoding, int encoding_variant);

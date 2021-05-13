@@ -65,6 +65,22 @@ int get_base64_variant(int argc, Janet * argv, int index, uint8_t panic, janetls
   return -1;
 }
 
+int get_base32_variant(int argc, Janet * argv, int index, uint8_t panic, janetls_encoding_base32_variant * variant)
+{
+  if (index < argc)
+  {
+    int result = janetls_search_encoding_base32_variant(argv[index], variant);
+    if (panic && result != 0)
+    {
+      janet_panicf("Given option %p is not expected, please review "
+        "janetls/base32/variants for supported options", argv[index]);
+    }
+    return result;
+  }
+
+  return -1;
+}
+
 int get_content_encoding(int argc, Janet * argv, int index, uint8_t panic, janetls_encoding_type * encoding)
 {
   if (index < argc)
@@ -103,6 +119,28 @@ Janet base64_decoder(int argc, Janet * argv)
   return base64_decode(data.bytes, data.len, variant);
 }
 
+Janet base32_encoder(int argc, Janet * argv)
+{
+  janet_arity(argc, 1, 2);
+  JanetByteView data = janet_getbytes(argv, 0);
+  janetls_encoding_base32_variant variant = janetls_encoding_base32_variant_standard;
+  if (argc > 1) {
+    get_base32_variant(argc, argv, 1, 1, &variant);
+  }
+  return base32_encode(data.bytes, data.len, variant);
+}
+
+Janet base32_decoder(int argc, Janet * argv)
+{
+  janet_arity(argc, 1, 2);
+  JanetByteView data = janet_getbytes(argv, 0);
+  janetls_encoding_base32_variant variant = janetls_encoding_base32_variant_standard;
+  if (argc > 1) {
+    get_base32_variant(argc, argv, 1, 1, &variant);
+  }
+  return base32_decode(data.bytes, data.len, variant);
+}
+
 int extract_encoding(int argc, Janet * argv, int offset, janetls_encoding_type * encoding, int * variant)
 {
   int consumed = 0;
@@ -114,6 +152,12 @@ int extract_encoding(int argc, Janet * argv, int offset, janetls_encoding_type *
       if (*encoding == janetls_encoding_type_base64)
       {
         if (argc + offset > 1 && get_base64_variant(argc, argv, offset + 1, 0, (janetls_encoding_base64_variant *)variant) == 0) {
+          consumed++;
+        }
+      }
+      else if (*encoding == janetls_encoding_type_base32)
+      {
+        if (argc + offset > 1 && get_base32_variant(argc, argv, offset + 1, 0, (janetls_encoding_base32_variant *)variant) == 0) {
           consumed++;
         }
       }
@@ -140,7 +184,7 @@ void assert_generic_encoding_parameters(int argc, Janet * argv, janetls_encoding
   else if (argc == 3 && consumed_arguments == 1)
   {
     janet_panicf("The third parameter %p could not be mapped to an "
-        "encoding variant. Please review janetls/%S/types for options.",
+        "encoding variant. Please review janetls/%S/variants for options.",
         argv[2], janet_unwrap_keyword(argv[1]));
   }
 }
@@ -189,6 +233,20 @@ static const JanetReg cfuns[] =
   {"base64/variants", janetls_search_encoding_base64_variant_set,
     "(janetls/base64/variants)\n\n"
     "Enumerates acceptable variants for other base64 functions"
+    },
+  {"base32/encode", base32_encoder,
+    "(janetls/base32/encode str &opt variant)\n\n"
+    "Permitted variants are described in (janetls/base32/variants). "
+    "It will by by default :standard"
+    },
+  {"base32/decode", base32_decoder,
+    "(janetls/base32/decode str &opt variant)\n\n"
+    "Permitted variants are described in (janetls/base32/variants). "
+    "It will by by default :standard"
+    },
+  {"base32/variants", janetls_search_encoding_base32_variant_set,
+    "(janetls/base32/variants)\n\n"
+    "Enumerates acceptable variants for other base32 functions"
     },
   {"encoding/types", janetls_search_encoding_type_set,
     "(janetls/encoding/types)\n\n"
