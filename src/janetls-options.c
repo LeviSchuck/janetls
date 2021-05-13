@@ -87,10 +87,21 @@ option_list_entry encoding_base64_variant[] = {
 
 JANETLS_SEARCH_OPTION_LIST(encoding_base64_variant, janetls_encoding_base64_variant)
 
+option_list_entry encoding_base32_variant[] = {
+  {janetls_encoding_base32_variant_standard, "standard", 0},
+  {janetls_encoding_base32_variant_standard_unpadded, "standard-unpadded", 0},
+  {janetls_encoding_base32_variant_z_base, "z-base", 0},
+  {janetls_encoding_base32_variant_hex, "hex", 0},
+  {janetls_encoding_base32_variant_hex_unpadded, "hex-unpadded", 0},
+};
+
+JANETLS_SEARCH_OPTION_LIST(encoding_base32_variant, janetls_encoding_base32_variant)
+
 option_list_entry encoding_type[] = {
   {janetls_encoding_type_raw, "raw", 0},
   {janetls_encoding_type_hex, "hex", 0},
   {janetls_encoding_type_base64, "base64", 0},
+  {janetls_encoding_type_base32, "base32", 0},
 };
 
 JANETLS_SEARCH_OPTION_LIST(encoding_type, janetls_encoding_type)
