@@ -42,7 +42,7 @@ Security advisories for dependencies are available at
 
 ## Warnings
 
-Apple clang version 13.0.0 (clang-1300.0.29.3) does not compile `bignum` correctly.
+Apple clang version 13.0.0 (clang-1300.0.29.3) on Aarch64 (Mac M1) does not compile `bignum` correctly.
 Recommend using gcc from brew like so:
 ```
 jpm build --cc=`which gcc-11`
