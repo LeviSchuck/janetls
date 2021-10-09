@@ -116,6 +116,16 @@
     "mbedtls/library/platform_util.c"
     # Scrypt
     "libscrypt/crypto_scrypt-nosse.c"
+    # PK, required for X509
+    "mbedtls/library/pkparse.c"
+    "mbedtls/library/pk.c"
+    # x509 required for tls
+    "mbedtls/library/x509_crt.c"
+    "mbedtls/library/x509.c"
+    # DHM for DHE key exchange
+    "mbedtls/library/dhm.c"
+    # TLS
+    "mbedtls/library/ssl_tls.c"
     ])
 
 (declare-source
