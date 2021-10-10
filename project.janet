@@ -119,6 +119,7 @@
     # PK, required for X509
     "mbedtls/library/pkparse.c"
     "mbedtls/library/pk.c"
+    "mbedtls/library/pk_wrap.c"
     # x509 required for tls
     "mbedtls/library/x509_crt.c"
     "mbedtls/library/x509.c"
@@ -126,6 +127,10 @@
     "mbedtls/library/dhm.c"
     # TLS
     "mbedtls/library/ssl_tls.c"
+    "mbedtls/library/ssl_msg.c"
+    "mbedtls/library/ssl_srv.c"
+    "mbedtls/library/ssl_cli.c"
+    "mbedtls/library/ssl_ciphersuites.c"
     ])
 
 (declare-source
