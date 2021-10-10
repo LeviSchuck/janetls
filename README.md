@@ -27,7 +27,9 @@ active support.
 ## mbed TLS version
 
 mbed TLS is added as a submodule to this repository.
-As of October 10, 2021, the submodule points to the latest release v2.27.0
+As of October 10, 2021, the submodule points to a development release after v2.27.0.
+The reason for the development release is because it contains fixes necessary for
+Apple Clang 13.
 Releases can be found on: https://github.com/ARMmbed/mbedtls/releases
 
 ## Security Audits
@@ -39,14 +41,6 @@ Use of this library is at your own risk.
 Security advisories for dependencies are available at
 
 * mbedtls: https://tls.mbed.org/security
-
-## Warnings
-
-Apple clang version 13.0.0 (clang-1300.0.29.3) on Aarch64 (Mac M1) does not compile `bignum` correctly.
-Recommend using gcc from brew like so:
-```
-jpm build --cc=`which gcc-11`
-```
 
 ## License - MIT
 
