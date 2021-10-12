@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Levi Schuck
+ * Copyright (c) 2021 Levi Schuck
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -38,6 +38,7 @@
 #include "mbedtls/ecdh.h"
 #include "mbedtls/hkdf.h"
 #include "mbedtls/pkcs5.h"
+#include "mbedtls/x509_crt.h"
 
 JANET_MODULE_ENTRY(JanetTable *env)
 {
@@ -60,6 +61,7 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_ecdh(env);
   submod_nistkw(env);
   submod_kdf(env);
+  submod_x509(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)
@@ -175,6 +177,42 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "PKCS5: Feature unavailable";
     case MBEDTLS_ERR_PKCS5_PASSWORD_MISMATCH:
       return "PKCS5: Password mismatch";
+    case MBEDTLS_ERR_X509_FEATURE_UNAVAILABLE:
+      return "X509: Feature Unavailable";
+    case MBEDTLS_ERR_X509_UNKNOWN_OID:
+      return "X509: Unknown OID";
+    case MBEDTLS_ERR_X509_INVALID_FORMAT:
+      return "X509: Invalid Format";
+    case MBEDTLS_ERR_X509_INVALID_VERSION:
+      return "X509: Invalid Version";
+    case MBEDTLS_ERR_X509_INVALID_SERIAL:
+      return "X509: Invalid Serial";
+    case MBEDTLS_ERR_X509_INVALID_ALG:
+      return "X509: Invalid Algorithm";
+    case MBEDTLS_ERR_X509_INVALID_NAME:
+      return "X509: Invalid Name";
+    case MBEDTLS_ERR_X509_INVALID_DATE:
+      return "X509: Invalid Date";
+    case MBEDTLS_ERR_X509_INVALID_SIGNATURE:
+      return "X509: Invalid signature";
+    case MBEDTLS_ERR_X509_INVALID_EXTENSIONS:
+      return "X509: Invalid Extensions";
+    case MBEDTLS_ERR_X509_SIG_MISMATCH:
+      return "X509: Signature mismatch";
+    case MBEDTLS_ERR_X509_CERT_VERIFY_FAILED:
+      return "X509: Certificate verify failed";
+    case MBEDTLS_ERR_X509_CERT_UNKNOWN_FORMAT:
+      return "X509: Certificate unknown format";
+    case MBEDTLS_ERR_X509_BAD_INPUT_DATA:
+      return "X509: Bad Input data";
+    case MBEDTLS_ERR_X509_ALLOC_FAILED:
+      return "X509: Allocation Failed";
+    case MBEDTLS_ERR_X509_FILE_IO_ERROR:
+      return "X509: File IO Error";
+    case MBEDTLS_ERR_X509_BUFFER_TOO_SMALL:
+      return "X509: Buffer Too Small";
+    case MBEDTLS_ERR_X509_FATAL_ERROR:
+      return "X509: Fatal Error";
     // -------------- JANETLS ERRORS ------------------
     case JANETLS_ERR_ENCODING_INVALID_CHARACTER:
       return "Invalid character found during decoding";

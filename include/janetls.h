@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Levi Schuck
+ * Copyright (c) 2021 Levi Schuck
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -96,6 +96,7 @@ void submod_gcm(JanetTable * env);
 void submod_ecdh(JanetTable * env);
 void submod_kdf(JanetTable * env);
 void submod_nistkw(JanetTable * env);
+void submod_x509(JanetTable * env);
 
 #define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
 
