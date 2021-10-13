@@ -97,6 +97,7 @@ void submod_ecdh(JanetTable * env);
 void submod_kdf(JanetTable * env);
 void submod_nistkw(JanetTable * env);
 void submod_x509(JanetTable * env);
+void submod_tls(JanetTable * env);
 
 #define retcheck(x) do {ret=x;if (ret != 0){goto end;}} while(0)
 

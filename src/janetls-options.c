@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Levi Schuck
+ * Copyright (c) 2021 Levi Schuck
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -264,3 +264,24 @@ option_list_entry aes_mode[] = {
 };
 JANETLS_SEARCH_OPTION_LIST(aes_mode, janetls_aes_mode)
 
+option_list_entry tls_verify[] = {
+  {janetls_tls_verify_none, "verify-none", 0},
+  {janetls_tls_verify_optional, "verify-optional", 0},
+  {janetls_tls_verify_required, "verify-required", 0},
+  {janetls_tls_verify_unset, "verify-unset", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(tls_verify, janetls_tls_verify)
+
+option_list_entry tls_endpoint[] = {
+  {janetls_tls_endpoint_none, "none", OPTION_LIST_HIDDEN},
+  {janetls_tls_endpoint_client, "client", 0},
+  {janetls_tls_endpoint_server, "server", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(tls_endpoint, janetls_tls_endpoint)
+
+option_list_entry tls_transport[] = {
+  {janetls_tls_transport_none, "none", OPTION_LIST_HIDDEN},
+  {janetls_tls_transport_stream, "stream", 0},
+  {janetls_tls_transport_datagram, "datagram", 0},
+};
+JANETLS_SEARCH_OPTION_LIST(tls_transport, janetls_tls_transport)

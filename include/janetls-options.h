@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Levi Schuck
+ * Copyright (c) 2021 Levi Schuck
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -277,5 +277,33 @@ typedef enum janetls_aes_mode
 } janetls_aes_mode;
 
 JANETLS_SEARCH_OPTION_FORWARD_DECLARE(aes_mode, janetls_aes_mode)
+
+typedef enum janetls_tls_verify
+{
+  janetls_tls_verify_none = 0,
+  janetls_tls_verify_optional,
+  janetls_tls_verify_required,
+  janetls_tls_verify_unset,
+} janetls_tls_verify;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(tls_verify, janetls_tls_verify)
+
+typedef enum janetls_tls_endpoint
+{
+  janetls_tls_endpoint_none = 0,
+  janetls_tls_endpoint_client,
+  janetls_tls_endpoint_server,
+} janetls_tls_endpoint;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(tls_endpoint, janetls_tls_endpoint)
+
+typedef enum janetls_tls_transport
+{
+  janetls_tls_transport_none = 0,
+  janetls_tls_transport_stream,
+  janetls_tls_transport_datagram,
+} janetls_tls_transport;
+
+JANETLS_SEARCH_OPTION_FORWARD_DECLARE(tls_transport, janetls_tls_transport)
 
 #endif

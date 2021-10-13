@@ -39,6 +39,7 @@
 #include "mbedtls/hkdf.h"
 #include "mbedtls/pkcs5.h"
 #include "mbedtls/x509_crt.h"
+#include "mbedtls/ssl.h"
 
 JANET_MODULE_ENTRY(JanetTable *env)
 {
@@ -62,6 +63,7 @@ JANET_MODULE_ENTRY(JanetTable *env)
   submod_nistkw(env);
   submod_kdf(env);
   submod_x509(env);
+  submod_tls(env);
 }
 
 const char * result_error_message(int result, uint8_t * unhandled)
@@ -213,6 +215,122 @@ const char * result_error_message(int result, uint8_t * unhandled)
       return "X509: Buffer Too Small";
     case MBEDTLS_ERR_X509_FATAL_ERROR:
       return "X509: Fatal Error";
+    case MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE:
+      return "TLS: Feature Unavailable";
+    case MBEDTLS_ERR_SSL_BAD_INPUT_DATA:
+      return "TLS: Bad Input Data";
+    case MBEDTLS_ERR_SSL_INVALID_MAC:
+      return "TLS: Invalid MAC (Message Authentication Code)";
+    case MBEDTLS_ERR_SSL_INVALID_RECORD:
+      return "TLS: Invalid Record";
+    case MBEDTLS_ERR_SSL_CONN_EOF:
+      return "TLS: Connection End Of File";
+    case MBEDTLS_ERR_SSL_UNKNOWN_CIPHER:
+      return "TLS: Unknown Cipher";
+    case MBEDTLS_ERR_SSL_NO_CIPHER_CHOSEN:
+      return "TLS: No Cipher Chosen";
+    case MBEDTLS_ERR_SSL_NO_RNG:
+      return "TLS: No Random Found";
+    case MBEDTLS_ERR_SSL_NO_CLIENT_CERTIFICATE:
+      return "TLS: No Client Certificate";
+    case MBEDTLS_ERR_SSL_CERTIFICATE_TOO_LARGE:
+      return "TLS: Certificate too large";
+    case MBEDTLS_ERR_SSL_CERTIFICATE_REQUIRED:
+      return "TLS: Certificate Required";
+    case MBEDTLS_ERR_SSL_PRIVATE_KEY_REQUIRED:
+      return "TLS: Private Key Required";
+    case MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED:
+      return "TLS: Certificate Authority chain required";
+    case MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE:
+      return "TLS: Unexpected Message";
+    case MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE:
+      return "TLS: Fatal Alert Message";
+    case MBEDTLS_ERR_SSL_PEER_VERIFY_FAILED:
+      return "TLS: Peer Verify Failed";
+    case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
+      return "TLS: Peer Closing connection notification";
+    case MBEDTLS_ERR_SSL_BAD_HS_CLIENT_HELLO:
+      return "TLS: Bad Handshake Client Hello";
+    case MBEDTLS_ERR_SSL_BAD_HS_SERVER_HELLO:
+      return "TLS: Bad Handshake Server Hello";
+    case MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE:
+      return "TLS: Bad Handshake certificate";
+    case MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE_REQUEST:
+      return "TLS: Bad Handshake Certificate request";
+    case MBEDTLS_ERR_SSL_BAD_HS_SERVER_KEY_EXCHANGE:
+      return "TLS: Bad Handshake Server Key Exchange";
+    case MBEDTLS_ERR_SSL_BAD_HS_SERVER_HELLO_DONE:
+      return "TLS: Bad Handshake Server Hello Done";
+    case MBEDTLS_ERR_SSL_BAD_HS_CLIENT_KEY_EXCHANGE:
+      return "TLS: Bad Handshake Client Key Exchange";
+    case MBEDTLS_ERR_SSL_BAD_HS_CLIENT_KEY_EXCHANGE_RP:
+      return "TLS: Bad Handshake Client key exchange Read Public";
+    case MBEDTLS_ERR_SSL_BAD_HS_CLIENT_KEY_EXCHANGE_CS:
+      return "TLS: Bad Handshake Client key exchange Calculate Secret";
+    case MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE_VERIFY:
+      return "TLS: Bad Handshake Certificate verify failed";
+    case MBEDTLS_ERR_SSL_BAD_HS_CHANGE_CIPHER_SPEC:
+      return "TLS: Bad Handshake change cipher specification";
+    case MBEDTLS_ERR_SSL_BAD_HS_FINISHED:
+      return "TLS: Bad Handshake finished";
+    case MBEDTLS_ERR_SSL_ALLOC_FAILED:
+      return "TLS: Allocation failure";
+    case MBEDTLS_ERR_SSL_HW_ACCEL_FAILED:
+      return "TLS: Hardware accelleration failed";
+    case MBEDTLS_ERR_SSL_HW_ACCEL_FALLTHROUGH:
+      return "TLS: Hardware Accelleration Fallthrough";
+    case MBEDTLS_ERR_SSL_COMPRESSION_FAILED:
+      return "TLS: Compression Failed";
+    case MBEDTLS_ERR_SSL_BAD_HS_PROTOCOL_VERSION:
+      return "TLS: Bad Handshake protocol version";
+    case MBEDTLS_ERR_SSL_BAD_HS_NEW_SESSION_TICKET:
+      return "TLS: Bad Handshake new session ticket";
+    case MBEDTLS_ERR_SSL_SESSION_TICKET_EXPIRED:
+      return "TLS: Session ticket expired";
+    case MBEDTLS_ERR_SSL_PK_TYPE_MISMATCH:
+      return "TLS: Public Key type mismatch";
+    case MBEDTLS_ERR_SSL_UNKNOWN_IDENTITY:
+      return "TLS: Unknown Identity";
+    case MBEDTLS_ERR_SSL_INTERNAL_ERROR:
+      return "TLS: Internal Error";
+    case MBEDTLS_ERR_SSL_COUNTER_WRAPPING:
+      return "TLS: Counter Wrapped, too much data needs a new connection";
+    case MBEDTLS_ERR_SSL_WAITING_SERVER_HELLO_RENEGO:
+      return "TLS: Waiting Server Hello renegotiation";
+    case MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED:
+      return "TLS: Hello verify required";
+    case MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL:
+      return "TLS: Buffer too small";
+    case MBEDTLS_ERR_SSL_NO_USABLE_CIPHERSUITE:
+      return "TLS: No usable ciphersuite";
+    case MBEDTLS_ERR_SSL_WANT_READ:
+      return "TLS: Needs more data";
+    case MBEDTLS_ERR_SSL_WANT_WRITE:
+      return "TLS: Needs to write more data";
+    case MBEDTLS_ERR_SSL_TIMEOUT:
+      return "TLS: Timeout";
+    case MBEDTLS_ERR_SSL_CLIENT_RECONNECT:
+      return "TLS: Client Reconnect";
+    case MBEDTLS_ERR_SSL_UNEXPECTED_RECORD:
+      return "TLS: Unexpected Record";
+    case MBEDTLS_ERR_SSL_NON_FATAL:
+      return "TLS: Non Fatal error";
+    case MBEDTLS_ERR_SSL_INVALID_VERIFY_HASH:
+      return "TLS: Invalid verify hash";
+    case MBEDTLS_ERR_SSL_CONTINUE_PROCESSING:
+      return "TLS: Continue processing";
+    case MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS:
+      return "TLS: Async In Progress";
+    case MBEDTLS_ERR_SSL_EARLY_MESSAGE:
+      return "TLS: Early Message";
+    case MBEDTLS_ERR_SSL_UNEXPECTED_CID:
+      return "TLS: An encrypted DTLS-frame with an unexpected CID was received";
+    case MBEDTLS_ERR_SSL_VERSION_MISMATCH:
+      return "TLS: Version mismatch";
+    case MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS:
+      return "TLS: Cryptography in progress";
+    case MBEDTLS_ERR_SSL_BAD_CONFIG:
+      return "TLS: Bad Configuration";
     // -------------- JANETLS ERRORS ------------------
     case JANETLS_ERR_ENCODING_INVALID_CHARACTER:
       return "Invalid character found during decoding";

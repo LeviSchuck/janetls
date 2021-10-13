@@ -36,7 +36,7 @@ SM49BAMDA2kAMGYCMQCuSuMrQMN0EfKVrRYj3k4MGuZdpSRea0R7/DjiT8ucRRcRTBQnJlU5dUoD\n
 zBOQn5ICMQD6SmxgiHPz7riYYqnOK8LZiqZwMR2vsJRM60/G49HzYqc8/5MuB1xJAWdpEgJyv+c=\n
 -----END CERTIFICATE-----")
 
-(deftest "Constant= checks"
+(deftest "Simple cert checks"
   (def cert-der (get-in (pem/decode cert-pem) [0 :body]))
   (def cert-der2 (get-in (pem/decode cert-pem2) [0 :body]))
   (def cert (x509/from cert-der cert-der2))

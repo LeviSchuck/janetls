@@ -75,6 +75,7 @@
     "src/janetls-nistkw.c"
     "src/janetls-kdf.c"
     "src/janetls-x509.c"
+    "src/janetls-tls.c"
     # mbed tls Message Digest
     "mbedtls/library/md.c"
     "mbedtls/library/md5.c"
