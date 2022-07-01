@@ -32,6 +32,28 @@ The reason for the development release is because it contains fixes necessary fo
 Apple Clang 13.
 Releases can be found on: https://github.com/ARMmbed/mbedtls/releases
 
+## Local Development
+
+This project is set up with a [VS Code Dev Container](https://code.visualstudio.com/docs/remote/containers), which will install the latest janet, jpm.
+You may need to install the plugin and docker desktop.
+_This will not function with VS Codium._
+
+Use the [Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) to "Remote Containers: Reopen in container"
+
+This project uses submodules, you must run the following in the base directory to get the submodules downloaded.
+
+```
+git submodule update --init --recursive
+```
+
+Finally, you will need to install dependencies, pull up at the bottom to open a terminal and run
+```
+sudo jpm deps
+```
+Because this is in a dev container, sudo will not impact the host.
+
+You may then run `jpm test` in `/workspaces/janetls` to verify it's functionality is intact.
+
 ## Security Audits
 
 This project has not undergone a security audit.
