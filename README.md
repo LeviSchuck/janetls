@@ -27,9 +27,7 @@ active support.
 ## mbed TLS version
 
 mbed TLS is added as a submodule to this repository.
-As of October 10, 2021, the submodule points to a development release after v2.27.0.
-The reason for the development release is because it contains fixes necessary for
-Apple Clang 13.
+As of May 29, 2023, the submodule points to the release v2.28.3.
 Releases can be found on: https://github.com/ARMmbed/mbedtls/releases
 
 ## Local Development

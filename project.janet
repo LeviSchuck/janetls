@@ -98,6 +98,7 @@
     "mbedtls/library/rsa.c"
     "mbedtls/library/rsa_internal.c"
     "mbedtls/library/oid.c"
+    "mbedtls/library/constant_time.c"
     # Elliptic Curve
     "mbedtls/library/ecp.c"
     "mbedtls/library/ecp_curves.c"
