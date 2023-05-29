@@ -23,7 +23,7 @@
 (import ./pem :prefix "")
 (import ./oid :prefix "")
 
-(defn- semi [v] ;(if v [v] []))
+(defn- semi [v] (if v [v] []))
 
 (def pk/formats
   "Enumerates the export formats, to export a PEM file, :encoded must be used."
